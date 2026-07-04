@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>모자이크 통합 관제 센터</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 p-8 font-sans">
+
+  <div class="max-w-5xl mx-auto space-y-8">
+    <header class="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div class="flex items-center gap-4">
+        <span class="material-symbols-outlined text-4xl text-indigo-600">settings_input_antenna</span>
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">V3 Ultimate 관제 센터</h1>
+          <p class="text-slate-500 text-sm font-medium">실시간 리소스 및 컨피그 컨트롤</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg font-bold">
+        <span class="relative flex h-3 w-3">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+        </span>
+        서버 정상 동작 중
+      </div>
+    </header>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- 시스템 통계 -->
+      <div class="col-span-1 space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined">memory</span> 리소스 모니터링</h2>
+          <div class="space-y-4">
+            <div>
+              <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">메모리 사용률</p>
+              <p class="text-2xl font-black text-slate-800" id="memUsage">--%</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">대기열 (Task Queue)</p>
+              <p class="text-2xl font-black text-rose-600" id="queueLength">0 <span class="text-sm font-normal text-slate-400">jobs</span></p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">가동 중인 워커 (Threads)</p>
+              <p class="text-2xl font-black text-indigo-600" id="activeWorkers">0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <h2 class="text-lg font-bold mb-4 flex items-center gap-2"><span class="material-symbols-outlined">database</span> DB 관리</h2>
+          <p class="text-3xl font-black text-slate-800 mb-1"><span id="tileCount">--</span></p>
+          <p class="text-xs text-slate-500 font-bold mb-4">현재 인덱싱된 타일 조각 수</p>
+          <button id="buildBtn" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow transition-colors flex justify-center items-center gap-2">
+            <span class="material-symbols-outlined">sync</span> 인덱스 강제 리빌드
+          </button>
+        </div>
+      </div>
+
+      <!-- 실시간 제어 (Config) -->
+      <div class="col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+        <h2 class="text-xl font-bold mb-6 flex items-center gap-2"><span class="material-symbols-outlined">tune</span> 라이브 시각 제어</h2>
+        
+        <div class="space-y-8">
+          <div>
+            <label class="flex justify-between mb-2">
+              <span class="font-bold text-slate-700">원본 합성 투명도 (Opacity)</span>
+              <span id="opacityVal" class="text-indigo-600 font-bold">60%</span>
+            </label>
+            <p class="text-sm text-slate-500 mb-3">0%에 가까울수록 모자이크 타일만 보이고 얼굴 윤곽이 사라집니다. 100%에 가까울수록 원본 사진만 보입니다.</p>
+            <input type="range" id="opacitySlider" min="0" max="1" step="0.05" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-2">블렌딩 모드 (Blend Mode)</label>
+            <p class="text-sm text-slate-500 mb-3">어떤 방식으로 원본 사진과 모자이크를 섞을지 결정합니다.</p>
+            <select id="blendSelect" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-3">
+              <option value="multiply">Multiply (곱하기 - 어두운 배경에 적합, 얼굴 윤곽 뚜렷)</option>
+              <option value="overlay">Overlay (오버레이 - 대비를 높임)</option>
+              <option value="soft-light">Soft-Light (부드러운 빛 - 자연스러움)</option>
+              <option value="over">Over (단순 투명도 덮어쓰기)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="flex justify-between mb-2">
+              <span class="font-bold text-slate-700">모자이크 타일 크기 (Tile Size)</span>
+              <span id="tileSizeVal" class="text-indigo-600 font-bold">20px</span>
+            </label>
+            <p class="text-sm text-slate-500 mb-3">숫자가 작을수록 모자이크가 조밀해지며, 클수록 타일 속 사진이 잘 보입니다. (권장: 15~30)</p>
+            <input type="range" id="tileSizeSlider" min="10" max="60" step="2" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 mb-2">최대 출력 해상도 제한 (Max Resolution)</label>
+            <p class="text-sm text-slate-500 mb-3">업로드된 사진의 가로/세로 중 긴 쪽의 최대 길이를 제한합니다. (메모리 부족 방지용)</p>
+            <select id="maxResSelect" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-3">
+              <option value="1080">1080px (FHD급 - 빠름)</option>
+              <option value="1440">1440px (QHD급 - 권장)</option>
+              <option value="1920">1920px (4K 전 단계 - 선명함)</option>
+              <option value="2560">2560px (초고화질 - 사양 요구됨)</option>
+            </select>
+          </div>
+
+          <button id="saveConfigBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-colors text-lg">
+            즉시 적용 (저장)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentConfig = {};
+
+    async function fetchStats() {
+      try {
+        const res = await fetch('/api/admin/stats');
+        const data = await res.json();
+        
+        document.getElementById('tileCount').textContent = data.tileCount.toLocaleString();
+        document.getElementById('memUsage').textContent = data.system.memoryUsage;
+        document.getElementById('queueLength').textContent = data.system.queueLength + ' jobs';
+        document.getElementById('activeWorkers').textContent = data.system.activeWorkers + ' / ' + data.system.cpuCores;
+
+        // 초기 로드 시 컨트롤러 값 세팅
+        if (Object.keys(currentConfig).length === 0 && data.config) {
+          currentConfig = data.config;
+          const opacitySlider = document.getElementById('opacitySlider');
+          opacitySlider.value = currentConfig.opacity;
+          document.getElementById('opacityVal').textContent = Math.round(currentConfig.opacity * 100) + '%';
+          
+          document.getElementById('blendSelect').value = currentConfig.blendMode;
+          
+          const tileSlider = document.getElementById('tileSizeSlider');
+          tileSlider.value = currentConfig.tileSize || 20;
+          document.getElementById('tileSizeVal').textContent = tileSlider.value + 'px';
+          
+          document.getElementById('maxResSelect').value = currentConfig.maxResolution || 1440;
+        }
+      } catch(e) {
+        console.error(e);
+      }
+    }
+
+    // 1초마다 상태 갱신
+    setInterval(fetchStats, 1000);
+    fetchStats();
+
+    // 슬라이더 이벤트
+    document.getElementById('opacitySlider').addEventListener('input', (e) => {
+      document.getElementById('opacityVal').textContent = Math.round(e.target.value * 100) + '%';
+    });
+    document.getElementById('tileSizeSlider').addEventListener('input', (e) => {
+      document.getElementById('tileSizeVal').textContent = e.target.value + 'px';
+    });
+
+    // Config 저장
+    document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('saveConfigBtn');
+      const opacity = parseFloat(document.getElementById('opacitySlider').value);
+      const blendMode = document.getElementById('blendSelect').value;
+      const tileSize = parseInt(document.getElementById('tileSizeSlider').value, 10);
+      const maxResolution = parseInt(document.getElementById('maxResSelect').value, 10);
+
+      btn.textContent = '적용 중...';
+      btn.classList.add('opacity-50');
+
+      try {
+        await fetch('/api/admin/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ opacity, blendMode, tileSize, maxResolution })
+        });
+        alert('라이브 설정이 적용되었습니다. 다음 모자이크부터 이 값이 사용됩니다.');
+      } catch(e) {
+        alert('적용 실패');
+      }
+      
+      btn.textContent = '즉시 적용 (저장)';
+      btn.classList.remove('opacity-50');
+    });
+
+    // DB 리빌드
+    document.getElementById('buildBtn').addEventListener('click', async () => {
+      if(!confirm('DB 갱신을 시작하시겠습니까? 다소 시간이 소요됩니다.')) return;
+      const btn = document.getElementById('buildBtn');
+      btn.disabled = true;
+      btn.textContent = '처리 중...';
+      
+      try {
+        const res = await fetch('/api/admin/build-db', { method: 'POST' });
+        const data = await res.json();
+        if(data.success) {
+          alert('완료되었습니다!');
+        } else {
+          alert('실패: ' + data.error);
+        }
+      } catch(e) {
+        alert('에러 발생');
+      }
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined">sync</span> 인덱스 강제 리빌드';
+    });
+  </script>
+</body>
+</html>

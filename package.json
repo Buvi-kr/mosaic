@@ -1,0 +1,21 @@
+{
+  "name": "mosaic_ver2",
+  "version": "1.0.0",
+  "description": "Reverse Cosmos Mosaic (V3 Ultimate) - 로컬 기반 실시간 우주 사진 포토모자이크 렌더링 서버",
+  "main": "src/app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "color-convert": "^3.1.3",
+    "express": "^5.2.1",
+    "multer": "^2.2.0",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.3",
+    "socket.io": "^4.8.3"
+  }
+}

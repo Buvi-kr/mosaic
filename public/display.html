@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Cosmos Mosaic - Exhibition Display</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      overflow: hidden;
+      font-family: 'Pretendard', sans-serif;
+    }
+    
+    #canvas-container {
+      position: absolute;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      box-shadow: 0 0 50px rgba(138, 43, 226, 0.2);
+    }
+
+    #idle-message {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 10;
+      color: rgba(255,255,255,0.8);
+      transition: opacity 1s;
+    }
+
+    .stars {
+      background: transparent url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/1231630/stars.png') repeat top center;
+      z-index: -1;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      animation: move-twink-back 200s linear infinite;
+    }
+
+    @keyframes move-twink-back {
+      from {background-position: 0 0;}
+      to {background-position: -10000px 5000px;}
+    }
+
+    /* 우측 하단 고정 QR 안내 */
+    #qr-overlay {
+      position: absolute;
+      bottom: 40px; right: 40px;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 20px;
+      border-radius: 24px;
+      text-align: center;
+      z-index: 20;
+    }
+  </style>
+</head>
+<body>
+  <div class="stars"></div>
+
+  <div id="idle-message">
+    <h1 class="text-7xl font-extrabold mb-6 tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">당신의 우주를 만들어 드립니다</h1>
+    <p class="text-3xl font-light">QR 코드를 스캔하여 사진을 올려주세요</p>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="mosaicCanvas"></canvas>
+  </div>
+
+  <div id="qr-overlay">
+    <div id="qrcode" class="bg-white p-2 rounded-xl mb-3 w-32 h-32 mx-auto flex items-center justify-center">
+      <span class="text-gray-500 text-sm">QR Code</span>
+    </div>
+    <p class="text-white font-bold text-lg">참여하기</p>
+  </div>
+
+  <!-- QR코드 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script>
+    const socket = io();
+    
+    // 기본 로컬 주소로 초기화
+    let uploadUrl = window.location.origin + '/upload.html';
+    
+    function drawQR(url) {
+      QRCode.toCanvas(document.createElement('canvas'), url, { width: 120, margin: 1 }, function (err, canvas) {
+        if(!err) {
+          const qrContainer = document.getElementById('qrcode');
+          qrContainer.innerHTML = '';
+          qrContainer.appendChild(canvas);
+        }
+      });
+    }
+
+    drawQR(uploadUrl);
+
+    socket.on('tunnel_url', (url) => {
+      console.log('클라우드플레어 터널 주소 수신:', url);
+      drawQR(url + '/upload.html');
+    });
+
+    const idleMessage = document.getElementById('idle-message');
+    const canvas = document.getElementById('mosaicCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 동적 캔버스 스케일링
+    let CANVAS_W = 1920;
+    let CANVAS_H = 1080;
+    let currentTileSize = 20;
+
+    // 반응형 스케일링
+    function resizeCanvas() {
+      const scale = Math.min(window.innerWidth / CANVAS_W, window.innerHeight / CANVAS_H) * 0.95;
+      canvas.width = CANVAS_W;
+      canvas.height = CANVAS_H;
+      canvas.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let particles = [];
+    let animationFrame;
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (p.alpha > 0) {
+          ctx.globalAlpha = p.alpha;
+          // 이미지의 해당 타일 영역을 캔버스의 현재 x,y에 그림
+          ctx.drawImage(
+            p.img,
+            p.sx, p.sy, currentTileSize, currentTileSize, // 소스
+            p.x, p.y, currentTileSize, currentTileSize    // 데스티네이션
+          );
+        }
+      }
+      ctx.globalAlpha = 1;
+      animationFrame = requestAnimationFrame(render);
+    }
+
+    function startFlyInAnimation(imgElement) {
+      cancelAnimationFrame(animationFrame);
+      particles = [];
+
+      const cols = Math.floor(CANVAS_W / currentTileSize);
+      const rows = Math.floor(CANVAS_H / currentTileSize);
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const destX = x * currentTileSize;
+          const destY = y * currentTileSize;
+
+          // 시작점: 화면 밖 임의의 위치
+          const startX = destX + (Math.random() - 0.5) * 4000;
+          const startY = destY + (Math.random() - 0.5) * 4000;
+
+          const particle = {
+            img: imgElement,
+            sx: destX, sy: destY, // 원본에서 자를 위치
+            x: startX, y: startY, // 현재 위치
+            alpha: 0
+          };
+          particles.push(particle);
+
+          // GSAP로 개별 파티클 애니메이션
+          gsap.to(particle, {
+            x: destX,
+            y: destY,
+            alpha: 1,
+            duration: 1.5 + Math.random() * 2, // 1.5초 ~ 3.5초 사이 도달
+            ease: "power3.out",
+            delay: Math.random() * 1.5 // 무작위 지연
+          });
+        }
+      }
+
+      render();
+    }
+
+    let lastImg = null;
+
+    socket.on('new_mosaic', (data) => {
+      console.log('새 모자이크 수신!', data.imageUrl);
+      if (data.tileSize) currentTileSize = data.tileSize;
+      if (data.width && data.height) {
+        CANVAS_W = data.width;
+        CANVAS_H = data.height;
+        resizeCanvas();
+      }
+      
+      idleMessage.style.opacity = '0';
+      
+      const img = new Image();
+      img.onload = () => {
+        lastImg = img;
+        if (document.hidden) {
+          // 탭이 백그라운드에 있으면 애니메이션 생략하고 캔버스에 100% 즉시 렌더링
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
+        } else {
+          startFlyInAnimation(img);
+        }
+      };
+      img.src = data.imageUrl;
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && lastImg) {
+        if (particles.length > 0) {
+          particles.forEach(p => gsap.killTweensOf(p));
+          particles = [];
+          cancelAnimationFrame(animationFrame);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(lastImg, 0, 0, CANVAS_W, CANVAS_H);
+        }
+      }
+    });
+
+    socket.on('config_updated', (config) => {
+      console.log('관리자 설정 업데이트 수신:', config);
+      if (config.tileSize) currentTileSize = config.tileSize;
+      
+      // 설정 변경 알림 시각적 피드백
+      idleMessage.innerHTML = `<span class="material-symbols-outlined text-4xl mb-2 text-indigo-400">settings</span><br><span class="text-indigo-300">관리자 설정이 실시간 반영되었습니다.</span><br><span class="text-sm text-gray-400">다음 사진부터 즉시 적용됩니다.</span>`;
+      idleMessage.style.opacity = '1';
+      
+      setTimeout(() => {
+        if (!lastImg) {
+          idleMessage.innerHTML = `<span class="material-symbols-outlined text-6xl mb-4">qr_code_scanner</span><br>사진을 업로드하여<br>거대한 모자이크를 만들어보세요`;
+        } else {
+          idleMessage.style.opacity = '0';
+        }
+      }, 4000);
+    });
+
+  </script>
+</body>
+</html>

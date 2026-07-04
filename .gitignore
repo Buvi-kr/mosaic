@@ -1,0 +1,22 @@
+node_modules/
+.env
+
+# 로그
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 대용량 이미지 폴더 제외
+data/apod_originals/
+public/raw_tiles/
+public/tiles/
+public/outputs/
+
+# 생성형 DB
+data/tileDB.json
+
+# 기타
+.DS_Store
+Thumbs.db

@@ -1,0 +1,103 @@
+const express = require('express');
+const http = require('http');
+const path = require('path');
+
+const socketManager = require('./socket.manager');
+const uploadRouter = require('./upload.route');
+const adminRouter = require('./admin.route');
+
+// 글로벌 에러 로깅 처리 (알 수 없는 크래시 방지 및 추적)
+const fs = require('fs');
+
+function logGlobalError(err, type = 'Unhandled Error') {
+  console.error(`[${type}]`, err);
+  try {
+    const logPath = path.join(__dirname, '../logs/server.error.log');
+    fs.appendFileSync(logPath, `\n[${new Date().toISOString()}] ${type}: ${err.stack || err}\n`);
+  } catch(e) {}
+}
+
+process.on('uncaughtException', (err) => logGlobalError(err, 'UncaughtException'));
+process.on('unhandledRejection', (reason) => logGlobalError(reason, 'UnhandledRejection'));
+
+const app = express();
+const server = http.createServer(app);
+const PORT = process.env.PORT || 3000;
+
+// Socket.io 초기화
+socketManager.init(server);
+
+// 의존성 연결
+adminRouter.setUploadRouter(uploadRouter);
+
+// 정적 파일 및 파싱 미들웨어
+app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.json());
+
+// 라우터 마운트
+app.use('/api/upload', uploadRouter);
+app.use('/api/admin', adminRouter);
+
+// Express 전역 에러 핸들러
+app.use((err, req, res, next) => {
+  logGlobalError(err, 'Express Global Error');
+  if (!res.headersSent) {
+    res.status(500).json({ error: '서버 에러가 발생했습니다.', details: err.message });
+  }
+});
+
+const { spawn } = require('child_process');
+
+let cloudflareProcess = null;
+
+server.listen(PORT, () => {
+  console.log(`\n======================================================`);
+  console.log(`🚀 Reverse Cosmos Mosaic (V3 Ultimate) Server Started`);
+  console.log(`======================================================`);
+  console.log(`- 대형 디스플레이: http://localhost:${PORT}/display.html`);
+  console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);
+  console.log(`- 관리자 패널: http://localhost:${PORT}/admin.html\n`);
+
+  // Cloudflare 터널을 Node.js의 자식 프로세스로 실행하여 생명주기를 동기화
+  const exePath = path.join(__dirname, '../cloudflared.exe');
+  if (fs.existsSync(exePath)) {
+    console.log('🌐 Starting Cloudflare Tunnel...\n');
+    cloudflareProcess = spawn(exePath, ['tunnel', '--url', `http://localhost:${PORT}`], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false
+    });
+
+    let tunnelUrlFound = false;
+
+    cloudflareProcess.stderr.on('data', (data) => {
+      const output = data.toString();
+      const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+      if (match && !tunnelUrlFound) {
+        tunnelUrlFound = true;
+        const tunnelUrl = match[0];
+        console.log(`\n======================================================`);
+        console.log(`🌍 Cloudflare Public URLs Ready!`);
+        console.log(`======================================================`);
+        console.log(`- 대형 디스플레이: ${tunnelUrl}/display.html`);
+        console.log(`- 모바일 업로드: ${tunnelUrl}/upload.html (<- QR 코드 주소)`);
+        console.log(`- 관리자 패널: ${tunnelUrl}/admin.html\n`);
+        
+        socketManager.setTunnelUrl(tunnelUrl);
+      }
+    });
+  }
+});
+
+// Ctrl+C 또는 프로세스 종료 시 자식 프로세스(클라우드플레어) 일괄 강제 종료
+function gracefulShutdown() {
+  console.log('\n🛑 서버를 종료합니다... (터널 프로세스 정리 중)');
+  if (cloudflareProcess) {
+    try {
+      cloudflareProcess.kill('SIGINT');
+    } catch(e) {}
+  }
+  process.exit(0);
+}
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);
