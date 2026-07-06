@@ -83,6 +83,10 @@ router.post('/', upload.single('photo'), async (req, res) => {
   const TILE_SIZE = config.tileSize || 20;
   const MAX_RES = config.maxResolution || 1920;
 
+  // 실시간 진행 상황 push를 위한 sessionId
+  const sessionId = req.query.sessionId || req.body.sessionId || null;
+  const io = socketManager.getIo();
+
   try {
     const startTime = Date.now();
     
@@ -123,6 +127,16 @@ router.post('/', upload.single('photo'), async (req, res) => {
       globalTileDB // 복사본 전송
     };
 
+    // 진행 상황: 매칭 시작 알림
+    if (sessionId) {
+      io.to(sessionId).emit('mosaic_progress', {
+        phase: 'matching',
+        message: '색상 분석 및 타일 매칭 중...',
+        percent: 0,
+        cols, rows
+      });
+    }
+
     console.log(`⏳ 모자이크 생성 큐 대기... (현재 대기: ${mosaicQueue.getStats().queueLength}명)`);
     
     // 워커 스레드 병렬 처리 완료 대기
@@ -161,8 +175,20 @@ router.post('/', upload.single('photo'), async (req, res) => {
       }));
     }
 
-    // 메모리 캐시를 이용해 순식간에 캔버스에 픽셀 덮어쓰기
-    for (const t of matchedTiles) {
+    // 진행 상황: 합성 시작 알림
+    if (sessionId) {
+      io.to(sessionId).emit('mosaic_progress', {
+        phase: 'compositing',
+        message: '타일을 조합하는 중...',
+        percent: 10,
+        placedCount: 0,
+        totalCount: matchedTiles.length
+      });
+    }
+
+    // 메모리 캐시를 이용해 캔버스에 픽셀 덮어쓰기
+    for (let i = 0; i < matchedTiles.length; i++) {
+      const t = matchedTiles[i];
       const tileRaw = globalTileCache.get(t.filename);
       for (let y = 0; y < TILE_SIZE; y++) {
         const destOffset = ((t.top + y) * canvasWidth + t.left) * 3;
@@ -218,7 +244,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
       });
     });
 
-    // 로그를 사람이 읽기 편하게 위에서 아래로(row), 좌에서 우로(col) 정렬
+    // 유지보수 및 디버깅을 위해 개별 상세 로그(JSON) 생성 (정렬 후 저장)
     detailedPlacements.sort((a, b) => {
       if (a.row !== b.row) return a.row - b.row;
       return a.col - b.col;
@@ -241,7 +267,40 @@ router.post('/', upload.single('photo'), async (req, res) => {
     // --------------------------------------------
 
     const elapsed = ((Date.now() - startTime)/1000).toFixed(2);
-    console.log(`✅ 모자이크 완료! ${outputFilename} [${CANVAS_W}x${CANVAS_H}] (${elapsed}s 소요) / 고유 타일 ${sortedUsage.length}종류 사용됨`);
+    const totalTilesInDB = globalTileDB.length;
+    const usageRate = totalTilesInDB > 0 ? ((sortedUsage.length / totalTilesInDB) * 100).toFixed(1) : '0.0';
+    console.log(`✅ 모자이크 완료! ${outputFilename} [${CANVAS_W}x${CANVAS_H}] (${elapsed}s 소요)`);
+    console.log(`   📊 총 ${totalCells.toLocaleString()}칸 배치 / 고유 타일 ${sortedUsage.length.toLocaleString()} / ${totalTilesInDB.toLocaleString()}종 사용 (활용률 ${usageRate}%)`);
+
+    // 일일 통계 로깅 (참여자 수 파악용)
+    try {
+      const now = new Date();
+      // YYYY-MM-DD 포맷 추출
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const dateString = `${yyyy}-${mm}-${dd}`;
+      
+      const statsFile = path.join(__dirname, `../logs/stats_${dateString}.log`);
+      
+      const kstTime = now.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+      const logLine = `[${kstTime}] 새로운 모자이크 완성 (소요시간: ${elapsed}s, 해상도: ${CANVAS_W}x${CANVAS_H}, 고유 타일: ${sortedUsage.length}종)\n`;
+      fs.appendFileSync(statsFile, logLine);
+    } catch(e) {
+      console.error('일일 통계 로깅 실패:', e);
+    }
+
+    // 업로드 클라이언트에 완료 알림
+    if (sessionId) {
+      io.to(sessionId).emit('mosaic_progress', {
+        phase: 'done',
+        percent: 100,
+        imageUrl: `/outputs/${outputFilename}`,
+        tileSize: TILE_SIZE,
+        width: CANVAS_W,
+        height: CANVAS_H
+      });
+    }
 
     // 디스플레이에 푸시
     socketManager.getIo().emit('new_mosaic', { 

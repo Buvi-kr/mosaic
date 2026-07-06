@@ -14,6 +14,11 @@ function init(server) {
     if (cachedTunnelUrl) {
       socket.emit('tunnel_url', cachedTunnelUrl);
     }
+    
+    // 업로드 세션 room 참가 (업로드 페이지에서 진행 상황을 받기 위함)
+    socket.on('join_session', (sessionId) => {
+      socket.join(sessionId);
+    });
   });
 }
 

@@ -5,6 +5,34 @@
   <title>모자이크 통합 관제 센터</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  <style>
+    .detail-toggle { cursor: pointer; user-select: none; }
+    .detail-toggle:hover { color: #4f46e5; }
+    .detail-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+      opacity: 0;
+    }
+    .detail-content.open {
+      max-height: 800px;
+      opacity: 1;
+    }
+    .detail-box {
+      background: #f8fafc;
+      border-left: 4px solid #818cf8;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+    .detail-box h4 { font-size: 13px; font-weight: 800; color: #4338ca; margin-bottom: 6px; letter-spacing: 0.5px; }
+    .detail-box p, .detail-box li { font-size: 13px; color: #475569; line-height: 1.7; }
+    .detail-box ul { list-style: none; padding-left: 0; }
+    .detail-box ul li::before { content: '•'; color: #818cf8; font-weight: bold; margin-right: 6px; }
+    .detail-box .recommend { background: #eef2ff; padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-size: 12px; color: #3730a3; }
+    .detail-box .warning { background: #fef3c7; padding: 8px 12px; border-radius: 6px; margin-top: 8px; font-size: 12px; color: #92400e; }
+  </style>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800 p-8 font-sans">
 
@@ -67,13 +95,42 @@
               <span class="font-bold text-slate-700">원본 합성 투명도 (Opacity)</span>
               <span id="opacityVal" class="text-indigo-600 font-bold">60%</span>
             </label>
-            <p class="text-sm text-slate-500 mb-3">0%에 가까울수록 모자이크 타일만 보이고 얼굴 윤곽이 사라집니다. 100%에 가까울수록 원본 사진만 보입니다.</p>
+            <p class="text-sm text-slate-500 mb-2">0%에 가까울수록 모자이크 타일만 보이고 얼굴 윤곽이 약해집니다. 100%에 가까울수록 선택한 블렌딩 모드 효과가 최대치로 적용됩니다.</p>
+            <p class="detail-toggle text-xs text-indigo-500 font-bold mb-3" onclick="toggleDetail('opacityDetail')"><span id="opacityDetailArrow">▶</span> 상세 설명 보기</p>
+            <div id="opacityDetail" class="detail-content">
+              <div class="detail-box">
+                <h4>📋 기능 요약</h4>
+                <p>모자이크 타일 위에 원본 사진을 얼마나 겹쳐 보여줄지 결정합니다.</p>
+                <h4 style="margin-top:12px">⚙️ 동작 원리</h4>
+                <ul>
+                  <li><strong>0%</strong> = 순수 모자이크만 보임 (원본 윤곽 없음)</li>
+                  <li><strong>50%</strong> = 타일을 배경으로 원본 사진이 반투명하게 섞임</li>
+                  <li><strong>100%</strong> = 블렌드 모드 효과 100% 적용 (※ Over 모드일 때만 원본 사진으로 완전히 덮어씌워지고, Multiply나 Overlay 등에서는 모자이크와 원본이 진하게 합성되어 보입니다.)</li>
+                  <li>서버에서 sharp 라이브러리의 Alpha 채널 합성으로 처리됨</li>
+                </ul>
+                <div class="recommend">💡 <strong>권장값</strong> — 전시용: 50~70% (타일+얼굴 윤곽 균형) / 포토존용: 30~40% (모자이크 느낌 극대화)</div>
+              </div>
+            </div>
             <input type="range" id="opacitySlider" min="0" max="1" step="0.05" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
           </div>
 
           <div>
             <label class="block font-bold text-slate-700 mb-2">블렌딩 모드 (Blend Mode)</label>
-            <p class="text-sm text-slate-500 mb-3">어떤 방식으로 원본 사진과 모자이크를 섞을지 결정합니다.</p>
+            <p class="text-sm text-slate-500 mb-2">어떤 방식으로 원본 사진과 모자이크를 섞을지 결정합니다.</p>
+            <p class="detail-toggle text-xs text-indigo-500 font-bold mb-3" onclick="toggleDetail('blendDetail')"><span id="blendDetailArrow">▶</span> 상세 설명 보기</p>
+            <div id="blendDetail" class="detail-content">
+              <div class="detail-box">
+                <h4>📋 기능 요약</h4>
+                <p>원본 사진과 모자이크 타일 이미지를 합성할 때 사용하는 색상 혼합 알고리즘입니다.</p>
+                <h4 style="margin-top:12px">🎨 각 모드 상세</h4>
+                <ul>
+                  <li><strong>Multiply (곱하기)</strong> — 두 이미지의 색상값을 곱합니다. 어두운 부분은 더 어두워지고 밝은 부분은 유지됩니다. 어두운 배경/머리카락 등에서 윤곽이 뚜렷해지는 효과.<br><span style="color:#4338ca">→ 추천: 얼굴 인식이 중요한 전시</span></li>
+                  <li><strong>Overlay (오버레이)</strong> — 밝은 영역은 더 밝게, 어두운 영역은 더 어둡게 처리하여 전체적인 대비(contrast)를 높입니다.<br><span style="color:#4338ca">→ 추천: 선명하고 생동감 있는 결과물을 원할 때</span></li>
+                  <li><strong>Soft-Light (부드러운 빛)</strong> — Overlay와 유사하지만 효과가 절반 정도로 부드럽습니다. 가장 자연스러운 합성 결과를 만듭니다.<br><span style="color:#4338ca">→ 추천: 가장 무난하고 자연스러운 선택</span></li>
+                  <li><strong>Over (단순 덮어쓰기)</strong> — 블렌딩 계산 없이 원본을 단순히 투명도만큼 겹칩니다.<br><span style="color:#4338ca">→ 추천: 투명도(Opacity)만으로 간단히 조절하고 싶을 때</span></li>
+                </ul>
+              </div>
+            </div>
             <select id="blendSelect" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-3">
               <option value="multiply">Multiply (곱하기 - 어두운 배경에 적합, 얼굴 윤곽 뚜렷)</option>
               <option value="overlay">Overlay (오버레이 - 대비를 높임)</option>
@@ -87,13 +144,42 @@
               <span class="font-bold text-slate-700">모자이크 타일 크기 (Tile Size)</span>
               <span id="tileSizeVal" class="text-indigo-600 font-bold">20px</span>
             </label>
-            <p class="text-sm text-slate-500 mb-3">숫자가 작을수록 모자이크가 조밀해지며, 클수록 타일 속 사진이 잘 보입니다. (권장: 15~30)</p>
+            <p class="text-sm text-slate-500 mb-2">숫자가 작을수록 모자이크가 조밀해지며, 클수록 타일 속 사진이 잘 보입니다. (권장: 15~30)</p>
+            <p class="detail-toggle text-xs text-indigo-500 font-bold mb-3" onclick="toggleDetail('tileDetail')"><span id="tileDetailArrow">▶</span> 상세 설명 보기</p>
+            <div id="tileDetail" class="detail-content">
+              <div class="detail-box">
+                <h4>📋 기능 요약</h4>
+                <p>개별 모자이크 조각의 크기(가로×세로 정사각형 픽셀 수)를 결정합니다.</p>
+                <h4 style="margin-top:12px">⚙️ 동작 원리</h4>
+                <ul>
+                  <li><strong>값이 작을수록 (10~15px)</strong> — 타일 수가 기하급수적으로 증가 (예: 1080p에서 ~7,000장 이상). 처리 시간·RAM 사용량 증가. 모자이크가 매우 조밀해져 멀리서 보면 원본처럼 보임. 개별 타일 속 사진은 거의 안 보임.</li>
+                  <li><strong>값이 클수록 (40~60px)</strong> — 타일 수 감소 (예: 1080p에서 ~500장). 빠른 처리·낮은 리소스. 개별 타일 속 사진이 선명하게 보이지만 모자이크 해상도가 낮아 얼굴 인식이 어려움.</li>
+                </ul>
+                <div class="recommend">💡 <strong>권장값</strong> — 일반 전시: 20px (기본, 밸런스) / 대형 스크린(55"+): 15~18px / 근접 관람: 25~35px (가까이서 개별 사진 감상 가능)</div>
+                <div class="warning">⚠️ 타일 크기 변경 시 서버의 RAM 캐시가 자동 재구성됩니다. 저사양 PC에서는 20px 이상 권장.</div>
+              </div>
+            </div>
             <input type="range" id="tileSizeSlider" min="10" max="60" step="2" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
           </div>
 
           <div>
             <label class="block font-bold text-slate-700 mb-2">최대 출력 해상도 제한 (Max Resolution)</label>
-            <p class="text-sm text-slate-500 mb-3">업로드된 사진의 가로/세로 중 긴 쪽의 최대 길이를 제한합니다. (메모리 부족 방지용)</p>
+            <p class="text-sm text-slate-500 mb-2">업로드된 사진의 가로/세로 중 긴 쪽의 최대 길이를 제한합니다. (메모리 부족 방지용)</p>
+            <p class="detail-toggle text-xs text-indigo-500 font-bold mb-3" onclick="toggleDetail('resDetail')"><span id="resDetailArrow">▶</span> 상세 설명 보기</p>
+            <div id="resDetail" class="detail-content">
+              <div class="detail-box">
+                <h4>📋 기능 요약</h4>
+                <p>업로드된 사진의 최종 모자이크 출력물 크기(긴 변 기준)를 제한합니다. 원본 크기와 관계없이 이 값 기준으로 비율을 유지한 채 리사이즈 후 모자이크를 생성합니다.</p>
+                <h4 style="margin-top:12px">📐 각 옵션 상세</h4>
+                <ul>
+                  <li><strong>1080px (FHD급)</strong> — 가장 빠른 처리. 일반 모니터/TV 출력에 적합. 예상 타일 수: ~2,900장 (20px 기준)</li>
+                  <li><strong>1440px (QHD급, 권장)</strong> — 처리 속도와 품질의 균형. 대형 모니터에도 충분한 선명도. 예상 타일 수: ~5,200장 (20px 기준)</li>
+                  <li><strong>1920px (4K 전 단계)</strong> — 고화질 출력. 대형 전시 디스플레이에 적합. 예상 타일 수: ~9,200장 (20px 기준). 처리 시간 증가.</li>
+                  <li><strong>2560px (초고화질)</strong> — 최고 품질. 대형 LED 월 등 초고해상도 디스플레이 전용. 예상 타일 수: ~16,000장 (20px 기준). RAM 2GB+ 권장.</li>
+                </ul>
+                <div class="warning">⚠️ 해상도가 높을수록 처리 시간·메모리 사용량이 비례 증가합니다. 동시 접속자가 많은 환경에서는 1440px 이하 권장.</div>
+              </div>
+            </div>
             <select id="maxResSelect" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-3">
               <option value="1080">1080px (FHD급 - 빠름)</option>
               <option value="1440">1440px (QHD급 - 권장)</option>
@@ -111,6 +197,18 @@
   </div>
 
   <script>
+    // 상세 설명 토글 함수
+    function toggleDetail(id) {
+      const el = document.getElementById(id);
+      const arrow = document.getElementById(id + 'Arrow');
+      if (el.classList.contains('open')) {
+        el.classList.remove('open');
+        arrow.textContent = '▶';
+      } else {
+        el.classList.add('open');
+        arrow.textContent = '▼';
+      }
+    }
     let currentConfig = {};
 
     async function fetchStats() {

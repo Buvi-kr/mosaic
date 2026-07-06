@@ -14,6 +14,9 @@ public/raw_tiles/
 public/tiles/
 public/outputs/
 
+# 과거 레거시 데이터 및 스크립트 제외 (NASA API키, 개인 사진 유출 방지)
+old/
+
 # 생성형 DB
 data/tileDB.json
 

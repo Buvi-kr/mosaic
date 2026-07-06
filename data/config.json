@@ -1,6 +1,6 @@
 {
-  "opacity": 0.8,
+  "opacity": 1,
   "tileSize": 20,
   "blendMode": "multiply",
-  "maxResolution": 1440
+  "maxResolution": 1920
 }

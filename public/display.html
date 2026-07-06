@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>Cosmos Mosaic - Exhibition Display</title>
+  <title>코즈믹 모자이크 | 전시 디스플레이</title>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -127,22 +127,132 @@
     resizeCanvas();
 
     let particles = [];
+    let sparkles = [];
+    let shockwave = null;
+    let finishFlash = 0;
     let animationFrame;
+    let landedCount = 0;
+    let totalParticles = 0;
+    let shockwaveFired = false;
+    let finishFired = false;
 
     function render() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // 1. 타일 파티클 렌더링
+      const useRotation = totalParticles < 3000; // 저사양 대비: 3000개 미만일 때만 회전 적용
+      
       for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        if (p.alpha > 0) {
-          ctx.globalAlpha = p.alpha;
-          // 이미지의 해당 타일 영역을 캔버스의 현재 x,y에 그림
+        if (p.alpha <= 0) continue;
+        
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        
+        if (useRotation && p.rotation !== 0) {
+          const cx = p.x + currentTileSize / 2;
+          const cy = p.y + currentTileSize / 2;
+          ctx.translate(cx, cy);
+          ctx.rotate(p.rotation);
+          ctx.scale(p.scale, p.scale);
           ctx.drawImage(
             p.img,
-            p.sx, p.sy, currentTileSize, currentTileSize, // 소스
-            p.x, p.y, currentTileSize, currentTileSize    // 데스티네이션
+            p.sx, p.sy, currentTileSize, currentTileSize,
+            -currentTileSize / 2, -currentTileSize / 2, currentTileSize, currentTileSize
           );
+        } else {
+          if (p.scale !== 1) {
+            const cx = p.x + currentTileSize / 2;
+            const cy = p.y + currentTileSize / 2;
+            ctx.translate(cx, cy);
+            ctx.scale(p.scale, p.scale);
+            ctx.drawImage(
+              p.img,
+              p.sx, p.sy, currentTileSize, currentTileSize,
+              -currentTileSize / 2, -currentTileSize / 2, currentTileSize, currentTileSize
+            );
+          } else {
+            ctx.drawImage(
+              p.img,
+              p.sx, p.sy, currentTileSize, currentTileSize,
+              p.x, p.y, currentTileSize, currentTileSize
+            );
+          }
+        }
+        ctx.restore();
+      }
+      
+      // 2. 글로우 효과 — 안착 직후 밝은 빛 (additive blending)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (p.glow > 0) {
+          ctx.globalAlpha = p.glow * 0.6;
+          const glowSize = currentTileSize * (1 + p.glow * 0.5);
+          const offset = (glowSize - currentTileSize) / 2;
+          // 보라-파란 글로우
+          ctx.fillStyle = `hsl(${260 + Math.random() * 30}, 80%, 70%)`;
+          ctx.fillRect(p.destX - offset, p.destY - offset, glowSize, glowSize);
         }
       }
+      ctx.restore();
+      
+      // 3. 스파클(별 반짝이) 렌더링
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = sparkles.length - 1; i >= 0; i--) {
+        const s = sparkles[i];
+        s.x += s.vx;
+        s.y += s.vy;
+        s.life -= 0.025;
+        if (s.life <= 0) { sparkles.splice(i, 1); continue; }
+        
+        ctx.globalAlpha = s.life * 0.8;
+        ctx.fillStyle = s.color;
+        
+        // 4각 별 모양
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(s.angle);
+        const sz = s.size * s.life;
+        ctx.fillRect(-sz/2, -sz*2, sz, sz*4);
+        ctx.fillRect(-sz*2, -sz/2, sz*4, sz);
+        ctx.restore();
+      }
+      ctx.restore();
+      
+      // 4. 충격파 효과
+      if (shockwave) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = shockwave.alpha;
+        ctx.strokeStyle = `rgba(168, 85, 247, ${shockwave.alpha})`;
+        ctx.lineWidth = 4 + (1 - shockwave.alpha) * 8;
+        ctx.beginPath();
+        ctx.arc(CANVAS_W / 2, CANVAS_H / 2, shockwave.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // 두 번째 얇은 링
+        ctx.globalAlpha = shockwave.alpha * 0.5;
+        ctx.strokeStyle = `rgba(99, 102, 241, ${shockwave.alpha * 0.5})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(CANVAS_W / 2, CANVAS_H / 2, shockwave.radius * 0.85, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+      
+      // 5. 피니시 플래시 (전체 화면 밝게)
+      if (finishFlash > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = finishFlash;
+        ctx.fillStyle = 'rgba(200, 180, 255, 1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+      }
+      
       ctx.globalAlpha = 1;
       animationFrame = requestAnimationFrame(render);
     }
@@ -150,36 +260,127 @@
     function startFlyInAnimation(imgElement) {
       cancelAnimationFrame(animationFrame);
       particles = [];
+      sparkles = [];
+      shockwave = null;
+      finishFlash = 0;
+      landedCount = 0;
+      shockwaveFired = false;
+      finishFired = false;
 
       const cols = Math.floor(CANVAS_W / currentTileSize);
       const rows = Math.floor(CANVAS_H / currentTileSize);
+      totalParticles = cols * rows;
+      
+      const centerX = CANVAS_W / 2;
+      const centerY = CANVAS_H / 2;
+      const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
+      const useRotation = totalParticles < 3000;
 
       for (let y = 0; y < rows; y++) {
         for (let x = 0; x < cols; x++) {
           const destX = x * currentTileSize;
           const destY = y * currentTileSize;
 
-          // 시작점: 화면 밖 임의의 위치
-          const startX = destX + (Math.random() - 0.5) * 4000;
-          const startY = destY + (Math.random() - 0.5) * 4000;
+          // 시작점: 화면 밖 임의의 위치 (더 넓은 범위)
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 2000 + Math.random() * 3000;
+          const startX = destX + Math.cos(angle) * dist;
+          const startY = destY + Math.sin(angle) * dist;
+
+          // 중심까지 거리 계산 (방사형 웨이브용)
+          const tileCenterX = destX + currentTileSize / 2;
+          const tileCenterY = destY + currentTileSize / 2;
+          const distFromCenter = Math.sqrt(
+            (tileCenterX - centerX) ** 2 + (tileCenterY - centerY) ** 2
+          );
+          
+          // 방사형 delay: 중심 타일은 먼저, 외곽은 나중에 (속도 2배 느리게)
+          const waveDelay = (distFromCenter / maxDist) * 4.0; // 0 ~ 4초
+          const randomJitter = Math.random() * 0.8; // 약간의 랜덤성 (2배)
 
           const particle = {
             img: imgElement,
-            sx: destX, sy: destY, // 원본에서 자를 위치
-            x: startX, y: startY, // 현재 위치
-            alpha: 0
+            sx: destX, sy: destY,
+            x: startX, y: startY,
+            destX: destX, destY: destY,
+            alpha: 0,
+            rotation: useRotation ? (Math.random() - 0.5) * Math.PI * 1.5 : 0,
+            scale: 0.3,
+            glow: 0,
+            landed: false
           };
           particles.push(particle);
 
-          // GSAP로 개별 파티클 애니메이션
-          gsap.to(particle, {
+          const totalDelay = waveDelay + randomJitter;
+          const duration = 2.4 + Math.random() * 2.0; // 애니메이션 속도 2배 느리게
+
+          // GSAP 타임라인으로 단계별 애니메이션
+          const tl = gsap.timeline({ delay: totalDelay });
+          
+          // Phase 1: 날아오기 + 페이드인
+          tl.to(particle, {
             x: destX,
             y: destY,
             alpha: 1,
-            duration: 1.5 + Math.random() * 2, // 1.5초 ~ 3.5초 사이 도달
+            rotation: 0,
+            scale: 1.15, // 살짝 커진 상태로 도착
+            duration: duration,
             ease: "power3.out",
-            delay: Math.random() * 1.5 // 무작위 지연
+            onComplete: () => {
+              // 안착 시 글로우 제거 (사용자 요청)
+              particle.landed = true;
+              
+              // 스파클 생성 (3~5개)
+              const sparkCount = 3 + Math.floor(Math.random() * 3);
+              for (let s = 0; s < sparkCount; s++) {
+                sparkles.push({
+                  x: destX + currentTileSize / 2,
+                  y: destY + currentTileSize / 2,
+                  vx: (Math.random() - 0.5) * 4,
+                  vy: (Math.random() - 0.5) * 4,
+                  size: 1.5 + Math.random() * 2,
+                  life: 1,
+                  color: `hsl(${250 + Math.random() * 40}, 90%, ${70 + Math.random() * 20}%)`,
+                  angle: Math.random() * Math.PI
+                });
+              }
+              
+              landedCount++;
+              
+              // 100% 완성: 충격파 및 피니시 플래시
+              if (!finishFired && landedCount >= totalParticles) {
+                finishFired = true;
+                
+                // 보라색 충격파 발사 (기존 70%에서 100%로 변경)
+                if (!shockwaveFired) {
+                  shockwaveFired = true;
+                  shockwave = { radius: 0, alpha: 0.8 };
+                  gsap.to(shockwave, {
+                    radius: maxDist * 1.2,
+                    alpha: 0,
+                    duration: 2.0,
+                    ease: "power2.out",
+                    onComplete: () => { shockwave = null; }
+                  });
+                }
+                
+                finishFlash = 0.4;
+                gsap.to({ v: 0.4 }, {
+                  v: 0,
+                  duration: 1.0,
+                  ease: "power2.out",
+                  onUpdate: function() { finishFlash = this.targets()[0].v; }
+                });
+              }
+            }
           });
+          
+          // Phase 2: 바운스 (살짝 커졌다가 원래 크기로)
+          tl.to(particle, {
+            scale: 1,
+            duration: 0.3,
+            ease: "elastic.out(1, 0.5)"
+          }, "-=0.1");
         }
       }
 
@@ -218,6 +419,9 @@
         if (particles.length > 0) {
           particles.forEach(p => gsap.killTweensOf(p));
           particles = [];
+          sparkles = [];
+          shockwave = null;
+          finishFlash = 0;
           cancelAnimationFrame(animationFrame);
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(lastImg, 0, 0, CANVAS_W, CANVAS_H);

@@ -48,6 +48,54 @@ app.use((err, req, res, next) => {
 
 const { spawn } = require('child_process');
 
+// 시작 시 각종 찌꺼기 파일 및 오래된 로그 정리 (개인정보 보호 및 용량 확보)
+function performStartupCleanup() {
+  // 1. 개인정보 보호: 이전 결과물(이미지) 삭제
+  const outputsDir = path.join(__dirname, '../public/outputs');
+  if (fs.existsSync(outputsDir)) {
+    try {
+      let deletedOutputs = 0;
+      const files = fs.readdirSync(outputsDir);
+      for (const file of files) {
+        if (file.endsWith('.jpg') || file.endsWith('.png')) {
+          fs.unlinkSync(path.join(outputsDir, file));
+          deletedOutputs++;
+        }
+      }
+      if (deletedOutputs > 0) {
+        console.log(`[시스템] 이전 모자이크 결과물 ${deletedOutputs}개 삭제 완료 (개인정보 보호)`);
+      }
+    } catch(e) { console.error('[시스템] 출력물 정리 에러:', e); }
+  }
+
+  // 2. 히스토리 로그 폴더 정리 (무거운 JSON 파일 찌꺼기 중 3일이 지난 것만 청소 - 유지보수용 보존)
+  const historyDir = path.join(__dirname, '../logs/history');
+  if (fs.existsSync(historyDir)) {
+    try {
+      let deletedHistory = 0;
+      const files = fs.readdirSync(historyDir);
+      const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000);
+      for (const file of files) {
+        if (file.endsWith('.json')) {
+          const filePath = path.join(historyDir, file);
+          const stat = fs.statSync(filePath);
+          if (stat.mtimeMs < threeDaysAgo) {
+            fs.unlinkSync(filePath);
+            deletedHistory++;
+          }
+        }
+      }
+      if (deletedHistory > 0) {
+        console.log(`[시스템] 3일 경과 이전 JSON 상세 로그 ${deletedHistory}개 삭제 완료 (용량 최적화)`);
+      }
+    } catch(e) { console.error('[시스템] 히스토리 정리 에러:', e); }
+  }
+
+  // (3번 오래된 통계 로그 삭제 로직은 월간/연간 통계를 위해 사용자 요청으로 제거되었습니다. 텍스트 로그는 용량이 극히 작아 영구 보존합니다.)
+}
+
+performStartupCleanup();
+
 let cloudflareProcess = null;
 
 server.listen(PORT, () => {
