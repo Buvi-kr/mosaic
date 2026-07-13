@@ -272,14 +272,13 @@ router.post('/', upload.single('photo'), async (req, res) => {
     console.log(`✅ 모자이크 완료! ${outputFilename} [${CANVAS_W}x${CANVAS_H}] (${elapsed}s 소요)`);
     console.log(`   📊 총 ${totalCells.toLocaleString()}칸 배치 / 고유 타일 ${sortedUsage.length.toLocaleString()} / ${totalTilesInDB.toLocaleString()}종 사용 (활용률 ${usageRate}%)`);
 
-    // 일일 통계 로깅 (참여자 수 파악용)
+    // 월간 통계 로깅 (참여자 수 파악용)
     try {
       const now = new Date();
-      // YYYY-MM-DD 포맷 추출
+      // YYYY-MM 포맷 추출
       const yyyy = now.getFullYear();
       const mm = String(now.getMonth() + 1).padStart(2, '0');
-      const dd = String(now.getDate()).padStart(2, '0');
-      const dateString = `${yyyy}-${mm}-${dd}`;
+      const dateString = `${yyyy}-${mm}`;
       
       const statsFile = path.join(__dirname, `../logs/stats_${dateString}.log`);
       
@@ -287,7 +286,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
       const logLine = `[${kstTime}] 새로운 모자이크 완성 (소요시간: ${elapsed}s, 해상도: ${CANVAS_W}x${CANVAS_H}, 고유 타일: ${sortedUsage.length}종)\n`;
       fs.appendFileSync(statsFile, logLine);
     } catch(e) {
-      console.error('일일 통계 로깅 실패:', e);
+      console.error('월간 통계 로깅 실패:', e);
     }
 
     // 업로드 클라이언트에 완료 알림
