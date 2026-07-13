@@ -1,20 +1,68 @@
 const { parentPort, workerData } = require('worker_threads');
 const convert = require('color-convert').default || require('color-convert');
+const KDTree = require('./kdtree');
 
-// 유클리디안 거리 - Lab 색공간 기준
-function labDistance(lab1, lab2) {
-  return Math.sqrt(
-    Math.pow(lab1.l - lab2.l, 2) +
-    Math.pow(lab1.a - lab2.a, 2) +
-    Math.pow(lab1.b - lab2.b, 2)
-  );
+// ===== 런타임 갱신 가능한 변수들 =====
+let currentConfig = workerData.config || {};
+let globalTileDB = workerData.globalTileDB;
+let kdTree = workerData.kdTree || null;
+let tileDBVersion = workerData.tileDBVersion || 0;
+
+// config에서 동적 로드되는 매칭 파라미터
+let MAX_USAGE = currentConfig.maxTileUsage || 4;
+let RAD = currentConfig.banRadius || 2;
+let CANDIDATE_POOL = currentConfig.candidatePoolSize || 150;
+const DISTANCE_WEIGHT = 0.3;
+const PENALTY_FACTOR = 10.0;
+
+// ===== 런타임 메시지 핸들러 (고정 워커 풀용) =====
+if (parentPort) {
+  parentPort.on('message', (msg) => {
+    if (msg.type === 'CONFIG_UPDATE') {
+      currentConfig = msg.config;
+      MAX_USAGE = currentConfig.maxTileUsage || 4;
+      RAD = currentConfig.banRadius || 2;
+      CANDIDATE_POOL = currentConfig.candidatePoolSize || 150;
+    } else if (msg.type === 'TILEDB_UPDATE') {
+      globalTileDB = msg.tileDB;
+      kdTree = msg.kdTree;
+      tileDBVersion = msg.version;
+    } else if (msg.type === 'PROCESS') {
+      // 고정 워커 풀에서 작업 요청이 들어온 경우
+      processJob(msg.jobData, msg.jobId);
+    }
+  });
 }
 
-try {
-  const { rawData, info, cols, rows, tileSize, globalTileDB } = workerData;
-  const matchedTiles = [];
+// ===== 매칭 코어 로직 =====
+function processJob(jobData, jobId) {
+  try {
+    const { rawData, info, cols, rows, tileSize } = jobData;
+    // 고정 풀 모드에서는 워커 내부의 globalTileDB 사용
+    const tileDB = jobData.globalTileDB || globalTileDB;
+    const tree = jobData.kdTree || kdTree;
+    const version = jobData.tileDBVersion || tileDBVersion;
 
-  // Buffer 객체 복원
+    const result = runMatching(rawData, info, cols, rows, tileSize, tileDB, tree);
+
+    if (jobId !== undefined) {
+      // 고정 풀 모드: jobId와 함께 결과 반환
+      parentPort.postMessage({ success: true, jobId, ...result, tileDBVersion: version });
+    } else {
+      // 레거시 모드: 단순 결과 반환
+      parentPort.postMessage({ success: true, ...result });
+    }
+  } catch (err) {
+    if (jobId !== undefined) {
+      parentPort.postMessage({ success: false, jobId, error: err.message });
+    } else {
+      parentPort.postMessage({ success: false, error: err.message });
+    }
+  }
+}
+
+function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree) {
+  const matchedTiles = [];
   const pixelData = Buffer.from(rawData);
 
   // 픽셀 데이터 추출 및 targetLab 사전 계산
@@ -26,7 +74,6 @@ try {
 
       let rSum = 0, gSum = 0, bSum = 0, pCount = 0;
 
-      // 픽셀 샘플링 (전수 조사)
       for (let py = startY; py < startY + tileSize; py++) {
         for (let px = startX; px < startX + tileSize; px++) {
           if (px >= info.width || py >= info.height) continue;
@@ -53,92 +100,120 @@ try {
     [cells[i], cells[j]] = [cells[j], cells[i]];
   }
 
-  const usedCounts = new Int32Array(globalTileDB.length);
+  const usedCounts = new Int32Array(tileDB.length);
   const placedGrid = new Array(rows).fill(null).map(() => new Array(cols).fill(-1));
 
-  // [GC 최적화] 매 칸마다 배열을 생성하지 않고 미리 한 번만 할당하여 가비지 컬렉션 부하 원천 차단
-  const dbSize = globalTileDB.length;
-  const candidateIndices = new Int32Array(dbSize);
-  const distancesSq = new Float32Array(dbSize);
+  const dbSize = tileDB.length;
 
-  // 사용자님의 통찰력("블렌딩을 믿는 렌더링 지향 알고리즘") 전면 수용!
-  // 색의 정확도 비중을 확 낮추고, 덜 쓴 타일을 적극 발굴하여 "시각적 중복"을 타파합니다.
-  const MAX_USAGE = 4;           // 하드 리밋은 넉넉하게 둡니다 (점수식이 알아서 분산시켜 줌)
-  const DISTANCE_WEIGHT = 0.3;   // [핵심] 오차 거리에 0.3을 곱해 색상 비중을 확 낮춤
-  const PENALTY_FACTOR = 10.0;   // 한 번 쓸 때마다 오차 거리 33(10.0/0.3)에 맞먹는 강력한 페널티
-  const TOP_K = 60;              // 후보군을 무려 60장까지 넉넉히 가져옴 (어느 정도 비슷하면 전부 후보)
+  // k-d tree 사용 가능 여부 확인
+  const useKDTree = tree !== null && tree !== undefined;
 
   // 랜덤 순서대로 캔버스 모든 칸에 대해 매칭 수행
   for (const cell of cells) {
     const cx = Math.floor(cell.startX / tileSize);
     const cy = Math.floor(cell.startY / tileSize);
 
-    // 1. 5x5 반경(radius=2) 내에 이미 배치된 타일 ID들과 Lab 색상을 모음
+    // 1. ban radius 내에 이미 배치된 타일 ID와 Lab 색상 수집
     const bannedTiles = new Set();
     const bannedLabs = [];
-    for (let ry = Math.max(0, cy - 2); ry <= Math.min(rows - 1, cy + 2); ry++) {
-      for (let rx = Math.max(0, cx - 2); rx <= Math.min(cols - 1, cx + 2); rx++) {
+    for (let ry = Math.max(0, cy - RAD); ry <= Math.min(rows - 1, cy + RAD); ry++) {
+      for (let rx = Math.max(0, cx - RAD); rx <= Math.min(cols - 1, cx + RAD); rx++) {
         const tId = placedGrid[ry][rx];
         if (tId !== -1) {
           bannedTiles.add(tId);
-          bannedLabs.push(globalTileDB[tId].lab);
+          bannedLabs.push(tileDB[tId].lab);
         }
       }
     }
 
-    // 2. 전체 타일에 대해 대상과의 거리를 제곱으로 계산 (Math.sqrt 제거 및 메모리 재사용)
     const tLab = cell.targetLab;
-    for (let i = 0; i < dbSize; i++) {
-      const cLab = globalTileDB[i].lab;
-      distancesSq[i] = (tLab.l - cLab.l)**2 + (tLab.a - cLab.a)**2 + (tLab.b - cLab.b)**2;
-      candidateIndices[i] = i; // 인덱스 초기화
-    }
+    let validCandidates = [];
+    let fallbackIdx = 0;
 
-    // 3. 거리순(오름차순) 정렬
-    candidateIndices.sort((a, b) => distancesSq[a] - distancesSq[b]);
+    if (useKDTree) {
+      // ===== 2-PHASE 매칭: k-d tree 조회 → 필터 적용 =====
 
-    const validCandidates = [];
-    let fallbackIdx = candidateIndices[0]; // 최악의 경우 대비
+      // Phase 1: k-d tree에서 candidatePoolSize개 최근접 후보 빠르게 추출
+      const kNearest = KDTree.kNearest(tree, [tLab.l, tLab.a, tLab.b], CANDIDATE_POOL);
 
-    // 4. 정렬된 순서대로 검사 (Early Exit: 60장 찾으면 수천 장 검사 생략)
-    for (let j = 0; j < dbSize; j++) {
-      const i = candidateIndices[j];
+      fallbackIdx = kNearest.length > 0 ? kNearest[0].idx : 0;
 
-      // 조건 1: 사용 횟수 제한
-      if (usedCounts[i] >= MAX_USAGE) continue;
+      // Phase 2: 기존 필터 체인 적용
+      for (const candidate of kNearest) {
+        const i = candidate.idx;
 
-      // 조건 2: 5x5 반경 내 완전 똑같은 타일(ID 동일) 금지
-      if (bannedTiles.has(i)) continue;
+        // 조건 1: 사용 횟수 제한
+        if (usedCounts[i] >= MAX_USAGE) continue;
 
-      // 조건 3: 5x5 반경 내 '시각적으로 비슷한 타일' 싹 다 금지
-      const candLab = globalTileDB[i].lab;
-      let isVisuallySimilar = false;
-      for (let b = 0; b < bannedLabs.length; b++) {
-        const bl = bannedLabs[b];
-        const dl = candLab.l - bl.l;
-        const da = candLab.a - bl.a;
-        const db = candLab.b - bl.b;
-        if (dl * dl + da * da + db * db < 100) {
-          isVisuallySimilar = true;
-          break;
+        // 조건 2: ban radius 내 동일 타일 금지
+        if (bannedTiles.has(i)) continue;
+
+        // 조건 3: ban radius 내 시각적 유사 타일 금지
+        const candLab = tileDB[i].lab;
+        let isVisuallySimilar = false;
+        for (let b = 0; b < bannedLabs.length; b++) {
+          const bl = bannedLabs[b];
+          const dl = candLab.l - bl.l;
+          const da = candLab.a - bl.a;
+          const db = candLab.b - bl.b;
+          if (dl * dl + da * da + db * db < 100) {
+            isVisuallySimilar = true;
+            break;
+          }
         }
+        if (isVisuallySimilar) continue;
+
+        validCandidates.push({ idx: i, dist: Math.sqrt(candidate.distSq) });
+
+        // 충분한 후보가 모이면 조기 종료
+        if (validCandidates.length >= 60) break;
       }
-      if (isVisuallySimilar) continue;
 
-      // 통과했으면 후보에 추가
-      validCandidates.push({ idx: i, dist: Math.sqrt(distancesSq[i]) });
+    } else {
+      // ===== 폴백: 브루트포스 (k-d tree 없는 경우) =====
+      const candidateIndices = new Int32Array(dbSize);
+      const distancesSq = new Float32Array(dbSize);
 
-      // 조기 종료 로직
-      if (validCandidates.length >= TOP_K) break;
+      for (let i = 0; i < dbSize; i++) {
+        const cLab = tileDB[i].lab;
+        distancesSq[i] = (tLab.l - cLab.l)**2 + (tLab.a - cLab.a)**2 + (tLab.b - cLab.b)**2;
+        candidateIndices[i] = i;
+      }
+
+      candidateIndices.sort((a, b) => distancesSq[a] - distancesSq[b]);
+      fallbackIdx = candidateIndices[0];
+
+      for (let j = 0; j < dbSize; j++) {
+        const i = candidateIndices[j];
+
+        if (usedCounts[i] >= MAX_USAGE) continue;
+        if (bannedTiles.has(i)) continue;
+
+        const candLab = tileDB[i].lab;
+        let isVisuallySimilar = false;
+        for (let b = 0; b < bannedLabs.length; b++) {
+          const bl = bannedLabs[b];
+          const dl = candLab.l - bl.l;
+          const da = candLab.a - bl.a;
+          const db = candLab.b - bl.b;
+          if (dl * dl + da * da + db * db < 100) {
+            isVisuallySimilar = true;
+            break;
+          }
+        }
+        if (isVisuallySimilar) continue;
+
+        validCandidates.push({ idx: i, dist: Math.sqrt(distancesSq[i]) });
+        if (validCandidates.length >= 60) break;
+      }
     }
 
+    // 3. 점수 계산 — 사용자 공식 보존
     let bestIdx = -1;
 
     if (validCandidates.length > 0) {
-      // 5. 점수 계산 (거리순으로 뽑힌 Top K 안에서 사용자님 점수식 적용)
       let bestScore = Infinity;
       for (const cand of validCandidates) {
-        // [사용자님 공식 완벽 보존]
         const jitter = Math.random() * 5;
         const score = (cand.dist * DISTANCE_WEIGHT) + (usedCounts[cand.idx] * PENALTY_FACTOR) + jitter;
 
@@ -154,15 +229,23 @@ try {
     usedCounts[bestIdx]++;
     placedGrid[cy][cx] = bestIdx;
     matchedTiles.push({
-      filename: globalTileDB[bestIdx].filename,
+      filename: tileDB[bestIdx].filename,
       top: cell.startY,
       left: cell.startX
     });
   }
 
-  // 성공적으로 처리된 결과 반환
-  parentPort.postMessage({ success: true, matchedTiles, remainingTiles: globalTileDB.length });
+  return { matchedTiles, remainingTiles: tileDB.length };
+}
 
-} catch (err) {
-  parentPort.postMessage({ success: false, error: err.message });
+// ===== 초기 실행 (레거시 모드: 요청별 워커 생성 시) =====
+// workerData에 jobData가 직접 들어있는 경우 (기존 mosaic.queue.js 호환)
+if (workerData && workerData.rawData) {
+  try {
+    const { rawData, info, cols, rows, tileSize, globalTileDB: tDB, kdTree: tree } = workerData;
+    const result = runMatching(rawData, info, cols, rows, tileSize, tDB, tree);
+    parentPort.postMessage({ success: true, ...result });
+  } catch (err) {
+    parentPort.postMessage({ success: false, error: err.message });
+  }
 }
