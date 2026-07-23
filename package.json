@@ -18,5 +18,8 @@
     "sharp": "^0.35.3",
     "socket.io": "^4.8.3",
     "write-file-atomic": "^7.0.1"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1"
   }
 }
