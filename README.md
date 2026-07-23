@@ -1,7 +1,7 @@
-# 🌌 Reverse Cosmos Mosaic (V5 Ultimate Auto-Launcher)
+# 🌌 Reverse Cosmos Mosaic (V6 Ultimate Auto-Launcher)
 > **Interactive Photo Mosaic System for Lobby Screens & Exhibitions**
 
-![Version](https://img.shields.io/badge/Version-5.0%20Ultimate-blue.svg)
+![Version](https://img.shields.io/badge/Version-6.0%20Ultimate-blue.svg)
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 
@@ -123,7 +123,7 @@ graph TD
 
 ---
 
-## 5. 🗂️ 프로젝트 디렉토리 구조 (V5 Ultimate)
+## 5. 🗂️ 프로젝트 디렉토리 구조 (V6 Ultimate)
 
 ```text
 /mosaic_ver2
@@ -189,6 +189,13 @@ graph TD
 ---
 
 ## 7. 📜 릴리즈 노트 (Patch Notes)
+
+### 📦 V6.0 Network Stability Update (2026-07-23)
+#### 🚀 통신 안정성 및 터널링 충돌 완벽 해결
+- **Cloudflare HTTP2 프로토콜 강제 적용**: 전시 현장에서 다른 장비(포토부스 등)가 이미 Cloudflare QUIC 터널을 점유하고 있을 때 발생하는 `NXDOMAIN` (다중 터널 생성 거부) 에러를 원천 차단했습니다. 모자이크 프로그램은 `http2` 프로토콜로 우회하여 동일 네트워크/IP 환경에서도 문제없이 동시 구동됩니다.
+- **DNS 캐시 강제 플러시 (`start.bat`)**: 서버 구동 시 윈도우 네트워크 단에 남아있는 이전 연결 실패 기록(DNS 찌꺼기)을 강제 초기화(`ipconfig /flushdns`)하여 재접속 신뢰도를 100%로 끌어올렸습니다.
+- **터미널 UI 클릭 오류 패치**: 콘솔창에 출력된 `upload.html` 접속 주소를 마우스로 클릭할 때 뒷부분의 텍스트가 섞여 들어가는 현상을 막기 위해, 안내 문구의 줄바꿈 배치를 전면 수정했습니다.
+- **불필요한 로그 억제**: 관리자가 핵심 URL 주소만 깔끔하게 확인할 수 있도록, Cloudflare 내부 동작을 알리는 수십 줄의 영어 더미 로그를 백그라운드로 완전히 숨겼습니다.
 
 ### 📦 V5.0 Ultimate Auto-Launcher (2026-07-23)
 #### 🚀 완벽한 One-Click 무설치 시스템 구축
