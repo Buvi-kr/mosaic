@@ -96,11 +96,11 @@ function performStartupCleanup() {
 
 performStartupCleanup();
 
-let tunnelProcessRef = null;
+let cloudflareProcess = null;
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================`);
-  console.log(`🚀 Reverse Cosmos Mosaic (V5 Ultimate) Server Started`);
+  console.log(`🚀 Reverse Cosmos Mosaic (V6 Ultimate) Server Started`);
   console.log(`======================================================`);
   console.log(`- 대형 디스플레이: http://localhost:${PORT}/display.html`);
   console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);
@@ -114,17 +114,17 @@ server.listen(PORT, '0.0.0.0', () => {
   // Cloudflare 터널을 Node.js의 자식 프로세스로 실행하여 생명주기를 동기화
   const exePath = path.join(__dirname, '../cloudflared.exe');
   if (fs.existsSync(exePath)) {
-    console.log('🌐 Starting Cloudflare Tunnel (http2 mode)...\n');
-    tunnelProcessRef = spawn(exePath, ['tunnel', '--url', `http://127.0.0.1:${PORT}`, '--protocol', 'http2'], {
+    console.log('🌐 Starting Cloudflare Tunnel...\n');
+    cloudflareProcess = spawn(exePath, ['tunnel', '--url', `http://127.0.0.1:${PORT}`], {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false
     });
 
     let tunnelUrlFound = false;
 
-    tunnelProcessRef.stderr.on('data', (data) => {
+    cloudflareProcess.stderr.on('data', (data) => {
       const output = data.toString();
-      
+
       const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
       if (match && !tunnelUrlFound) {
         tunnelUrlFound = true;
@@ -133,8 +133,7 @@ server.listen(PORT, '0.0.0.0', () => {
         console.log(`🌍 Cloudflare Public URLs Ready!`);
         console.log(`======================================================`);
         console.log(`- 대형 디스플레이: ${tunnelUrl}/display.html`);
-        // 터미널에서 Ctrl+Click 시 괄호가 포함되어 URL이 깨지는 현상 방지
-        console.log(`- 모바일 업로드: ${tunnelUrl}/upload.html`); 
+        console.log(`- 모바일 업로드: ${tunnelUrl}/upload.html`);
         console.log(`  (↑ 위 주소가 모바일 QR코드 접속용 주소입니다)`);
         console.log(`- 관리자 패널: ${tunnelUrl}/admin.html\n`);
         
@@ -144,12 +143,12 @@ server.listen(PORT, '0.0.0.0', () => {
   }
 });
 
-// Ctrl+C 또는 프로세스 종료 시 자식 프로세스(터널) 일괄 강제 종료
+// Ctrl+C 또는 프로세스 종료 시 자식 프로세스(클라우드플레어) 일괄 강제 종료
 function gracefulShutdown() {
   console.log('\n🛑 서버를 종료합니다... (터널 프로세스 정리 중)');
-  if (tunnelProcessRef) {
+  if (cloudflareProcess) {
     try {
-      tunnelProcessRef.kill('SIGINT');
+      cloudflareProcess.kill('SIGINT');
     } catch(e) {}
   }
   process.exit(0);

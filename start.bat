@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title Reverse Cosmos Mosaic (V5) - Startup
+title Reverse Cosmos Mosaic (V6) - Startup
 
 :: 1. Check and download Node.js
 set NODE_CMD=node
@@ -36,12 +36,9 @@ if not exist "cloudflared.exe" (
     )
 )
 
-:: 3. Flush DNS cache (prevent cached NXDOMAIN from previous failed attempts)
-echo [DNS] Flushing DNS resolver cache...
-ipconfig /flushdns >nul 2>&1
-
-:: 4. Cleanup zombie processes
+:: 3. Cleanup zombie processes and ports
 echo [CLEANUP] Cleaning up zombie processes and ports...
+taskkill /F /IM cloudflared.exe /T >nul 2>&1
 FOR /F "tokens=5" %%a IN ('netstat -aon ^| findstr ":3000 "') DO (
     taskkill /F /PID %%a /T >nul 2>&1
 )
