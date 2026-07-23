@@ -4,6 +4,29 @@ chcp 65001 >nul
 cd /d "%~dp0"
 title Reverse Cosmos Mosaic (V4) - A to Z Manager
 
+:: Node.js 실행 파일 자동 확인 및 다운로드 로직
+set NODE_CMD=node
+node -v >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    if exist "node.exe" (
+        set NODE_CMD=.\node.exe
+    ) else (
+        echo ==============================================
+        echo [INFO] 시스템에 Node.js가 발견되지 않았습니다.
+        echo [INFO] 구동에 필요한 Node.js (v20.15.1) 바이너리를 자동 다운로드합니다... (약 1~2초 소요)
+        echo ==============================================
+        powershell -Command "Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.15.1/win-x64/node.exe' -OutFile 'node.exe'"
+        if exist "node.exe" (
+            set NODE_CMD=.\node.exe
+            echo [SUCCESS] Node.js 다운로드 완료!
+        ) else (
+            echo [ERROR] 다운로드에 실패했습니다. 인터넷 연결을 확인하세요.
+            pause
+            exit /b 1
+        )
+    )
+)
+
 :menu
 cls
 echo ========================================================
@@ -38,18 +61,18 @@ timeout /t 2 /nobreak >nul
 echo ==============================================
 echo [START] System Starting...
 echo ==============================================
-node -v >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo [ERROR] Node.js가 설치되어 있지 않거나 PATH에 없습니다!
-    pause
-    goto menu
-)
 if not exist "node_modules" (
     echo [INFO] 필수 패키지가 없습니다. 설치를 진행합니다...
+    call npm -v >nul 2>&1
+    if %ERRORLEVEL% neq 0 (
+        echo [ERROR] npm 명령어를 찾을 수 없습니다. (포터블 환경이 아닌 개발 환경에서는 Node.js 정식 설치가 필요합니다)
+        pause
+        goto menu
+    )
     call npm install
 )
 echo [START] Starting the main server...
-node src/app.js
+%NODE_CMD% src/app.js
 pause
 goto menu
 
@@ -58,7 +81,7 @@ cls
 echo ==============================================
 echo [BUILD] 포터블 릴리즈 생성을 시작합니다...
 echo ==============================================
-node scripts/build_release.js
+%NODE_CMD% scripts/build_release.js
 echo.
 echo 완료되었습니다! 엔터를 누르면 메뉴로 돌아갑니다.
 pause
@@ -82,9 +105,9 @@ echo [2] 인덱스만 퀵 리빌드 (이미지 처리 건너뛰기)
 set /p build_opt="옵션을 선택하세요 (1-2): "
 
 if "%build_opt%"=="1" (
-    node scripts/build.db.js %theme%
+    %NODE_CMD% scripts/build.db.js %theme%
 ) else if "%build_opt%"=="2" (
-    node scripts/build.db.js %theme% --index-only
+    %NODE_CMD% scripts/build.db.js %theme% --index-only
 ) else (
     echo 잘못된 입력입니다.
 )
