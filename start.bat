@@ -2,7 +2,7 @@
 setlocal
 chcp 65001 >nul
 cd /d "%~dp0"
-title Reverse Cosmos Mosaic (V4) - A to Z Manager
+title Reverse Cosmos Mosaic (V5) - A to Z Manager
 
 :: Node.js 실행 파일 자동 확인 및 다운로드 로직
 set NODE_CMD=node
@@ -30,7 +30,7 @@ if %ERRORLEVEL% neq 0 (
 :menu
 cls
 echo ========================================================
-echo   🌌 Reverse Cosmos Mosaic (V4) - 통합 관리자 (A to Z)
+echo   🌌 Reverse Cosmos Mosaic (V5) - 통합 관리자 (A to Z)
 echo ========================================================
 echo.
 echo   1. 🚀 서버 시작 (전시용 및 로컬 테스트)

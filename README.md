@@ -1,7 +1,7 @@
-# 🌌 Reverse Cosmos Mosaic (V4 Multi-Theme)
+# 🌌 Reverse Cosmos Mosaic (V5 Ultimate Auto-Launcher)
 > **Interactive Photo Mosaic System for Lobby Screens & Exhibitions**
 
-![Version](https://img.shields.io/badge/Version-4.4%20Multi--Theme-blue.svg)
+![Version](https://img.shields.io/badge/Version-5.0%20Ultimate-blue.svg)
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 
@@ -124,7 +124,7 @@ graph TD
 ### 4-2. 전시관 배포용 포터블 릴리즈 (메뉴 2번) - 강력 추천!
 개발 환경이 전혀 갖춰지지 않은 전시 PC나 구형 윈도우 컴퓨터에서도 **설치 없이 100% 동작**하는 포터블 버전을 구워냅니다.
 1. `start.bat`에서 2번을 선택합니다.
-2. 시스템이 자동으로 가장 안정적인 **Node.js LTS (v20.15.1)** 바이너리를 다운로드하고, 스트리밍 압축 기술(Direct-to-Zip)을 사용해 `Mosaic_V4_Portable.zip` 하나로 모든 것을 패키징합니다.
+2. 시스템이 자동으로 가장 안정적인 **Node.js LTS (v20.15.1)** 바이너리를 다운로드하고, 스트리밍 압축 기술(Direct-to-Zip)을 사용해 `Mosaic_V5_Portable.zip` 하나로 모든 것을 패키징합니다.
 3. 이 ZIP 파일을 USB에 담아 전시관 PC로 가져가 압축을 해제한 뒤, 그 안의 `start.bat`을 더블클릭하면 즉시 구동됩니다.
 
 ### 4-3. 신규 테마 추가 및 DB 리빌드 (메뉴 3번)
@@ -139,7 +139,7 @@ graph TD
 
 ---
 
-## 5. 🗂️ 프로젝트 디렉토리 구조 (V4 Multi-Theme)
+## 5. 🗂️ 프로젝트 디렉토리 구조 (V5 Ultimate)
 
 ```text
 /mosaic_ver2
@@ -205,6 +205,14 @@ graph TD
 ---
 
 ## 7. 📜 릴리즈 노트 (Patch Notes)
+
+### 📦 V5.0 Ultimate Auto-Launcher (2026-07-23)
+#### 🚀 완벽한 A to Z 무설치 통합 관리 시스템 구축
+- **지능형 `start.bat` 통합 런처**: 터미널 명령어를 일일이 입력할 필요 없이 `start.bat` 하나로 서버 시작, 포터블 릴리즈 빌드, 테마 DB 수동 빌드를 모두 해결할 수 있는 대화형(A to Z) 메뉴를 도입했습니다.
+- **Node.js 자동 확보 로직 탑재**: 구동 환경에 Node.js가 아예 없는 극한의 깡통 PC(?) 환경이더라도, 실행 시 1초 만에 최적화된 포터블 Node.js(v20.15.1)를 자동으로 감지하고 다운로드하여 완벽한 무설치 호환성을 보장합니다.
+- **다이어그램 및 매뉴얼 시각화 고도화**: 전체 작동 흐름을 한눈에 볼 수 있는 아키텍처 다이어그램(Mermaid)을 추가하고, README.md의 디자인을 전면 개편하여 완벽한 오픈소스 가이드 페이지로 격상시켰습니다.
+
+---
 
 ### 📦 V4.4 Update (2026-07-23)
 #### 🚀 포터블 빌드 시스템 최적화 및 호환성 강화 (Direct-to-Zip)
