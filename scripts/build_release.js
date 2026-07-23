@@ -2,12 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const archiver = require('archiver');
-
 const ROOT_DIR = path.join(__dirname, '..');
 const ZIP_PATH = path.join(ROOT_DIR, 'Mosaic_V4_Portable.zip');
-const NODE_VERSION = process.version;
+const NODE_VERSION = 'v20.15.1'; // 고정 LTS 버전 사용 (exhibition PC 호환성)
 const NODE_URL = `https://nodejs.org/dist/${NODE_VERSION}/win-x64/node.exe`;
-
 const FOLDERS_TO_COPY = ['src', 'public', 'node_modules', 'scripts'];
 const FILES_TO_COPY = ['package.json', 'cloudflared.exe'];
 
