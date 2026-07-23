@@ -96,7 +96,7 @@ function performStartupCleanup() {
 
 performStartupCleanup();
 
-let cloudflareProcess = null;
+let tunnelProcess = null;
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================`);
@@ -111,46 +111,50 @@ server.listen(PORT, '0.0.0.0', () => {
     if (err) console.error('[시스템] 브라우저 자동 열기 실패:', err.message);
   });
 
-  // Cloudflare 터널을 Node.js의 자식 프로세스로 실행하여 생명주기를 동기화
-  const exePath = path.join(__dirname, '../cloudflared.exe');
-  if (fs.existsSync(exePath)) {
-    console.log('🌐 Starting Cloudflare Tunnel...\n');
-    cloudflareProcess = spawn(exePath, ['tunnel', '--url', `http://127.0.0.1:${PORT}`], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: false
-    });
+  // Windows 기본 내장 SSH를 활용하여 localhost.run 무료 터널 구축 (클라우드플레어 DNS 차단/지연 우회)
+  console.log('🌐 Starting Public Tunnel (localhost.run)...\n');
+  tunnelProcess = spawn('ssh', [
+    '-o', 'StrictHostKeyChecking=no',
+    '-o', 'ServerAliveInterval=30',
+    '-R', `80:127.0.0.1:${PORT}`,
+    'nokey@localhost.run'
+  ], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: false
+  });
 
-    let tunnelUrlFound = false;
+  let tunnelUrlFound = false;
 
-    cloudflareProcess.stderr.on('data', (data) => {
-      const output = data.toString();
+  const handleTunnelOutput = (data) => {
+    const output = data.toString();
+    process.stdout.write(`[Tunnel] ${output}`);
+
+    // localhost.run 주소 매칭 (예: https://e18dae25cdf529.lhr.life)
+    const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.lhr\.life/);
+    if (match && !tunnelUrlFound) {
+      tunnelUrlFound = true;
+      const tunnelUrl = match[0];
+      console.log(`\n======================================================`);
+      console.log(`🌍 Public URLs Ready! (DNS Propagation Free)`);
+      console.log(`======================================================`);
+      console.log(`- 대형 디스플레이: ${tunnelUrl}/display.html`);
+      console.log(`- 모바일 업로드: ${tunnelUrl}/upload.html (<- QR 코드 주소)`);
+      console.log(`- 관리자 패널: ${tunnelUrl}/admin.html\n`);
       
-      // 사용자 요청: 클라우드플레어 원본 로그 실시간 출력
-      process.stdout.write(`[Cloudflare] ${output}`);
+      socketManager.setTunnelUrl(tunnelUrl);
+    }
+  };
 
-      const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
-      if (match && !tunnelUrlFound) {
-        tunnelUrlFound = true;
-        const tunnelUrl = match[0];
-        console.log(`\n======================================================`);
-        console.log(`🌍 Cloudflare Public URLs Ready!`);
-        console.log(`======================================================`);
-        console.log(`- 대형 디스플레이: ${tunnelUrl}/display.html`);
-        console.log(`- 모바일 업로드: ${tunnelUrl}/upload.html (<- QR 코드 주소)`);
-        console.log(`- 관리자 패널: ${tunnelUrl}/admin.html\n`);
-        
-        socketManager.setTunnelUrl(tunnelUrl);
-      }
-    });
-  }
+  tunnelProcess.stdout.on('data', handleTunnelOutput);
+  tunnelProcess.stderr.on('data', handleTunnelOutput);
 });
 
 // Ctrl+C 또는 프로세스 종료 시 자식 프로세스(클라우드플레어) 일괄 강제 종료
 function gracefulShutdown() {
   console.log('\n🛑 서버를 종료합니다... (터널 프로세스 정리 중)');
-  if (cloudflareProcess) {
+  if (tunnelProcess) {
     try {
-      cloudflareProcess.kill('SIGINT');
+      tunnelProcess.kill('SIGINT');
     } catch(e) {}
   }
   process.exit(0);

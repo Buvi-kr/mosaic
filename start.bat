@@ -24,21 +24,8 @@ if %ERRORLEVEL% neq 0 (
     )
 )
 
-:: 2. Check and download cloudflared
-if not exist "cloudflared.exe" (
-    echo [INFO] cloudflared.exe not found.
-    echo [INFO] Downloading Cloudflared...
-    powershell -Command "Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile 'cloudflared.exe'"
-    if exist "cloudflared.exe" (
-        echo [SUCCESS] Cloudflared downloaded.
-    ) else (
-        echo [ERROR] Failed to download Cloudflared.
-    )
-)
-
 :: 3. Cleanup zombie processes
 echo [CLEANUP] Cleaning up zombie processes and ports...
-taskkill /F /IM cloudflared.exe /T >nul 2>&1
 FOR /F "tokens=5" %%a IN ('netstat -aon ^| findstr ":3000 "') DO (
     taskkill /F /PID %%a /T >nul 2>&1
 )
