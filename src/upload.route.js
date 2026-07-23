@@ -290,12 +290,33 @@ router.post('/', upload.single('photo'), async (req, res) => {
         .png()
         .toBuffer();
 
+      let composites = [{ input: transparentOriginal, blend: config.blendMode }];
+
+      // 이중 하이브리드 (Multiply + Over) 로직 추가
+      if (config.blendMode === 'multiply' && config.secondOpacity > 0) {
+        const secondAlphaVal = Math.max(0, Math.min(255, Math.round(255 * config.secondOpacity)));
+        const secondTransparentOriginal = await sharp(originalResized)
+          .ensureAlpha()
+          .composite([{
+            input: Buffer.from([255, 255, 255, secondAlphaVal]),
+            raw: { width: 1, height: 1, channels: 4 },
+            tile: true,
+            blend: 'dest-in'
+          }])
+          .png()
+          .toBuffer();
+        
+        // 1차로 Multiply 적용 후, 2차로 옅게 Over 적용
+        composites.push({ input: secondTransparentOriginal, blend: 'over' });
+      }
+
       finalImageBuffer = await sharp(rawCanvas, {
         raw: { width: canvasWidth, height: canvasHeight, channels: 3 }
       })
-        .composite([{ input: transparentOriginal, blend: config.blendMode }])
+        .composite(composites)
         .jpeg({ quality: 90 })
         .toBuffer();
+
     } else {
       finalImageBuffer = await sharp(rawCanvas, {
         raw: { width: canvasWidth, height: canvasHeight, channels: 3 }

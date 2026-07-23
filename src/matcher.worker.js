@@ -13,7 +13,7 @@ let MAX_USAGE = currentConfig.maxTileUsage || 4;
 let RAD = currentConfig.banRadius || 2;
 let CANDIDATE_POOL = currentConfig.candidatePoolSize || 150;
 const DISTANCE_WEIGHT = 0.3;
-const PENALTY_FACTOR = 10.0;
+const PENALTY_FACTOR = 40.0;
 
 // ===== 런타임 메시지 핸들러 (고정 워커 풀용) =====
 if (parentPort) {
@@ -131,43 +131,40 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree) {
     let fallbackIdx = 0;
 
     if (useKDTree) {
-      // ===== 2-PHASE 매칭: k-d tree 조회 → 필터 적용 =====
-
-      // Phase 1: k-d tree에서 candidatePoolSize개 최근접 후보 빠르게 추출
-      const kNearest = KDTree.kNearest(tree, [tLab.l, tLab.a, tLab.b], CANDIDATE_POOL);
-
-      fallbackIdx = kNearest.length > 0 ? kNearest[0].idx : 0;
-
-      // Phase 2: 기존 필터 체인 적용
-      for (const candidate of kNearest) {
-        const i = candidate.idx;
-
+      // ===== ONE-PASS 매칭: k-d tree 내에서 공간/사용 제약 필터링 =====
+      const filterFn = (i) => {
         // 조건 1: 사용 횟수 제한
-        if (usedCounts[i] >= MAX_USAGE) continue;
+        if (usedCounts[i] >= MAX_USAGE) return false;
 
         // 조건 2: ban radius 내 동일 타일 금지
-        if (bannedTiles.has(i)) continue;
+        if (bannedTiles.has(i)) return false;
 
         // 조건 3: ban radius 내 시각적 유사 타일 금지
         const candLab = tileDB[i].lab;
-        let isVisuallySimilar = false;
         for (let b = 0; b < bannedLabs.length; b++) {
           const bl = bannedLabs[b];
           const dl = candLab.l - bl.l;
           const da = candLab.a - bl.a;
           const db = candLab.b - bl.b;
           if (dl * dl + da * da + db * db < 100) {
-            isVisuallySimilar = true;
-            break;
+            return false;
           }
         }
-        if (isVisuallySimilar) continue;
+        return true;
+      };
 
-        validCandidates.push({ idx: i, dist: Math.sqrt(candidate.distSq) });
+      // tree 탐색 중 유효한 후보 60개(기존 조건)를 찾을 때까지 계속 탐색함
+      const kNearest = KDTree.kNearest(tree, [tLab.l, tLab.a, tLab.b], 60, filterFn);
 
-        // 충분한 후보가 모이면 조기 종료
-        if (validCandidates.length >= 60) break;
+      if (kNearest.length > 0) {
+        fallbackIdx = kNearest[0].idx;
+        validCandidates = kNearest.map(cand => ({ idx: cand.idx, dist: Math.sqrt(cand.distSq) }));
+      } else {
+        // 필터를 통과하는 타일이 아예 없는 극단적인 경우 강제로 가장 가까운 타일 가져오기 (오류 방지)
+        const absoluteNearest = KDTree.kNearest(tree, [tLab.l, tLab.a, tLab.b], 1);
+        if (absoluteNearest.length > 0) fallbackIdx = absoluteNearest[0].idx;
       }
+
 
     } else {
       // ===== 폴백: 브루트포스 (k-d tree 없는 경우) =====

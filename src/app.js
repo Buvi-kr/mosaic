@@ -46,7 +46,7 @@ app.use((err, req, res, next) => {
   }
 });
 
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 
 // 시작 시 각종 찌꺼기 파일 및 오래된 로그 정리 (개인정보 보호 및 용량 확보)
 function performStartupCleanup() {
@@ -100,11 +100,16 @@ let cloudflareProcess = null;
 
 server.listen(PORT, () => {
   console.log(`\n======================================================`);
-  console.log(`🚀 Reverse Cosmos Mosaic (V3 Ultimate) Server Started`);
+  console.log(`🚀 Reverse Cosmos Mosaic (V4 Multi-Theme) Server Started`);
   console.log(`======================================================`);
   console.log(`- 대형 디스플레이: http://localhost:${PORT}/display.html`);
   console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);
   console.log(`- 관리자 패널: http://localhost:${PORT}/admin.html\n`);
+
+  // 백그라운드 무인 실행 모드 대응: 브라우저 자동 오픈
+  exec(`start http://localhost:${PORT}/admin.html`, (err) => {
+    if (err) console.error('[시스템] 브라우저 자동 열기 실패:', err.message);
+  });
 
   // Cloudflare 터널을 Node.js의 자식 프로세스로 실행하여 생명주기를 동기화
   const exePath = path.join(__dirname, '../cloudflared.exe');

@@ -1,14 +1,19 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const configModule = require('../src/config');
 
-const RAW_TILES_DIR = path.join(__dirname, '../public/raw_tiles');
+// 테마 인자 지원: node scripts/true.dedup.js <theme_name>
+const args = process.argv.slice(2);
+const themeName = args[0] || configModule.getConfig().currentTheme || 'default_nasa';
+
+const RAW_TILES_DIR = path.join(__dirname, '../public/raw_tiles', themeName);
 const LOG_DIR = path.join(__dirname, '../logs');
 const LOG_FILE = path.join(LOG_DIR, 'dedup.log.json');
 
 async function trueDeduplicate() {
-  console.log('🚀 [V3 Ultimate] 진짜 원본 파일 시각적 중복 제거(True Deduplication) 시작...');
-  console.log('주의: 이 작업은 시간이 다소 소요될 수 있으며, 실제 원본 파일(.webp)을 영구 삭제합니다.\n');
+  console.log(`🚀 [V4 Multi-Theme] 테마 "${themeName}" 원본 파일 시각적 중복 제거(True Deduplication) 시작...`);
+  console.log('주의: 이 작업은 시간이 다소 소요될 수 있으며, 실제 원본 파일을 영구 삭제합니다.\n');
 
   if (!fs.existsSync(RAW_TILES_DIR)) {
     console.error(`❌ 원본 타일 폴더를 찾을 수 없습니다: ${RAW_TILES_DIR}`);

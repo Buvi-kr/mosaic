@@ -54,6 +54,21 @@
       </div>
     </header>
 
+    <!-- 퀵 네비게이션 패널 -->
+    <div class="bg-indigo-50 p-4 rounded-2xl shadow-sm border border-indigo-100 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div class="flex items-center gap-2 text-indigo-800 font-bold">
+        <span class="material-symbols-outlined">public</span> 외부 접속 주소 (자동 연동)
+      </div>
+      <div class="flex gap-3 w-full md:w-auto">
+        <a id="displayLink" href="/display.html" target="_blank" class="flex-1 bg-white hover:bg-indigo-600 text-slate-700 hover:text-white border border-slate-200 hover:border-indigo-600 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm">
+          <span class="material-symbols-outlined text-base">desktop_windows</span> 디스플레이 열기
+        </a>
+        <a id="uploadLink" href="/upload.html" target="_blank" class="flex-1 bg-white hover:bg-indigo-600 text-slate-700 hover:text-white border border-slate-200 hover:border-indigo-600 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm">
+          <span class="material-symbols-outlined text-base">smartphone</span> 모바일 업로드 열기
+        </a>
+      </div>
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <!-- 시스템 통계 -->
       <div class="col-span-1 space-y-6">
@@ -73,6 +88,9 @@
               <p class="text-2xl font-black text-indigo-600" id="activeWorkers">0</p>
             </div>
           </div>
+          <button id="shutdownBtn" class="mt-5 w-full bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 font-bold py-2 px-4 rounded-xl transition-colors flex justify-center items-center gap-2">
+            <span class="material-symbols-outlined">power_settings_new</span> 서버 완전 종료
+          </button>
         </div>
 
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -94,7 +112,41 @@
           </div>
           <div id="themeBuildStatus" class="mt-3 text-sm hidden">
           </div>
-          <div id="tileSafetyAlert" class="mt-4 p-4 rounded-xl text-sm font-medium border hidden">
+          
+          <!-- 테마 업로드 버튼 (새로운 위치) -->
+          <div class="mt-6 p-4 border border-dashed border-indigo-300 bg-indigo-50 rounded-lg">
+            <label class="block text-sm font-bold text-indigo-800 mb-2">새로운 테마 폴더 추가</label>
+            <div class="flex flex-col gap-2">
+              <input type="text" id="newThemeName" placeholder="새 테마 영어 이름 (예: my_theme)" class="w-full bg-white border border-slate-300 text-sm rounded-lg p-2">
+              <label class="bg-indigo-600 hover:bg-indigo-700 text-center text-white text-sm font-bold py-2 px-4 rounded-lg cursor-pointer transition-colors shadow-sm w-full">
+                사진 폴더 전체 선택 & 업로드
+                <input type="file" id="themeFolderInput" webkitdirectory directory multiple class="hidden">
+              </label>
+            </div>
+            <div id="uploadProgressContainer" class="hidden mt-3">
+              <div class="flex justify-between text-xs text-indigo-700 mb-1">
+                <span id="uploadStatusText">업로드 준비 중...</span>
+                <span id="uploadPercentText">0%</span>
+              </div>
+              <div class="w-full bg-indigo-200 rounded-full h-2">
+                <div id="uploadProgressBar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+          <div id="tileWarningBox" class="mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 text-sm hidden rounded-r-lg shadow-sm">
+            <div class="font-bold mb-1 flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">warning</span> 
+              타일 부족 경고
+            </div>
+            <div id="tileWarningText">타일 수가 부족합니다. 중복이 심하게 발생할 수 있습니다.</div>
+            <div class="mt-2 pt-2 border-t border-yellow-200">
+              <div class="font-bold text-slate-800 mb-1">현재 설정 기준 필요 타일 계산:</div>
+              <ul class="list-disc pl-5 space-y-1 text-slate-700">
+                <li>그리드 셀 채우기용 최소 필요량: <span id="mathGridMin" class="font-bold">0</span>장</li>
+                <li>방어 반경(Ban Radius) 방어용 최소량: <span id="mathSpatialMin" class="font-bold">0</span>장</li>
+                <li>결론: <strong class="text-red-600">절대 최소 <span id="mathAbsoluteMin">0</span>장 이상 필요</strong></li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
@@ -146,11 +198,21 @@
               </div>
             </div>
             <select id="blendSelect" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-3">
-              <option value="multiply">Multiply (곱하기 - 어두운 배경에 적합, 얼굴 윤곽 뚜렷)</option>
+              <option value="multiply">Multiply (이중 하이브리드 - 어두운 윤곽 + 2차 미세 복원)</option>
               <option value="overlay">Overlay (오버레이 - 대비를 높임)</option>
               <option value="soft-light">Soft-Light (부드러운 빛 - 자연스러움)</option>
               <option value="over">Over (단순 투명도 덮어쓰기)</option>
             </select>
+
+            <!-- 2차 투명도 패널 (Multiply 전용) -->
+            <div id="secondOpacityContainer" class="hidden mt-6 p-5 bg-indigo-50 border border-indigo-100 rounded-xl shadow-inner">
+              <label class="flex justify-between mb-2">
+                <span class="font-bold text-indigo-900">2차 복원 투명도 (Secondary Over)</span>
+                <span id="secondOpacityVal" class="text-indigo-600 font-bold">30%</span>
+              </label>
+              <p class="text-sm text-indigo-700 mb-3 leading-relaxed">Multiply 모드 전용 옵션입니다. 1차 그림자 합성 후, 모자이크 위에 원본 사진의 밝은 피부색과 눈동자를 살리기 위해 옅게(권장 20~40%) 한 번 더 덮어씁니다.</p>
+              <input type="range" id="secondOpacitySlider" min="0" max="1" step="0.05" value="0.3" class="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+            </div>
           </div>
 
           <div>
@@ -230,7 +292,20 @@
     </div>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script>
+    const socket = io();
+    socket.on('tunnel_url', (url) => {
+      // 퀵 네비게이션 외부 접속 주소 자동 갱신
+      const displayLink = document.getElementById('displayLink');
+      const uploadLink = document.getElementById('uploadLink');
+      if(displayLink && uploadLink) {
+        displayLink.href = `${url}/display.html`;
+        uploadLink.href = `${url}/upload.html`;
+        displayLink.classList.replace('text-slate-700', 'text-indigo-600');
+        uploadLink.classList.replace('text-slate-700', 'text-indigo-600');
+      }
+    });
     // 상세 설명 토글 함수
     function toggleDetail(id) {
       const el = document.getElementById(id);
@@ -265,6 +340,15 @@
           document.getElementById('opacitySlider').value = currentConfig.opacity;
           document.getElementById('opacityVal').textContent = Math.round(currentConfig.opacity * 100) + '%';
           document.getElementById('blendSelect').value = currentConfig.blendMode;
+          document.getElementById('secondOpacitySlider').value = currentConfig.secondOpacity !== undefined ? currentConfig.secondOpacity : 0.3;
+          document.getElementById('secondOpacityVal').textContent = Math.round((currentConfig.secondOpacity !== undefined ? currentConfig.secondOpacity : 0.3) * 100) + '%';
+          
+          if (currentConfig.blendMode === 'multiply') {
+            document.getElementById('secondOpacityContainer').classList.remove('hidden');
+          } else {
+            document.getElementById('secondOpacityContainer').classList.add('hidden');
+          }
+
           document.getElementById('tileSizeSlider').value = currentConfig.tileSize || 20;
           document.getElementById('tileSizeVal').textContent = (currentConfig.tileSize || 20) + 'px';
           document.getElementById('maxResSelect').value = currentConfig.maxResolution || 1440;
@@ -272,6 +356,30 @@
           document.getElementById('maxUsageVal').textContent = (currentConfig.maxTileUsage || 4) + '회';
           document.getElementById('banRadiusSlider').value = currentConfig.banRadius || 2;
           document.getElementById('banRadiusVal').textContent = (currentConfig.banRadius || 2) + '칸';
+          
+          // 최소 타일 수 수학적 계산 (Grid vs Spatial)
+          const gridWidth = Math.ceil((currentConfig.maxResolution || 1440) / (currentConfig.tileSize || 20));
+          const gridHeight = Math.ceil((currentConfig.maxResolution || 1440) / (currentConfig.tileSize || 20));
+          const totalCells = gridWidth * gridHeight;
+          const usageAllowed = currentConfig.maxTileUsage || 10;
+          const radius = currentConfig.banRadius || 0;
+          
+          const gridMin = Math.ceil(totalCells / usageAllowed);
+          const spatialMin = Math.pow(2 * radius + 1, 2);
+          const absoluteMin = Math.max(gridMin, spatialMin);
+          
+          document.getElementById('mathGridMin').textContent = gridMin.toLocaleString();
+          document.getElementById('mathSpatialMin').textContent = spatialMin.toLocaleString();
+          document.getElementById('mathAbsoluteMin').textContent = absoluteMin.toLocaleString();
+
+          // 타일 수 경고 로직 업데이트
+          if (data.tileCount < absoluteMin) {
+            document.getElementById('tileWarningBox').classList.remove('hidden');
+            document.getElementById('tileWarningText').innerHTML = 
+              `보유 타일(<strong class="text-red-600">${data.tileCount.toLocaleString()}</strong>장)이 수학적 최소 요구량(<strong class="text-red-600">${absoluteMin.toLocaleString()}</strong>장)보다 적습니다.<br>화질이 크게 저하되거나 렌더링에 실패할 수 있습니다.`;
+          } else {
+            document.getElementById('tileWarningBox').classList.add('hidden');
+          }
         }
       } catch(e) {
         console.error(e);
@@ -401,6 +509,17 @@
     document.getElementById('opacitySlider').addEventListener('input', (e) => {
       document.getElementById('opacityVal').textContent = Math.round(e.target.value * 100) + '%';
     });
+    document.getElementById('secondOpacitySlider').addEventListener('input', (e) => {
+      document.getElementById('secondOpacityVal').textContent = Math.round(e.target.value * 100) + '%';
+    });
+    document.getElementById('blendSelect').addEventListener('change', (e) => {
+      const container = document.getElementById('secondOpacityContainer');
+      if (e.target.value === 'multiply') {
+        container.classList.remove('hidden');
+      } else {
+        container.classList.add('hidden');
+      }
+    });
     document.getElementById('tileSizeSlider').addEventListener('input', (e) => {
       document.getElementById('tileSizeVal').textContent = e.target.value + 'px';
     });
@@ -416,6 +535,7 @@
       const btn = document.getElementById('saveConfigBtn');
       const config = {
         opacity: parseFloat(document.getElementById('opacitySlider').value),
+        secondOpacity: parseFloat(document.getElementById('secondOpacitySlider').value),
         blendMode: document.getElementById('blendSelect').value,
         tileSize: parseInt(document.getElementById('tileSizeSlider').value, 10),
         maxResolution: parseInt(document.getElementById('maxResSelect').value, 10),
@@ -467,6 +587,137 @@
       }
       btn.disabled = false;
       btn.innerHTML = '<span class="material-symbols-outlined">sync</span> 인덱스 강제 리빌드';
+    });
+
+    // ===== 동적 수학적 타일 계산 =====
+    const recalcMath = () => {
+      const res = parseInt(document.getElementById('maxResSelect').value, 10);
+      const size = parseInt(document.getElementById('tileSizeSlider').value, 10);
+      const usage = parseInt(document.getElementById('maxUsageSlider').value, 10);
+      const radius = parseInt(document.getElementById('banRadiusSlider').value, 10);
+      
+      const gridCells = Math.ceil(res/size) * Math.ceil(res/size);
+      const gridMin = Math.ceil(gridCells / usage);
+      const spatialMin = Math.pow(2 * radius + 1, 2);
+      const absMin = Math.max(gridMin, spatialMin);
+      
+      document.getElementById('mathGridMin').textContent = gridMin.toLocaleString();
+      document.getElementById('mathSpatialMin').textContent = spatialMin.toLocaleString();
+      document.getElementById('mathAbsoluteMin').textContent = absMin.toLocaleString();
+    };
+    
+    ['maxResSelect', 'tileSizeSlider', 'maxUsageSlider', 'banRadiusSlider'].forEach(id => {
+      document.getElementById(id).addEventListener('input', recalcMath);
+      document.getElementById(id).addEventListener('change', recalcMath);
+    });
+
+    // ===== 폴더 청크 업로드 로직 =====
+    document.getElementById('themeFolderInput').addEventListener('change', async (e) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      
+      const themeNameInput = document.getElementById('newThemeName').value.trim();
+      if (!themeNameInput) {
+        alert('업로드하기 전에 새 테마 영문 이름을 먼저 입력해주세요.');
+        e.target.value = '';
+        return;
+      }
+      
+      if (!/^[a-zA-Z0-9_]+$/.test(themeNameInput)) {
+        alert('테마 이름은 영문, 숫자, 언더바(_)만 가능합니다.');
+        e.target.value = '';
+        return;
+      }
+
+      const totalFiles = files.length;
+      if (!confirm(`총 ${totalFiles}장의 사진을 '${themeNameInput}' 테마로 업로드 및 자동 최적화하시겠습니까?`)) {
+        e.target.value = '';
+        return;
+      }
+
+      const container = document.getElementById('uploadProgressContainer');
+      const statusText = document.getElementById('uploadStatusText');
+      const percentText = document.getElementById('uploadPercentText');
+      const bar = document.getElementById('uploadProgressBar');
+      
+      container.classList.remove('hidden');
+      document.getElementById('saveConfigBtn').disabled = true;
+
+      const CHUNK_SIZE = 50;
+      let uploadedCount = 0;
+
+      try {
+        for (let i = 0; i < totalFiles; i += CHUNK_SIZE) {
+          const chunk = Array.from(files).slice(i, i + CHUNK_SIZE);
+          const formData = new FormData();
+          formData.append('themeName', themeNameInput);
+          
+          chunk.forEach(file => {
+            formData.append('images', file);
+          });
+
+          statusText.textContent = `업로드 및 최적화 중... (${Math.min(i + CHUNK_SIZE, totalFiles)} / ${totalFiles})`;
+          
+          const response = await fetch('/api/admin/theme-upload-chunk', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || '업로드 중 에러 발생');
+          }
+          
+          uploadedCount += chunk.length;
+          const percent = Math.round((uploadedCount / totalFiles) * 100);
+          percentText.textContent = percent + '%';
+          bar.style.width = percent + '%';
+        }
+
+        // 마지막 청크 끝난 후 완료 처리 (중복 제거 등)
+        statusText.textContent = `중복 제거 및 마무리 작업 중... (잠시만 기다려주세요)`;
+        const finishRes = await fetch('/api/admin/theme-upload-finish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ themeName: themeNameInput })
+        });
+        
+        if (!finishRes.ok) throw new Error('마무리 작업 중 에러 발생');
+        
+        alert('✅ 새 테마 업로드 및 최적화가 완료되었습니다!\n테마 목록을 갱신합니다.');
+        document.getElementById('newThemeName').value = '';
+        e.target.value = '';
+        container.classList.add('hidden');
+        loadThemes(); // 테마 목록 새로고침
+        
+      } catch (err) {
+        alert(`❌ 에러 발생: ${err.message}`);
+        container.classList.add('hidden');
+      } finally {
+        document.getElementById('saveConfigBtn').disabled = false;
+      }
+    });
+
+    // ===== 서버 원격 종료 로직 =====
+    document.getElementById('shutdownBtn').addEventListener('click', async () => {
+      if (!confirm('정말 서버를 완전 종료하시겠습니까?\n\n종료 후에는 Run_Server.vbs 파일을 다시 실행해야 켤 수 있습니다.')) return;
+      
+      const btn = document.getElementById('shutdownBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="material-symbols-outlined">hourglass_empty</span> 종료 중...';
+      btn.classList.replace('bg-rose-50', 'bg-slate-200');
+      btn.classList.replace('text-rose-700', 'text-slate-500');
+
+      try {
+        const res = await fetch('/api/admin/shutdown', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          alert('✅ 서버가 안전하게 종료되었습니다.\n이제 브라우저 창을 닫아주셔도 됩니다.');
+          document.body.innerHTML = '<div style="display:flex; height:100vh; align-items:center; justify-content:center; flex-direction:column; background:#f8fafc;"><h1 style="font-size:2rem; font-weight:bold; color:#334155; margin-bottom:1rem;">서버 오프라인</h1><p style="color:#64748b;">서버가 완전히 종료되었습니다. 이 창을 닫으셔도 됩니다.</p></div>';
+        }
+      } catch (err) {
+        alert('서버와 연결할 수 없습니다. 이미 종료되었을 수 있습니다.');
+      }
     });
   </script>
 </body>

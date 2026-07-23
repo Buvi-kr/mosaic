@@ -2,9 +2,15 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { exec } = require('child_process');
+const multer = require('multer');
+const sharp = require('sharp');
 const configModule = require('./config');
 const buildTileDB = require('../scripts/build.db');
 const mosaicQueue = require('./mosaic.queue');
+
+// 멀터 메모리 스토리지 (청크 전처리용)
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = express.Router();
 let uploadRouterReference = null;
@@ -233,6 +239,75 @@ router.post('/build-db', async (req, res) => {
     jobId,
     message: `빌드 시작됨 (테마: ${theme})`,
   });
+});
+
+// POST /api/admin/theme-upload-chunk — 폴더 분할 업로드 수신 및 Sharp 최적화
+router.post('/theme-upload-chunk', upload.array('images', 100), async (req, res) => {
+  try {
+    const themeName = req.body.themeName;
+    if (!themeName) return res.status(400).json({ error: '테마 이름이 누락되었습니다.' });
+
+    const themeDir = path.join(RAW_TILES_DIR, themeName);
+    if (!fs.existsSync(themeDir)) {
+      fs.mkdirSync(themeDir, { recursive: true });
+    }
+
+    if (!req.files || req.files.length === 0) {
+      return res.json({ success: true, message: '업로드할 파일이 없습니다.' });
+    }
+
+    const processPromises = req.files.map(async (file) => {
+      // 고유 파일명 생성 (겹침 방지)
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const filename = `img_${uniqueSuffix}.webp`;
+      const filepath = path.join(themeDir, filename);
+
+      // Sharp를 이용한 고속 리사이즈 및 WebP 압축 변환
+      await sharp(file.buffer)
+        .resize({ width: 1000, withoutEnlargement: true }) // 최대 가로 1000px 제한
+        .webp({ quality: 80 }) // WebP 80% 압축 (디스크 용량 획기적 절감)
+        .toFile(filepath);
+    });
+
+    await Promise.all(processPromises);
+
+    res.json({ success: true, processedCount: req.files.length });
+  } catch (err) {
+    console.error('[Admin] 청크 업로드 에러:', err);
+    res.status(500).json({ error: '파일 처리 중 서버 에러 발생' });
+  }
+});
+
+// POST /api/admin/theme-upload-finish — 업로드 완료 후 중복 제거 호출
+router.post('/theme-upload-finish', express.json(), (req, res) => {
+  const themeName = req.body.themeName;
+  if (!themeName) return res.status(400).json({ error: '테마 이름이 누락되었습니다.' });
+
+  console.log(`\n[Admin] 테마 '${themeName}' 업로드 완료. 중복 제거 스크립트 실행 시작...`);
+
+  const scriptPath = path.join(__dirname, '../scripts/true.dedup.js');
+  // 자식 프로세스로 true.dedup.js 비동기 실행 (포터블 환경 대응을 위해 process.execPath 사용)
+  exec(`"${process.execPath}" "${scriptPath}" ${themeName}`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`[Admin] 중복 제거 스크립트 실행 실패:`, error);
+    } else {
+      console.log(`[Admin] 중복 제거 스크립트 완료:\n`, stdout);
+    }
+  });
+
+  // 스크립트는 백그라운드로 돌리고 프론트에 즉시 성공 응답
+  res.json({ success: true, message: '중복 제거 작업이 백그라운드에서 시작되었습니다.' });
+});
+
+// POST /api/admin/shutdown — 서버 원격 완전 종료
+router.post('/shutdown', (req, res) => {
+  console.log('\n[Admin] 관리자 패널에서 서버 원격 종료가 요청되었습니다.');
+  res.json({ success: true, message: '서버를 안전하게 종료합니다.' });
+  
+  // 클라이언트가 응답을 받을 수 있도록 약간의 딜레이 후 SIGINT 발생
+  setTimeout(() => {
+    process.emit('SIGINT');
+  }, 1000);
 });
 
 module.exports = router;

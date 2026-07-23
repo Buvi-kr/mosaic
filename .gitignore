@@ -14,12 +14,22 @@ public/raw_tiles/
 public/tiles/
 public/outputs/
 
+# 테마별 빌드 결과물 (tileDB, k-d tree 인덱스)
+data/themes/
+
 # 과거 레거시 데이터 및 스크립트 제외 (NASA API키, 개인 사진 유출 방지)
 old/
 
-# 생성형 DB
+# 레거시 단일 DB (마이그레이션 이전 잔재)
 data/tileDB.json
+
+# 대용량 바이너리
+cloudflared.exe
 
 # 기타
 .DS_Store
 Thumbs.db
+
+# 배포 빌드 결과물
+dist/
+*.zip

@@ -7,6 +7,7 @@ const CONFIG_FILE = path.join(__dirname, '../data/config.json');
 // 기본 설정값 (v2: 멀티테마 + 동시접속 대응 필드 포함)
 const defaultConfig = {
   opacity: 0.8,
+  secondOpacity: 0.3,
   tileSize: 20,
   blendMode: 'multiply',
   maxResolution: 1440,

@@ -53,9 +53,10 @@ class KDTree {
    * @param {Object} tree - build()로 생성된 트리
    * @param {Array} target - [l, a, b]
    * @param {number} k - 반환할 후보 수
+   * @param {Function} [filterFn] - (idx) => boolean, true인 경우만 힙에 추가
    * @returns {Array} [{ idx, distSq }, ...] 거리 제곱 오름차순 정렬
    */
-  static kNearest(tree, target, k) {
+  static kNearest(tree, target, k, filterFn = null) {
     // max-heap (가장 먼 후보를 빠르게 제거하기 위함)
     const heap = [];
 
@@ -100,11 +101,16 @@ class KDTree {
 
       const d = distSq(target, node.point);
 
-      if (heap.length < k) {
-        heapPush({ idx: node.idx, distSq: d });
-      } else if (d < heap[0].distSq) {
-        heapPop();
-        heapPush({ idx: node.idx, distSq: d });
+      // 필터 함수가 있으면 평가, 없으면 무조건 true
+      const isValid = filterFn ? filterFn(node.idx) : true;
+
+      if (isValid) {
+        if (heap.length < k) {
+          heapPush({ idx: node.idx, distSq: d });
+        } else if (d < heap[0].distSq) {
+          heapPop();
+          heapPush({ idx: node.idx, distSq: d });
+        }
       }
 
       // 어느 쪽 자식을 먼저 탐색할지 결정

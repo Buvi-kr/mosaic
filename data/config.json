@@ -1,6 +1,14 @@
 {
   "opacity": 1,
+  "secondOpacity": 0.1,
   "tileSize": 20,
   "blendMode": "multiply",
-  "maxResolution": 1920
+  "maxResolution": 1920,
+  "currentTheme": "default_nasa",
+  "maxTileUsage": 4,
+  "banRadius": 2,
+  "minRequiredTiles": 3000,
+  "workerPoolSize": 0,
+  "gridDownscaleThreshold": 10,
+  "candidatePoolSize": 150
 }
