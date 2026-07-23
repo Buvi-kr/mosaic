@@ -111,111 +111,36 @@ server.listen(PORT, '0.0.0.0', () => {
     if (err) console.error('[시스템] 브라우저 자동 열기 실패:', err.message);
   });
 
-  // === Smart Tunnel System ===
-  // 1차: Cloudflare (http2 프로토콜로 기존 포토부스 QUIC과 충돌 회피)
-  // 2차: DNS 30초 내 미해석 시 → serveo.net (SSH 기반 대체 터널) 자동 전환
-  const dns = require('dns');
-  let tunnelProcess = null;
-  let tunnelUrlFound = false;
-
-  function verifyDnsAndAnnounce(tunnelUrl, provider) {
-    const hostname = tunnelUrl.replace('https://', '');
-    let attempts = 0;
-    const maxAttempts = 15; // 30초 (2초 간격)
-
-    console.log(`\n[DNS] Verifying ${hostname} ...`);
-
-    const checkDns = () => {
-      attempts++;
-      dns.resolve4(hostname, (err, addresses) => {
-        if (!err && addresses && addresses.length > 0) {
-          console.log(`[DNS] RESOLVED! (${addresses[0]}, ${attempts * 2}s)`);
-          console.log(`\n======================================================`);
-          console.log(`🌍 Public URLs Ready! (${provider})`);
-          console.log(`======================================================`);
-          console.log(`- 대형 디스플레이: ${tunnelUrl}/display.html`);
-          console.log(`- 모바일 업로드: ${tunnelUrl}/upload.html (<- QR 코드 주소)`);
-          console.log(`- 관리자 패널: ${tunnelUrl}/admin.html\n`);
-          socketManager.setTunnelUrl(tunnelUrl);
-        } else if (attempts < maxAttempts) {
-          process.stdout.write(`[DNS] Attempt ${attempts}/${maxAttempts} - waiting...\r`);
-          setTimeout(checkDns, 2000);
-        } else {
-          // DNS 30초 내 실패 → Cloudflare 포기, 대체 터널로 전환
-          console.log(`\n[DNS] FAILED after ${maxAttempts * 2}s. Switching to backup tunnel...`);
-          if (tunnelProcess) {
-            try { tunnelProcess.kill('SIGINT'); } catch(e) {}
-          }
-          startFallbackTunnel();
-        }
-      });
-    };
-    // 첫 시도는 5초 대기 후 (DNS 전파 최소 시간 확보)
-    setTimeout(checkDns, 5000);
-  }
-
-  function startFallbackTunnel() {
-    console.log('🌐 Starting Backup Tunnel (serveo.net)...\n');
-    tunnelProcess = spawn('ssh', [
-      '-o', 'StrictHostKeyChecking=no',
-      '-o', 'ServerAliveInterval=30',
-      '-R', `80:127.0.0.1:${PORT}`,
-      'nokey@localhost.run'
-    ], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-      shell: false
-    });
-    tunnelProcessRef = tunnelProcess;
-
-    let fallbackFound = false;
-    const handleFallback = (data) => {
-      const output = data.toString();
-      process.stdout.write(`[Tunnel] ${output}`);
-      const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.lhr\.life/);
-      if (match && !fallbackFound) {
-        fallbackFound = true;
-        const fallbackUrl = match[0];
-        console.log(`\n======================================================`);
-        console.log(`🌍 Public URLs Ready! (localhost.run Backup)`);
-        console.log(`======================================================`);
-        console.log(`- 대형 디스플레이: ${fallbackUrl}/display.html`);
-        console.log(`- 모바일 업로드: ${fallbackUrl}/upload.html (<- QR 코드 주소)`);
-        console.log(`- 관리자 패널: ${fallbackUrl}/admin.html\n`);
-        socketManager.setTunnelUrl(fallbackUrl);
-      }
-    };
-    tunnelProcess.stdout.on('data', handleFallback);
-    tunnelProcess.stderr.on('data', handleFallback);
-  }
-
-  // === 1차 시도: Cloudflare Tunnel (http2 프로토콜) ===
+  // Cloudflare 터널을 Node.js의 자식 프로세스로 실행하여 생명주기를 동기화
   const exePath = path.join(__dirname, '../cloudflared.exe');
   if (fs.existsSync(exePath)) {
     console.log('🌐 Starting Cloudflare Tunnel (http2 mode)...\n');
-    tunnelProcess = spawn(exePath, [
-      'tunnel', '--url', `http://127.0.0.1:${PORT}`, '--protocol', 'http2'
-    ], {
+    tunnelProcessRef = spawn(exePath, ['tunnel', '--url', `http://127.0.0.1:${PORT}`, '--protocol', 'http2'], {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false
     });
-    tunnelProcessRef = tunnelProcess;
 
-    tunnelProcess.stderr.on('data', (data) => {
+    let tunnelUrlFound = false;
+
+    tunnelProcessRef.stderr.on('data', (data) => {
       const output = data.toString();
-      process.stdout.write(`[Cloudflare] ${output}`);
-
+      
       const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
       if (match && !tunnelUrlFound) {
         tunnelUrlFound = true;
         const tunnelUrl = match[0];
-        // DNS가 실제로 해석되는지 검증 후 표시 (실패 시 자동 폴백)
-        verifyDnsAndAnnounce(tunnelUrl, 'Cloudflare');
+        console.log(`\n======================================================`);
+        console.log(`🌍 Cloudflare Public URLs Ready!`);
+        console.log(`======================================================`);
+        console.log(`- 대형 디스플레이: ${tunnelUrl}/display.html`);
+        // 터미널에서 Ctrl+Click 시 괄호가 포함되어 URL이 깨지는 현상 방지
+        console.log(`- 모바일 업로드: ${tunnelUrl}/upload.html`); 
+        console.log(`  (↑ 위 주소가 모바일 QR코드 접속용 주소입니다)`);
+        console.log(`- 관리자 패널: ${tunnelUrl}/admin.html\n`);
+        
+        socketManager.setTunnelUrl(tunnelUrl);
       }
     });
-  } else {
-    // cloudflared.exe 없으면 바로 대체 터널 사용
-    console.log('[INFO] cloudflared.exe not found. Using backup tunnel...');
-    startFallbackTunnel();
   }
 });
 
