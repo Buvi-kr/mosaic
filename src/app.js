@@ -160,7 +160,7 @@ server.listen(PORT, '0.0.0.0', () => {
       '-o', 'StrictHostKeyChecking=no',
       '-o', 'ServerAliveInterval=30',
       '-R', `80:127.0.0.1:${PORT}`,
-      'serveo.net'
+      'nokey@localhost.run'
     ], {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false
@@ -171,12 +171,12 @@ server.listen(PORT, '0.0.0.0', () => {
     const handleFallback = (data) => {
       const output = data.toString();
       process.stdout.write(`[Tunnel] ${output}`);
-      const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.serveousercontent\.com/);
+      const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.lhr\.life/);
       if (match && !fallbackFound) {
         fallbackFound = true;
         const fallbackUrl = match[0];
         console.log(`\n======================================================`);
-        console.log(`🌍 Public URLs Ready! (Serveo Backup)`);
+        console.log(`🌍 Public URLs Ready! (localhost.run Backup)`);
         console.log(`======================================================`);
         console.log(`- 대형 디스플레이: ${fallbackUrl}/display.html`);
         console.log(`- 모바일 업로드: ${fallbackUrl}/upload.html (<- QR 코드 주소)`);
