@@ -124,6 +124,10 @@ server.listen(PORT, '0.0.0.0', () => {
 
     cloudflareProcess.stderr.on('data', (data) => {
       const output = data.toString();
+      
+      // 사용자 요청: 클라우드플레어 원본 로그 실시간 출력
+      process.stdout.write(`[Cloudflare] ${output}`);
+
       const match = output.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
       if (match && !tunnelUrlFound) {
         tunnelUrlFound = true;
