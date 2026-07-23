@@ -27,6 +27,20 @@ if %ERRORLEVEL% neq 0 (
     )
 )
 
+:: Cloudflared 실행 파일 자동 확인 및 다운로드 로직
+if not exist "cloudflared.exe" (
+    echo ==============================================
+    echo [INFO] 외부 접속용 Cloudflared가 발견되지 않았습니다.
+    echo [INFO] 공식 바이너리를 자동 다운로드합니다... (약 10~20초 소요)
+    echo ==============================================
+    powershell -Command "Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile 'cloudflared.exe'"
+    if exist "cloudflared.exe" (
+        echo [SUCCESS] Cloudflared 다운로드 완료!
+    ) else (
+        echo [ERROR] 다운로드에 실패했습니다. 수동으로 다운로드해주세요.
+    )
+)
+
 :menu
 cls
 echo ========================================================

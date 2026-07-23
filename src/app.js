@@ -98,9 +98,9 @@ performStartupCleanup();
 
 let cloudflareProcess = null;
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================`);
-  console.log(`🚀 Reverse Cosmos Mosaic (V4 Multi-Theme) Server Started`);
+  console.log(`🚀 Reverse Cosmos Mosaic (V5 Ultimate) Server Started`);
   console.log(`======================================================`);
   console.log(`- 대형 디스플레이: http://localhost:${PORT}/display.html`);
   console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);
@@ -115,7 +115,7 @@ server.listen(PORT, () => {
   const exePath = path.join(__dirname, '../cloudflared.exe');
   if (fs.existsSync(exePath)) {
     console.log('🌐 Starting Cloudflare Tunnel...\n');
-    cloudflareProcess = spawn(exePath, ['tunnel', '--url', `http://localhost:${PORT}`], {
+    cloudflareProcess = spawn(exePath, ['tunnel', '--url', `http://127.0.0.1:${PORT}`], {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false
     });
