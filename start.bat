@@ -36,9 +36,12 @@ if not exist "cloudflared.exe" (
     )
 )
 
-:: 3. Cleanup zombie processes
+:: 3. Flush DNS cache (prevent cached NXDOMAIN from previous failed attempts)
+echo [DNS] Flushing DNS resolver cache...
+ipconfig /flushdns >nul 2>&1
+
+:: 4. Cleanup zombie processes
 echo [CLEANUP] Cleaning up zombie processes and ports...
-taskkill /F /IM cloudflared.exe /T >nul 2>&1
 FOR /F "tokens=5" %%a IN ('netstat -aon ^| findstr ":3000 "') DO (
     taskkill /F /PID %%a /T >nul 2>&1
 )
