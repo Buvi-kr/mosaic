@@ -74,14 +74,14 @@
 
 ```mermaid
 graph TD
-    A[관람객 스마트폰 업로드] -->|Multer (Multipart)| B(Express 서버)
-    B --> C{대기열 Queue}
-    C -->|할당| D[고정 워커 풀 Worker Pool]
-    D --> E[k-d tree 탐색 O(log n)]
-    E --> F[2-Phase 필터링]
-    F --> G[Sharp 이미지 합성]
-    G -->|Socket.io 실시간 갱신| H[대형 전시 스크린]
-    G -->|Blob 전송| I[스마트폰 다운로드]
+    A["관람객 스마트폰 업로드"] -->|"Multer (Multipart)"| B["Express 서버"]
+    B --> C{"대기열 Queue"}
+    C -->|"할당"| D["고정 워커 풀 Worker Pool"]
+    D --> E["k-d tree 탐색 O(log n)"]
+    E --> F["2-Phase 필터링"]
+    F --> G["Sharp 이미지 합성"]
+    G -->|"Socket.io 실시간 갱신"| H["대형 전시 스크린"]
+    G -->|"Blob 전송"| I["스마트폰 다운로드"]
 ```
 
 ### 3-1. k-d tree 기반 2-Phase 타일 매칭 (V4)
@@ -107,42 +107,35 @@ graph TD
 
 ---
 
-## 4. 🚀 설치 및 운영 가이드
+## 4. 🚀 설치 및 운영 가이드 (A to Z 통합 런처)
 
-### 4-1. 배포용 1-Click 포터블 릴리즈 (추천!)
-개발 환경이 전혀 갖춰지지 않은 전시 PC나 구형 컴퓨터에서도 **설치 없이 100% 동작**하도록 포터블 버전을 구워낼 수 있습니다.
+이 프로젝트는 터미널(CMD) 명령어를 직접 칠 필요 없이, 최상위 경로의 **`start.bat`** 파일 하나로 A to Z 모든 작업이 가능하도록 설계되었습니다.
 
-1. 개발 PC의 터미널에서 다음 스크립트를 실행합니다:
-   ```bash
-   node scripts/build_release.js
-   ```
-2. 시스템이 자동으로 가장 안정적인 **Node.js LTS (v20.15.1)** 바이너리를 다운로드하고, 스트리밍 압축 기술(Direct-to-Zip)을 사용해 하드디스크 낭비 없이 `Mosaic_V4_Portable.zip` 하나로 모든 것을 패키징합니다.
-3. 이 ZIP 파일을 USB에 담아 전시관 PC로 가져가 압축을 해제합니다.
-4. 폴더 안의 **`start.bat`** 파일만 더블클릭하면, 숨겨진 로컬 Node가 구동되며 즉시 시스템이 켜집니다! (인터넷만 연결되어 있으면 끝입니다)
+`start.bat`을 더블클릭하면 다음과 같은 통합 메뉴가 나타납니다:
+1. **🚀 서버 시작 (전시용 및 로컬 테스트)**
+2. **📦 배포용 포터블 파일 생성 (USB 1-Click 실행버전)**
+3. **🛠️ 특정 테마 DB 수동 빌드 (타일 재처리 및 k-d tree 재생성)**
+4. **❌ 종료**
 
-### 4-2. 개발자용 로컬 테스트 실행
-코드를 수정하고 로컬에서 테스트하려면:
-1. 최상위 폴더에 있는 `start.bat`을 더블클릭 하거나 터미널에서 아래를 실행합니다.
-   ```bash
-   node src/app.js
-   ```
+### 4-1. 서버 시작 (메뉴 1번)
+- 로컬 환경에서 개발을 진행하거나, 포터블 버전이 아닌 개발 PC 자체에서 스크린을 띄울 때 사용합니다.
+- 실행 즉시 캐시 청소와 함께 Node.js 메인 서버를 구동합니다.
 
-### 4-3. 접속 URL (Endpoints)
+### 4-2. 전시관 배포용 포터블 릴리즈 (메뉴 2번) - 강력 추천!
+개발 환경이 전혀 갖춰지지 않은 전시 PC나 구형 윈도우 컴퓨터에서도 **설치 없이 100% 동작**하는 포터블 버전을 구워냅니다.
+1. `start.bat`에서 2번을 선택합니다.
+2. 시스템이 자동으로 가장 안정적인 **Node.js LTS (v20.15.1)** 바이너리를 다운로드하고, 스트리밍 압축 기술(Direct-to-Zip)을 사용해 `Mosaic_V4_Portable.zip` 하나로 모든 것을 패키징합니다.
+3. 이 ZIP 파일을 USB에 담아 전시관 PC로 가져가 압축을 해제한 뒤, 그 안의 `start.bat`을 더블클릭하면 즉시 구동됩니다.
+
+### 4-3. 신규 테마 추가 및 DB 리빌드 (메뉴 3번)
+1. `public/raw_tiles/` 내부에 새로운 테마 폴더(예: `custom_theme`)를 생성하고 사진들을 집어넣습니다.
+2. `start.bat`에서 3번을 선택하고 해당 테마 이름을 입력하면, 자동으로 k-d tree 인덱싱과 리사이즈가 시작됩니다.
+3. (관리자 패널 `admin.html`을 통해서도 원클릭 자동 빌드가 가능합니다.)
+
+### 4-4. 접속 URL (Endpoints)
 - **전시용 대형 스크린**: `http://localhost:3000/display.html`
 - **관리자 컨트롤 패널**: `http://localhost:3000/admin.html`
 - **방문객 스마트폰 업로드**: `http://localhost:3000/upload.html` (Cloudflare Tunnel을 통해 외부 도메인과 연결됩니다)
-
-### 4-4. 신규 테마 추가 및 데이터베이스 파이프라인
-```bash
-# 1. 새 테마 폴더 생성 및 갤러리 이미지 투입
-mkdir public/raw_tiles/custom_theme
-
-# 2. 관리자 패널에서 테마를 선택해 자동 빌드하거나 CLI 명령어 사용
-node scripts/build.db.js custom_theme
-
-# (옵션) 이미지는 그대로 두고 인덱스(k-d tree)만 초고속 재생성
-node scripts/build.db.js custom_theme --index-only
-```
 
 ---
 
