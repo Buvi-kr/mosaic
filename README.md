@@ -197,6 +197,8 @@ graph TD
 - **`EADDRINUSE` 좀비 프로세스 방지 (`app.js`)**: 포트 충돌 시 `uncaughtException` 핸들러가 에러를 로그만 찍고 프로세스를 살려두어 좀비 Node.js가 남던 문제를 수정했습니다. `server.on('error')` 핸들러를 추가하여 포트 충돌 즉시 명확한 한국어 에러 메시지를 출력하고 프로세스를 깨끗하게 종료합니다.
 - **Cloudflare 서비스 충돌 해결**: 과거에 `cloudflared service install`로 등록된 Windows 서비스(`Cloudflared agent`, StartType: Automatic)가 백그라운드에서 상시 실행되어 Quick Tunnel과 충돌하던 원인을 발견 및 제거(`cloudflared service uninstall`)했습니다.
 - **손상된 `cloudflared.exe` 감지 및 재다운로드**: 65MB → 14MB로 파일이 손상되어 `EFTYPE` 에러가 발생하던 문제를 확인하고 정상 바이너리(v2026.7.3)로 교체했습니다.
+- **Node.js 미설치 현장 PC 지능형 자동 설치**: `start.bat` 실행 시 PC에 Node.js가 없을 경우, 동봉된 `node-v20.15.1-x64.msi` 설치 프로그램을 자동으로 호출(`start /wait`)하고 설치 완료 즉시 환경변수(PATH) 딜레이를 우회하여 즉시 서버를 구동합니다.
+- **USB 현장 배포용 1-Click 패키지 (`Mosaic_V6_Release.zip`)**: `node_modules` 소형 파일 무더기 복사 지연을 방지하기 위해 MSI 설치 바이너리 및 핵심 런처가 포함된 165MB 단일 배포 압축 패키징 지원(`scripts/build_release.js`).
 
 ---
 
