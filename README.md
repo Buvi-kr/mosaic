@@ -5,7 +5,7 @@
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 
-**최종 업데이트**: 2026-07-23
+**최종 업데이트**: 2026-07-27
 
 **개요**: 방문객이 스마트폰으로 QR 코드를 스캔하여 자신의 사진을 업로드하면, 사전에 확보된 수천 장의 타일(우주사진, 풍경 등)을 조합해 방문객의 사진을 **실시간 포토모자이크**로 렌더링하여 대형 스크린에 전시하는 고성능 인터랙티브 미디어아트 프로젝트입니다.
 
@@ -189,6 +189,16 @@ graph TD
 ---
 
 ## 7. 📜 릴리즈 노트 (Patch Notes)
+
+### 📦 V6.1 Startup Reliability Patch (2026-07-27)
+#### 🔧 start.bat 프로세스 정리 및 서버 기동 신뢰성 전면 개선
+- **포트 정리 로직 정밀화**: 기존 `findstr ":3000 "` 패턴이 `LISTENING`, `TIME_WAIT`, `ESTABLISHED` 상태를 구분하지 않고 무차별 매칭하여 Chrome 등 무관한 프로세스까지 kill 시도하던 문제를 수정했습니다. 이제 **`LISTENING` 상태의 프로세스만** 정확히 식별하여 종료합니다.
+- **포트 해제 검증 루프 도입**: kill 후 고정 2초 대기만 하던 방식을 폐기하고, 포트 3000이 **실제로 해제되었는지 최대 10회(10초) 반복 검증**한 뒤에만 서버를 시작하도록 개선했습니다. 포트 미해제 시 명확한 에러 메시지와 함께 즉시 중단됩니다.
+- **`EADDRINUSE` 좀비 프로세스 방지 (`app.js`)**: 포트 충돌 시 `uncaughtException` 핸들러가 에러를 로그만 찍고 프로세스를 살려두어 좀비 Node.js가 남던 문제를 수정했습니다. `server.on('error')` 핸들러를 추가하여 포트 충돌 즉시 명확한 한국어 에러 메시지를 출력하고 프로세스를 깨끗하게 종료합니다.
+- **Cloudflare 서비스 충돌 해결**: 과거에 `cloudflared service install`로 등록된 Windows 서비스(`Cloudflared agent`, StartType: Automatic)가 백그라운드에서 상시 실행되어 Quick Tunnel과 충돌하던 원인을 발견 및 제거(`cloudflared service uninstall`)했습니다.
+- **손상된 `cloudflared.exe` 감지 및 재다운로드**: 65MB → 14MB로 파일이 손상되어 `EFTYPE` 에러가 발생하던 문제를 확인하고 정상 바이너리(v2026.7.3)로 교체했습니다.
+
+---
 
 ### 📦 V6.0 Stability & UX Update (2026-07-23)
 #### 🚀 전시 현장 안정성 강화 및 터미널 UX 개선
