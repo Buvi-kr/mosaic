@@ -14,7 +14,7 @@ function getStartBatContent() {
     return `@echo off
 setlocal
 cd /d "%~dp0"
-title Reverse Cosmos Mosaic (V6)
+title Reverse Cosmos Mosaic (V6) - Portable
 
 echo ==============================================
 echo [CLEANUP] Cleaning up zombie processes and ports...
@@ -23,13 +23,29 @@ echo ==============================================
 :: Kill any existing cloudflared zombie processes
 taskkill /F /IM cloudflared.exe /T >nul 2>&1
 
-:: Kill any node processes holding port 3000
-FOR /F "tokens=5" %%a IN ('netstat -aon ^| findstr ":3000 "') DO (
-    taskkill /F /PID %%a /T >nul 2>&1
-)
+:: Kill only LISTENING processes on port 3000
+powershell -Command "netstat -aon | Select-String 'LISTENING' | Select-String ':3000 ' | ForEach-Object { $pid = ($_ -split '\\s+')[-1]; if ($pid -ne '0') { taskkill /F /PID $pid /T 2>$null } }"
 
-:: Wait 2 seconds for ports to fully release and avoid EADDRINUSE
-timeout /t 2 /nobreak >nul
+:: Wait and verify port 3000 is actually free before starting
+set RETRY_COUNT=0
+:check_port
+powershell -Command "if (netstat -aon | Select-String 'LISTENING' | Select-String ':3000 ') { exit 1 } else { exit 0 }"
+if %ERRORLEVEL% equ 0 goto port_free
+
+set /a RETRY_COUNT+=1
+if %RETRY_COUNT% geq 10 (
+    echo [ERROR] Port 3000 is still in use after 10 seconds.
+    echo [ERROR] Please close the program using port 3000 manually.
+    pause
+    exit /b 1
+)
+echo [CLEANUP] Port 3000 still occupied, retrying... (%RETRY_COUNT%/10)
+timeout /t 1 /nobreak >nul
+powershell -Command "netstat -aon | Select-String 'LISTENING' | Select-String ':3000 ' | ForEach-Object { $pid = ($_ -split '\\s+')[-1]; if ($pid -ne '0') { taskkill /F /PID $pid /T 2>$null } }"
+goto check_port
+
+:port_free
+echo [CLEANUP] Port 3000 is free. Ready to start.
 
 echo ==============================================
 echo [START] System Starting...
