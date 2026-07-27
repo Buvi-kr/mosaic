@@ -3,30 +3,56 @@ const path = require('path');
 const https = require('https');
 const archiver = require('archiver');
 const ROOT_DIR = path.join(__dirname, '..');
-const ZIP_PATH = path.join(ROOT_DIR, 'Mosaic_V6_Portable.zip');
-const NODE_VERSION = 'v20.15.1'; // 고정 LTS 버전 사용 (exhibition PC 호환성)
-const NODE_URL = `https://nodejs.org/dist/${NODE_VERSION}/win-x64/node.exe`;
+const ZIP_PATH = path.join(ROOT_DIR, 'Mosaic_V6_Release.zip');
+const NODE_VERSION = 'v20.15.1';
 const FOLDERS_TO_COPY = ['src', 'public', 'node_modules', 'scripts'];
-const FILES_TO_COPY = ['package.json', 'cloudflared.exe'];
+const FILES_TO_COPY = ['package.json', 'cloudflared.exe', 'node-v20.15.1-x64.msi'];
 
-// Generate the start.bat for the user
 function getStartBatContent() {
     return `@echo off
 setlocal
 cd /d "%~dp0"
-title Reverse Cosmos Mosaic (V6) - Portable
+title Reverse Cosmos Mosaic (V6) - Startup
 
-echo ==============================================
-echo [CLEANUP] Cleaning up zombie processes and ports...
-echo ==============================================
+:: 1. Check and Auto-Install Node.js
+set NODE_CMD=node
+node -v >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    if exist "%ProgramFiles%\\nodejs\\node.exe" (
+        set NODE_CMD="%ProgramFiles%\\nodejs\\node.exe"
+    ) else if exist "node-v20.15.1-x64.msi" (
+        echo [INFO] Node.js is not installed on this PC.
+        echo [INFO] Automatically launching Node.js Installer...
+        echo [INFO] Please complete the installer window.
+        start /wait node-v20.15.1-x64.msi
+        if exist "%ProgramFiles%\\nodejs\\node.exe" (
+            set NODE_CMD="%ProgramFiles%\\nodejs\\node.exe"
+            echo [SUCCESS] Node.js installed successfully!
+        ) else (
+            echo [ERROR] Node.js installation was canceled or failed.
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo [ERROR] Node.js is not installed and node-v20.15.1-x64.msi was not found.
+        pause
+        exit /b 1
+    )
+)
 
-:: Kill any existing cloudflared zombie processes
+:: 2. Check cloudflared
+if not exist "cloudflared.exe" (
+    echo [ERROR] cloudflared.exe not found.
+    pause
+    exit /b 1
+)
+
+:: 3. Cleanup zombie processes and ports
+echo [CLEANUP] Killing leftover cloudflared and port 3000 processes...
 taskkill /F /IM cloudflared.exe /T >nul 2>&1
 
-:: Kill only LISTENING processes on port 3000
 powershell -Command "netstat -aon | Select-String 'LISTENING' | Select-String ':3000 ' | ForEach-Object { $pid = ($_ -split '\\s+')[-1]; if ($pid -ne '0') { taskkill /F /PID $pid /T 2>$null } }"
 
-:: Wait and verify port 3000 is actually free before starting
 set RETRY_COUNT=0
 :check_port
 powershell -Command "if (netstat -aon | Select-String 'LISTENING' | Select-String ':3000 ') { exit 1 } else { exit 0 }"
@@ -47,30 +73,26 @@ goto check_port
 :port_free
 echo [CLEANUP] Port 3000 is free. Ready to start.
 
+:: 4. Start Server
 echo ==============================================
-echo [START] System Starting...
+echo [START] Starting Reverse Cosmos Mosaic Server...
 echo ==============================================
-echo [INFO] Starting the main server using bundled Portable Node.js...
-
-:: Execute the bundled node.exe
-.\\bin\\node.exe .\\src\\app.js
-
+%NODE_CMD% src/app.js
 pause
 `;
 }
 
 async function build() {
-    console.log('🚀 Starting Portable Release Build (Direct-to-Zip)...');
+    console.log('🚀 Starting Release Package Build (Direct-to-Zip)...');
 
-    // Create a file to stream archive data to.
     const output = fs.createWriteStream(ZIP_PATH);
     const archive = archiver('zip', {
-        zlib: { level: 9 } // Sets the compression level.
+        zlib: { level: 9 }
     });
 
     output.on('close', function() {
         console.log(`✅ Build Complete! Zip file created at: ${ZIP_PATH}`);
-        console.log(`Total bytes: ${(archive.pointer() / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`Total size: ${(archive.pointer() / 1024 / 1024).toFixed(2)} MB`);
     });
 
     archive.on('warning', function(err) {
@@ -85,27 +107,14 @@ async function build() {
         throw err;
     });
 
-    // Pipe archive data to the file
     archive.pipe(output);
 
     // 1. Add start.bat
     console.log('[1/4] Adding start.bat...');
     archive.append(getStartBatContent(), { name: 'Mosaic_Release/start.bat' });
 
-    // 2. Download and stream node.exe
-    console.log(`[2/4] Downloading and streaming node.exe (${NODE_VERSION}) directly into zip...`);
-    await new Promise((resolve, reject) => {
-        https.get(NODE_URL, (response) => {
-            if (response.statusCode !== 200) {
-                return reject(new Error(`Failed to get node.exe (${response.statusCode})`));
-            }
-            archive.append(response, { name: 'Mosaic_Release/bin/node.exe' });
-            resolve();
-        }).on('error', reject);
-    });
-
-    // 3. Add Folders and Files
-    console.log('[3/4] Adding source folders, node_modules, and required files (Directly from disk)...');
+    // 2. Add Source Folders & Files
+    console.log('[2/4] Adding source folders and files...');
     FOLDERS_TO_COPY.forEach(folder => {
         const srcPath = path.join(ROOT_DIR, folder);
         if (fs.existsSync(srcPath)) {
@@ -120,8 +129,8 @@ async function build() {
         }
     });
 
-    // 4. Add necessary Data (config.json, themes)
-    console.log('[4/4] Adding essential data files (config.json & themes only)...');
+    // 3. Add Data (config.json & themes)
+    console.log('[3/4] Adding essential data files (config.json & themes only)...');
     const configSrc = path.join(ROOT_DIR, 'data', 'config.json');
     if (fs.existsSync(configSrc)) {
         archive.file(configSrc, { name: 'Mosaic_Release/data/config.json' });
@@ -132,8 +141,7 @@ async function build() {
         archive.directory(themesSrc, 'Mosaic_Release/data/themes');
     }
 
-    // Finalize the archive (this will finish zipping all queued files and streams)
-    console.log('⏳ Finalizing zip file (this might take a few minutes)...');
+    console.log('⏳ Finalizing zip file...');
     await archive.finalize();
 }
 

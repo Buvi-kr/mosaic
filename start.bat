@@ -3,24 +3,29 @@ setlocal
 cd /d "%~dp0"
 title Reverse Cosmos Mosaic (V6) - Startup
 
-:: 1. Check and download Node.js
+:: 1. Check and Auto-Install Node.js
 set NODE_CMD=node
 node -v >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    if exist "node.exe" (
-        set NODE_CMD=.\node.exe
-    ) else (
-        echo [INFO] Node.js not found.
-        echo [INFO] Downloading Node.js v20.15.1 Portable...
-        powershell -Command "Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.15.1/win-x64/node.exe' -OutFile 'node.exe'"
-        if exist "node.exe" (
-            set NODE_CMD=.\node.exe
-            echo [SUCCESS] Node.js downloaded.
+    if exist "%ProgramFiles%\nodejs\node.exe" (
+        set NODE_CMD="%ProgramFiles%\nodejs\node.exe"
+    ) else if exist "node-v20.15.1-x64.msi" (
+        echo [INFO] Node.js is not installed on this PC.
+        echo [INFO] Automatically launching Node.js Installer...
+        echo [INFO] Please complete the installer window.
+        start /wait node-v20.15.1-x64.msi
+        if exist "%ProgramFiles%\nodejs\node.exe" (
+            set NODE_CMD="%ProgramFiles%\nodejs\node.exe"
+            echo [SUCCESS] Node.js installed successfully!
         ) else (
-            echo [ERROR] Failed to download Node.js. Check your internet connection.
+            echo [ERROR] Node.js installation was canceled or failed.
             pause
             exit /b 1
         )
+    ) else (
+        echo [ERROR] Node.js is not installed and node-v20.15.1-x64.msi was not found.
+        pause
+        exit /b 1
     )
 )
 
@@ -32,7 +37,7 @@ if not exist "cloudflared.exe" (
     if exist "cloudflared.exe" (
         echo [SUCCESS] Cloudflared downloaded.
     ) else (
-        echo [ERROR] Failed to download Cloudflared.
+        echo [ERROR] Failed to download Cloudflared. Check your internet connection.
     )
 )
 
@@ -64,16 +69,11 @@ goto check_port
 :port_free
 echo [CLEANUP] Port 3000 is free. Ready to start.
 
-:: 4. Check and install dependencies
+:: 4. Check dependencies
 if not exist "node_modules" (
-    echo [INFO] node_modules not found. Running npm install...
-    call npm -v >nul 2>&1
-    if %ERRORLEVEL% neq 0 (
-        echo [ERROR] npm command not found. Please install Node.js globally.
-        pause
-        exit /b 1
-    )
-    call npm install
+    echo [ERROR] node_modules folder not found. Please verify the project files.
+    pause
+    exit /b 1
 )
 
 :: 5. Start Server
