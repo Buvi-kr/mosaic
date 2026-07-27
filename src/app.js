@@ -98,6 +98,18 @@ performStartupCleanup();
 
 let cloudflareProcess = null;
 
+// 포트 충돌 시 좀비 프로세스로 남지 않도록 명시적 에러 처리
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n[치명적 에러] 포트 ${PORT}이 이미 사용 중입니다!`);
+    console.error(`[치명적 에러] 다른 프로세스가 포트를 점유하고 있습니다.`);
+    console.error(`[치명적 에러] start.bat을 다시 실행해주세요.\n`);
+    process.exit(1);
+  }
+  logGlobalError(err, 'Server Error');
+  process.exit(1);
+});
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================`);
   console.log(`🚀 Reverse Cosmos Mosaic (V6 Ultimate) Server Started`);
