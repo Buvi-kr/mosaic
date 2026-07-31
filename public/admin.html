@@ -217,51 +217,73 @@
 
           <div>
             <label class="flex justify-between mb-2">
-              <span class="font-bold text-slate-700">모자이크 타일 크기 (Tile Size)</span>
-              <span id="tileSizeVal" class="text-indigo-600 font-bold">20px</span>
+              <span class="font-bold text-slate-700">그리드 밀도 조절 (Virtual Tile Size)</span>
+              <span id="tileSizeVal" class="text-indigo-600 font-bold">20 (가상 단위)</span>
             </label>
-            <p class="text-sm text-slate-500 mb-2">숫자가 작을수록 모자이크가 조밀해지며, 클수록 타일 속 사진이 잘 보입니다. (권장: 15~30)</p>
+            <p class="text-sm text-slate-500 mb-2">숫자가 작을수록 가로/세로 칸수가 폭발적으로 증가하여 모자이크가 엄청나게 조밀해집니다. (개별 타일의 물리적 화질은 200px로 항상 고정됩니다)</p>
             <p class="detail-toggle text-xs text-indigo-500 font-bold mb-3" onclick="toggleDetail('tileDetail')"><span id="tileDetailArrow">▶</span> 상세 설명 보기</p>
             <div id="tileDetail" class="detail-content">
               <div class="detail-box">
                 <h4>📋 기능 요약</h4>
-                <p>개별 모자이크 조각의 크기(가로×세로 정사각형 픽셀 수)를 결정합니다.</p>
+                <p>가상 그리드를 나눌 조각의 단위 크기를 결정하여 <strong>가로 몇 칸, 세로 몇 칸</strong>의 모자이크를 만들지(Density)를 조정합니다.</p>
                 <h4 style="margin-top:12px">⚙️ 동작 원리</h4>
                 <ul>
-                  <li><strong>값이 작을수록 (10~15px)</strong> — 타일 수가 기하급수적으로 증가 (예: 1080p에서 ~7,000장 이상). 처리 시간·RAM 사용량 증가. 모자이크가 매우 조밀해져 멀리서 보면 원본처럼 보임. 개별 타일 속 사진은 거의 안 보임.</li>
-                  <li><strong>값이 클수록 (40~60px)</strong> — 타일 수 감소 (예: 1080p에서 ~500장). 빠른 처리·낮은 리소스. 개별 타일 속 사진이 선명하게 보이지만 모자이크 해상도가 낮아 얼굴 인식이 어려움.</li>
+                  <li><strong>값이 작을수록 (10~15)</strong> — 타일 수가 기하급수적으로 증가 (예: 가로 192칸). 캔버스 크기가 폭증하여 OOM 경고가 발생할 수 있습니다. 모자이크가 매우 조밀해져 멀리서 보면 원본처럼 보입니다.</li>
+                  <li><strong>값이 클수록 (40~60)</strong> — 타일 수 감소 (예: 가로 48칸). 빠른 처리·낮은 리소스.</li>
                 </ul>
-                <div class="recommend">💡 <strong>권장값</strong> — 일반 전시: 20px (기본, 밸런스) / 대형 스크린(55"+): 15~18px / 근접 관람: 25~35px (가까이서 개별 사진 감상 가능)</div>
-                <div class="warning">⚠️ 타일 크기 변경 시 서버의 RAM 캐시가 자동 재구성됩니다. 저사양 PC에서는 20px 이상 권장.</div>
+                <div class="recommend">💡 <strong>권장값</strong> — 일반 전시: 20 (기본, 밸런스) / 대형 스크린(55"+): 15~18 / 근접 관람: 25~35</div>
+                <div class="warning">⚠️ 그리드 밀도 변경 시 매칭 수가 달라지므로 캐시가 초기화됩니다.</div>
               </div>
             </div>
             <input type="range" id="tileSizeSlider" min="10" max="60" step="2" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
           </div>
 
           <div>
-            <label class="block font-bold text-slate-700 mb-2">최대 출력 해상도 제한 (Max Resolution)</label>
-            <p class="text-sm text-slate-500 mb-2">업로드된 사진의 가로/세로 중 긴 쪽의 최대 길이를 제한합니다. (메모리 부족 방지용)</p>
+            <label class="block font-bold text-slate-700 mb-2">가상 그리드 해상도 (Virtual Grid Base)</label>
+            <p class="text-sm text-slate-500 mb-2">모자이크 타일이 몇 칸 들어갈지(그리드 밀도)를 결정하기 위한 가상의 해상도 기준입니다. (실제 출력 크기가 아닙니다)</p>
             <p class="detail-toggle text-xs text-indigo-500 font-bold mb-3" onclick="toggleDetail('resDetail')"><span id="resDetailArrow">▶</span> 상세 설명 보기</p>
             <div id="resDetail" class="detail-content">
               <div class="detail-box">
                 <h4>📋 기능 요약</h4>
-                <p>업로드된 사진의 최종 모자이크 출력물 크기(긴 변 기준)를 제한합니다. 원본 크기와 관계없이 이 값 기준으로 비율을 유지한 채 리사이즈 후 모자이크를 생성합니다.</p>
-                <h4 style="margin-top:12px">📐 각 옵션 상세</h4>
+                <p>업로드된 사진을 분석할 때 사용할 '가상의 도화지' 크기입니다. 타일 크기(Tile Size)와 결합되어 모자이크의 <strong>가로/세로 칸수(Density)</strong>를 결정합니다.</p>
+                <h4 style="margin-top:12px">📐 각 옵션 상세 (가로 칸 수)</h4>
                 <ul>
-                  <li><strong>1080px (FHD급)</strong> — 가장 빠른 처리. 일반 모니터/TV 출력에 적합. 예상 타일 수: ~2,900장 (20px 기준)</li>
-                  <li><strong>1440px (QHD급, 권장)</strong> — 처리 속도와 품질의 균형. 대형 모니터에도 충분한 선명도. 예상 타일 수: ~5,200장 (20px 기준)</li>
-                  <li><strong>1920px (4K 전 단계)</strong> — 고화질 출력. 대형 전시 디스플레이에 적합. 예상 타일 수: ~9,200장 (20px 기준). 처리 시간 증가.</li>
-                  <li><strong>2560px (초고화질)</strong> — 최고 품질. 대형 LED 월 등 초고해상도 디스플레이 전용. 예상 타일 수: ~16,000장 (20px 기준). RAM 2GB+ 권장.</li>
+                  <li><strong>1080px</strong> — 20px 타일 기준 가로 54칸. 빠른 처리.</li>
+                  <li><strong>1440px (권장)</strong> — 20px 타일 기준 가로 72칸. 속도와 디테일의 최적 균형.</li>
+                  <li><strong>1920px</strong> — 20px 타일 기준 가로 96칸. 정밀한 디테일. (메모리 사용량 큼)</li>
+                  <li><strong>2560px</strong> — 20px 타일 기준 가로 128칸. 극한의 디테일. (RAM 2GB+ 환경 권장)</li>
                 </ul>
-                <div class="warning">⚠️ 해상도가 높을수록 처리 시간·메모리 사용량이 비례 증가합니다. 동시 접속자가 많은 환경에서는 1440px 이하 권장.</div>
+                <div class="warning">⚠️ 그리드 밀도가 높아질수록 최종 캔버스 크기가 기하급수적으로 폭증합니다!</div>
               </div>
             </div>
             <select id="maxResSelect" class="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-3">
-              <option value="1080">1080px (FHD급 - 빠름)</option>
-              <option value="1440">1440px (QHD급 - 권장)</option>
-              <option value="1920">1920px (4K 전 단계 - 선명함)</option>
-              <option value="2560">2560px (초고화질 - 사양 요구됨)</option>
+              <option value="1080">1080px (가로 54칸 기준 - 빠름)</option>
+              <option value="1440">1440px (가로 72칸 기준 - 밸런스)</option>
+              <option value="1920">1920px (가로 96칸 기준 - 촘촘함)</option>
+              <option value="2560">2560px (가로 128칸 기준 - 매우 촘촘함)</option>
             </select>
+
+            <!-- 라이브 최종 캔버스 해상도 계산기 -->
+            <div class="mt-4 p-4 bg-emerald-50 border-l-4 border-emerald-400 rounded-r-lg shadow-sm">
+              <label class="block text-sm font-bold text-emerald-800 mb-1">예상 모자이크 스펙 미리보기</label>
+              <p class="text-xs text-emerald-600 mb-2">현재 설정으로 생성될 모자이크의 총 칸 수와 물리적 출력 크기입니다.</p>
+              
+              <div class="flex flex-col gap-2 mb-2 text-sm text-emerald-800">
+                <div class="flex justify-between border-b border-emerald-200 pb-1">
+                  <span>모자이크 가로 칸 수:</span>
+                  <span id="liveGridCols" class="font-bold">-- 장</span>
+                </div>
+                <div class="flex justify-between border-b border-emerald-200 pb-1">
+                  <span>모자이크 세로 칸 수:</span>
+                  <span id="liveGridRows" class="font-bold text-emerald-600">-- 장 (가로 비율에 따라 변동)</span>
+                </div>
+                <div class="flex justify-between font-bold mt-1">
+                  <span>최종 물리적 가로 해상도:</span>
+                  <span id="liveFinalCanvasSize" class="text-emerald-900 text-base">-- px</span>
+                </div>
+              </div>
+              <div id="canvasOomWarning" class="mt-2 text-xs font-bold text-red-600 hidden">⚠️ 캔버스가 너무 거대합니다! (가로 15000px 초과) 서버 다운을 막기 위해 개별 타일 화질이 강제 하향됩니다.</div>
+            </div>
           </div>
 
           <!-- 타일 중복 제한 슬라이더 -->
@@ -350,7 +372,7 @@
           }
 
           document.getElementById('tileSizeSlider').value = currentConfig.tileSize || 20;
-          document.getElementById('tileSizeVal').textContent = (currentConfig.tileSize || 20) + 'px';
+          document.getElementById('tileSizeVal').innerText = document.getElementById('tileSizeSlider').value + ' (가상 단위)';
           document.getElementById('maxResSelect').value = currentConfig.maxResolution || 1440;
           document.getElementById('maxUsageSlider').value = currentConfig.maxTileUsage || 4;
           document.getElementById('maxUsageVal').textContent = (currentConfig.maxTileUsage || 4) + '회';
@@ -521,7 +543,7 @@
       }
     });
     document.getElementById('tileSizeSlider').addEventListener('input', (e) => {
-      document.getElementById('tileSizeVal').textContent = e.target.value + 'px';
+      document.getElementById('tileSizeVal').textContent = e.target.value + ' (가상 단위)';
     });
     document.getElementById('maxUsageSlider').addEventListener('input', (e) => {
       document.getElementById('maxUsageVal').textContent = e.target.value + '회';
@@ -604,6 +626,36 @@
       document.getElementById('mathGridMin').textContent = gridMin.toLocaleString();
       document.getElementById('mathSpatialMin').textContent = spatialMin.toLocaleString();
       document.getElementById('mathAbsoluteMin').textContent = absMin.toLocaleString();
+
+      // 최종 캔버스 해상도 계산 로직
+      // config.json 에 RENDER_TILE_SIZE=200 으로 고정되어 있다고 가정.
+      const RENDER_TILE_SIZE = 200; 
+      const cols = Math.floor(res / size);
+      const finalCanvasWidth = cols * RENDER_TILE_SIZE;
+      
+      const gridColsEl = document.getElementById('liveGridCols');
+      const gridRowsEl = document.getElementById('liveGridRows');
+      const canvasSizeEl = document.getElementById('liveFinalCanvasSize');
+      const warningEl = document.getElementById('canvasOomWarning');
+      
+      if (gridColsEl) gridColsEl.textContent = `${cols.toLocaleString()} 장`;
+      if (canvasSizeEl) canvasSizeEl.textContent = `${finalCanvasWidth.toLocaleString()} px`;
+      
+      if (finalCanvasWidth > 15000) {
+        if (warningEl) warningEl.classList.remove('hidden');
+        if (canvasSizeEl) {
+          canvasSizeEl.classList.replace('text-emerald-900', 'text-red-700');
+          canvasSizeEl.parentElement.parentElement.classList.replace('bg-emerald-50', 'bg-red-50');
+          canvasSizeEl.parentElement.parentElement.classList.replace('border-emerald-400', 'border-red-400');
+        }
+      } else {
+        if (warningEl) warningEl.classList.add('hidden');
+        if (canvasSizeEl) {
+          canvasSizeEl.classList.replace('text-red-700', 'text-emerald-900');
+          canvasSizeEl.parentElement.parentElement.classList.replace('bg-red-50', 'bg-emerald-50');
+          canvasSizeEl.parentElement.parentElement.classList.replace('border-red-400', 'border-emerald-400');
+        }
+      }
     };
     
     ['maxResSelect', 'tileSizeSlider', 'maxUsageSlider', 'banRadiusSlider'].forEach(id => {

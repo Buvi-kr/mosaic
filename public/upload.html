@@ -342,7 +342,7 @@
           u_ctx.scale(p.scale, p.scale);
           u_ctx.drawImage(
             p.img,
-            p.sx, p.sy, u_tileSize, u_tileSize,
+            p.sx, p.sy, p.sWidth || u_tileSize, p.sHeight || u_tileSize,
             -u_tileSize / 2, -u_tileSize / 2, u_tileSize, u_tileSize
           );
         } else {
@@ -353,13 +353,13 @@
             u_ctx.scale(p.scale, p.scale);
             u_ctx.drawImage(
               p.img,
-              p.sx, p.sy, u_tileSize, u_tileSize,
+              p.sx, p.sy, p.sWidth || u_tileSize, p.sHeight || u_tileSize,
               -u_tileSize / 2, -u_tileSize / 2, u_tileSize, u_tileSize
             );
           } else {
             u_ctx.drawImage(
               p.img,
-              p.sx, p.sy, u_tileSize, u_tileSize,
+              p.sx, p.sy, p.sWidth || u_tileSize, p.sHeight || u_tileSize,
               p.x, p.y, u_tileSize, u_tileSize
             );
           }
@@ -457,6 +457,11 @@
       const rows = Math.floor(height / tileSize);
       u_totalParticles = cols * rows;
       
+      const scaleX = imgElement.width / width;
+      const scaleY = imgElement.height / height;
+      const sWidth = tileSize * scaleX;
+      const sHeight = tileSize * scaleY;
+      
       const centerX = width / 2;
       const centerY = height / 2;
       const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
@@ -483,7 +488,8 @@
 
           const particle = {
             img: imgElement,
-            sx: destX, sy: destY,
+            sx: destX * scaleX, sy: destY * scaleY,
+            sWidth: sWidth, sHeight: sHeight,
             x: startX, y: startY,
             destX: destX, destY: destY,
             alpha: 0,

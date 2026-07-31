@@ -95,41 +95,12 @@ async function preloadTileCache(targetTileSize, theme) {
     console.log(`[캐시] 테마 전환으로 타일 캐시 전체 flush (${theme}, ${targetTileSize}px)`);
   }
 
-  if (globalTileCache.size >= globalTileDB.length && globalTileCache.size > 0) return;
-
-  console.log(`\n[시스템] 타일 이미지 램(RAM) 적재를 시작합니다. (테마: ${theme}, 크기: ${targetTileSize}px) ...`);
-  const startTime = Date.now();
-  const BATCH_SIZE = 50;
-  let loaded = 0;
-
-  for (let i = 0; i < globalTileDB.length; i += BATCH_SIZE) {
-    const batch = globalTileDB.slice(i, i + BATCH_SIZE);
-    await Promise.all(batch.map(async (tileInfo) => {
-      const filename = tileInfo.filename;
-      if (globalTileCache.has(filename)) return; // 이미 캐시됨
-      try {
-        const tilePath = path.join(paths.tilesDir, filename);
-        const { data: tileRaw } = await sharp(tilePath)
-          .resize(targetTileSize, targetTileSize)
-          .removeAlpha()
-          .raw()
-          .toBuffer({ resolveWithObject: true });
-        globalTileCache.set(filename, tileRaw);
-        loaded++;
-      } catch (err) {
-        // 파일 누락 시 조용히 스킵 (빌드 에러 가능성)
-      }
-    }));
-    process.stdout.write(`\r  -> 적재 중... ${loaded + (globalTileCache.size - loaded)} / ${globalTileDB.length} 완료`);
-  }
-
-  const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-  console.log(`\n[시스템] 타일 램(RAM) 장전 완료! (${elapsed}초 소요)\n`);
+  // Lazy Loading으로 전환되었으므로 전체 사전 적재는 생략합니다.
 }
 
-// 최초 설정값 기준으로 즉시 장전 시작
+// 최초 설정값 기준으로 즉시 장전 시작 (renderTileSize로 적재)
 const initialConfig = configModule.getConfig();
-preloadTileCache(initialConfig.tileSize || 20, initialConfig.currentTheme || 'default_nasa');
+preloadTileCache(initialConfig.renderTileSize || 200, initialConfig.currentTheme || 'default_nasa');
 
 // 외부에서 설정 변경 시 재장전 가능하도록 노출
 router.preloadTileCache = preloadTileCache;
@@ -140,7 +111,11 @@ router.post('/', upload.single('photo'), async (req, res) => {
   if (globalTileDB.length === 0) return res.status(500).json({ error: '타일 데이터(DB)가 존재하지 않습니다.' });
 
   const config = configModule.getConfig();
-  const TILE_SIZE = config.tileSize || 20;
+  // 그리드 밀도 (가상 단위). 작을수록 모자이크 칸수(가로/세로 장수)가 폭증함
+  const TILE_SIZE = config.tileSize || 20; 
+  // 실제 타일 렌더링 물리적 화질 (픽셀). (최종 캔버스 해상도 폭증의 원인)
+  const RENDER_TILE_SIZE = config.renderTileSize || 200; 
+  // 가상 그리드 해상도 기준. (실제 출력물 크기가 아님, 칸수를 계산하기 위한 가상 도화지)
   const MAX_RES = config.maxResolution || 1920;
 
   const sessionId = req.query.sessionId || req.body.sessionId || null;
@@ -149,7 +124,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
   try {
     const startTime = Date.now();
 
-    // 1. 원본 해상도 파악 및 MAX_RES 기준 비율 조정
+    // 1. 원본 비율 파악 및 가상 그리드(MAX_RES) 기준으로 가상 픽셀 스케일링
     const originalInfo = await sharp(req.file.buffer).metadata();
     let targetWidth = originalInfo.width;
     let targetHeight = originalInfo.height;
@@ -162,8 +137,19 @@ router.post('/', upload.single('photo'), async (req, res) => {
       targetHeight = MAX_RES;
     }
 
+    // 2. 가로/세로 모자이크 칸 수(장수) 계산 (Density)
+    // 예: targetWidth가 1920이고 TILE_SIZE가 20이면 가로로 96장의 타일이 들어감
     const cols = Math.floor(targetWidth / TILE_SIZE);
     const rows = Math.floor(targetHeight / TILE_SIZE);
+    
+    // Safety Cap: 캔버스 가로가 15000px을 초과하면 서버 메모리가 터질 수 있으므로 타일 크기를 강제로 낮춤
+    let safeRenderTileSize = RENDER_TILE_SIZE;
+    if (cols * safeRenderTileSize > 15000) {
+      safeRenderTileSize = Math.floor(15000 / cols);
+      if (safeRenderTileSize < TILE_SIZE) safeRenderTileSize = TILE_SIZE; // 최소한 매칭 사이즈보다는 크도록 보장
+      console.warn(`[OOM 보호] 최종 캔버스가 너무 거대합니다! RENDER_TILE_SIZE 강제 하향 조정: ${RENDER_TILE_SIZE}px -> ${safeRenderTileSize}px`);
+    }
+
     const CANVAS_W = cols * TILE_SIZE;
     const CANVAS_H = rows * TILE_SIZE;
     const totalCells = cols * rows;
@@ -188,47 +174,32 @@ router.post('/', upload.single('photo'), async (req, res) => {
         maxTileUsage: config.maxTileUsage,
         banRadius: config.banRadius,
         candidatePoolSize: config.candidatePoolSize,
-      },
-      tileDBVersion: mosaicQueue.tileDBVersion,
+      }
     };
 
-    // 진행 상황: 매칭 시작 알림 + 대기열 정보
+    // 진행 상황 알림
     if (sessionId) {
-      const stats = mosaicQueue.getStats();
       io.to(sessionId).emit('mosaic_progress', {
         phase: 'matching',
-        message: stats.queueLength > 0
-          ? `대기열 ${stats.queueLength}번째... (예상 ${mosaicQueue.estimateWaitTime()}초)`
-          : '색상 분석 및 타일 매칭 중...',
-        percent: 0,
-        queuePosition: stats.queueLength,
-        estimatedWait: mosaicQueue.estimateWaitTime(),
-        cols, rows
+        message: '타일을 매칭하는 중...',
+        percent: 0
       });
     }
 
-    console.log(`⏳ 모자이크 생성 큐 대기... (현재 대기: ${mosaicQueue.getStats().queueLength}명)`);
+    const { matchedTiles } = await mosaicQueue.addJob(workerJobData);
 
-    const matchResult = await mosaicQueue.addJob(workerJobData);
-
-    if (!matchResult.success) {
-      throw new Error(matchResult.error);
-    }
-
-    const { matchedTiles } = matchResult;
-
-    // 4. 모자이크 베이스 합성
-    const canvasWidth = cols * TILE_SIZE;
-    const canvasHeight = rows * TILE_SIZE;
+    // 4. 모자이크 베이스 합성 (고화질 타일 사용)
+    const canvasWidth = cols * safeRenderTileSize;
+    const canvasHeight = rows * safeRenderTileSize;
     const rawCanvas = Buffer.alloc(canvasWidth * canvasHeight * 3);
 
     // 타일 이미지 캐시 확인 & 누락분 로드
     const currentTheme = config.currentTheme || 'default_nasa';
     const tilesDir = path.join(FRONTEND_DIR, 'tiles', currentTheme);
 
-    if (globalCachedTileSize !== TILE_SIZE) {
+    if (globalCachedTileSize !== safeRenderTileSize) {
       globalTileCache.clear();
-      globalCachedTileSize = TILE_SIZE;
+      globalCachedTileSize = safeRenderTileSize;
     }
 
     const uniqueFilenames = [...new Set(matchedTiles.map(t => t.filename))];
@@ -240,7 +211,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
       await Promise.all(batch.map(async (filename) => {
         try {
           const { data: tileRaw } = await sharp(path.join(tilesDir, filename))
-            .resize(TILE_SIZE, TILE_SIZE)
+            .resize(safeRenderTileSize, safeRenderTileSize)
             .removeAlpha()
             .raw()
             .toBuffer({ resolveWithObject: true });
@@ -267,10 +238,15 @@ router.post('/', upload.single('photo'), async (req, res) => {
       const t = matchedTiles[i];
       const tileRaw = globalTileCache.get(t.filename);
       if (!tileRaw) continue; // 캐시 누락 시 스킵
-      for (let y = 0; y < TILE_SIZE; y++) {
-        const destOffset = ((t.top + y) * canvasWidth + t.left) * 3;
-        const srcOffset = y * TILE_SIZE * 3;
-        tileRaw.copy(rawCanvas, destOffset, srcOffset, srcOffset + TILE_SIZE * 3);
+      
+      // 매칭 좌표(tileSize 기준)를 safeRenderTileSize 기준으로 스케일링
+      const renderLeft = Math.floor(t.left / TILE_SIZE) * safeRenderTileSize;
+      const renderTop = Math.floor(t.top / TILE_SIZE) * safeRenderTileSize;
+      
+      for (let y = 0; y < safeRenderTileSize; y++) {
+        const destOffset = ((renderTop + y) * canvasWidth + renderLeft) * 3;
+        const srcOffset = y * safeRenderTileSize * 3;
+        tileRaw.copy(rawCanvas, destOffset, srcOffset, srcOffset + safeRenderTileSize * 3);
       }
     }
 
@@ -279,7 +255,11 @@ router.post('/', upload.single('photo'), async (req, res) => {
 
     if (config.opacity > 0) {
       const alphaVal = Math.max(0, Math.min(255, Math.round(255 * config.opacity)));
-      const transparentOriginal = await sharp(originalResized)
+      // 원본 이미지도 캔버스 크기로 리사이즈
+      const originalForBlend = await sharp(req.file.buffer)
+        .resize({ width: canvasWidth, height: canvasHeight, fit: 'cover' })
+        .toBuffer();
+      const transparentOriginal = await sharp(originalForBlend)
         .ensureAlpha()
         .composite([{
           input: Buffer.from([255, 255, 255, alphaVal]),
@@ -295,7 +275,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
       // 이중 하이브리드 (Multiply + Over) 로직 추가
       if (config.blendMode === 'multiply' && config.secondOpacity > 0) {
         const secondAlphaVal = Math.max(0, Math.min(255, Math.round(255 * config.secondOpacity)));
-        const secondTransparentOriginal = await sharp(originalResized)
+        const secondTransparentOriginal = await sharp(originalForBlend)
           .ensureAlpha()
           .composite([{
             input: Buffer.from([255, 255, 255, secondAlphaVal]),
@@ -305,7 +285,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
           }])
           .png()
           .toBuffer();
-        
+
         // 1차로 Multiply 적용 후, 2차로 옅게 Over 적용
         composites.push({ input: secondTransparentOriginal, blend: 'over' });
       }
@@ -314,13 +294,13 @@ router.post('/', upload.single('photo'), async (req, res) => {
         raw: { width: canvasWidth, height: canvasHeight, channels: 3 }
       })
         .composite(composites)
-        .jpeg({ quality: 90 })
+        .jpeg({ quality: 95 })
         .toBuffer();
 
     } else {
       finalImageBuffer = await sharp(rawCanvas, {
         raw: { width: canvasWidth, height: canvasHeight, channels: 3 }
-      }).jpeg({ quality: 90 }).toBuffer();
+      }).jpeg({ quality: 95 }).toBuffer();
     }
 
     const outputFilename = `mosaic_${Date.now()}.jpg`;
@@ -365,7 +345,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
     const totalTilesInDB = globalTileDB.length;
     const usageRate = totalTilesInDB > 0 ? ((sortedUsage.length / totalTilesInDB) * 100).toFixed(1) : '0.0';
-    console.log(`✅ 모자이크 완료! ${outputFilename} [${CANVAS_W}x${CANVAS_H}] (${elapsed}s 소요, 테마: ${currentTheme})`);
+    console.log(`✅ 모자이크 완료! ${outputFilename} [${canvasWidth}x${canvasHeight}] (${elapsed}s 소요, 테마: ${currentTheme})`);
     console.log(`   📊 총 ${totalCells.toLocaleString()}칸 배치 / 고유 타일 ${sortedUsage.length.toLocaleString()} / ${totalTilesInDB.toLocaleString()}종 사용 (활용률 ${usageRate}%)`);
 
     // 월간 통계 로깅
@@ -378,7 +358,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
       const statsFile = path.join(__dirname, `../logs/stats_${dateString}.log`);
 
       const kstTime = now.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-      const logLine = `[${kstTime}] 새로운 모자이크 완성 (소요시간: ${elapsed}s, 해상도: ${CANVAS_W}x${CANVAS_H}, 고유 타일: ${sortedUsage.length}종, 테마: ${currentTheme})\n`;
+      const logLine = `[${kstTime}] 새로운 모자이크 완성 (소요시간: ${elapsed}s, 해상도: ${canvasWidth}x${canvasHeight}, 고유 타일: ${sortedUsage.length}종, 테마: ${currentTheme})\n`;
       fs.appendFileSync(statsFile, logLine);
     } catch (e) {
       console.error('월간 통계 로깅 실패:', e);
@@ -411,7 +391,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
     try {
       const logPath = path.join(__dirname, '../logs/server.error.log');
       fs.appendFileSync(logPath, `[${new Date().toISOString()}] ERROR in /api/upload: ${err.stack || err.message}\n`);
-    } catch (e) {}
+    } catch (e) { }
     res.status(500).json({ error: '서버 에러가 발생했습니다.' });
   }
 });

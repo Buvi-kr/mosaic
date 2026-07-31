@@ -157,7 +157,7 @@
           ctx.scale(p.scale, p.scale);
           ctx.drawImage(
             p.img,
-            p.sx, p.sy, currentTileSize, currentTileSize,
+            p.sx, p.sy, p.sWidth || currentTileSize, p.sHeight || currentTileSize,
             -currentTileSize / 2, -currentTileSize / 2, currentTileSize, currentTileSize
           );
         } else {
@@ -168,13 +168,13 @@
             ctx.scale(p.scale, p.scale);
             ctx.drawImage(
               p.img,
-              p.sx, p.sy, currentTileSize, currentTileSize,
+              p.sx, p.sy, p.sWidth || currentTileSize, p.sHeight || currentTileSize,
               -currentTileSize / 2, -currentTileSize / 2, currentTileSize, currentTileSize
             );
           } else {
             ctx.drawImage(
               p.img,
-              p.sx, p.sy, currentTileSize, currentTileSize,
+              p.sx, p.sy, p.sWidth || currentTileSize, p.sHeight || currentTileSize,
               p.x, p.y, currentTileSize, currentTileSize
             );
           }
@@ -271,6 +271,12 @@
       const rows = Math.floor(CANVAS_H / currentTileSize);
       totalParticles = cols * rows;
       
+      // 물리적 캔버스 이미지 크기와 가상 그리드 비율 계산
+      const scaleX = imgElement.width / CANVAS_W;
+      const scaleY = imgElement.height / CANVAS_H;
+      const sWidth = currentTileSize * scaleX;
+      const sHeight = currentTileSize * scaleY;
+      
       const centerX = CANVAS_W / 2;
       const centerY = CANVAS_H / 2;
       const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
@@ -300,7 +306,8 @@
 
           const particle = {
             img: imgElement,
-            sx: destX, sy: destY,
+            sx: destX * scaleX, sy: destY * scaleY,
+            sWidth: sWidth, sHeight: sHeight,
             x: startX, y: startY,
             destX: destX, destY: destY,
             alpha: 0,

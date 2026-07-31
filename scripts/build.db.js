@@ -22,9 +22,9 @@ function themePaths(themeName) {
 async function processTiles(themeName, options = {}) {
   const { indexOnly = false } = options;
   const config = configModule.getConfig();
-  const TILE_SIZE = config.tileSize || 20;
+  const RENDER_TILE_SIZE = config.renderTileSize || 200; // 실제 렌더링 물리 화질 (이 화질로 모든 타일을 전처리)
   const MIN_REQUIRED = config.minRequiredTiles || 3000;
-  const BATCH_SIZE = 30; // 동시 처리 배치 크기
+  const BATCH_SIZE = 30;
 
   const paths = themePaths(themeName);
 
@@ -53,7 +53,7 @@ async function processTiles(themeName, options = {}) {
   }
 
   console.log(`   - 총 파일 수: ${files.length.toLocaleString()}개`);
-  console.log(`   - 타일 크기: ${TILE_SIZE}px`);
+  console.log(`   - 타일 크기: ${RENDER_TILE_SIZE}px (고화질 정사각형 크롭)`);
   console.log(`   - 배치 크기: ${BATCH_SIZE}개씩 병렬 처리\n`);
 
   // 출력 폴더 생성
@@ -75,16 +75,18 @@ async function processTiles(themeName, options = {}) {
       const tileId = count + batch.indexOf(file);
       // 파일명 충돌 방지: 원본 파일명 기반 (확장자만 통일)
       const baseName = path.basename(file, path.extname(file));
-      const tileName = `tile_${baseName}.jpg`;
+      const tileName = `tile_${baseName}.webp`;
       const tilePath = path.join(paths.tilesDir, tileName);
 
+      // 고화질 정사각형 크롭 타일 생성 (원본에서 직접, WebP 최적화)
       const buffer = await sharp(rawPath)
-        .resize({ width: TILE_SIZE, height: TILE_SIZE, fit: 'cover' })
-        .toFormat('jpeg')
+        .resize({ width: RENDER_TILE_SIZE, height: RENDER_TILE_SIZE, fit: 'cover' })
+        .webp({ quality: 95 })
         .toBuffer();
 
       await sharp(buffer).toFile(tilePath);
 
+      // LAB 평균색 계산 (매칭용 — JSON DB에 저장)
       const stats = await sharp(buffer).stats();
       const r = stats.channels[0].mean;
       const g = stats.channels[1].mean;

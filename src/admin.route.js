@@ -123,7 +123,7 @@ router.get('/themes', (req, res) => {
 router.post('/config', async (req, res) => {
   const prevConfig = configModule.getConfig();
   const prevTheme = prevConfig.currentTheme || 'default_nasa';
-  const newThemeRequested = req.body.currentTheme;
+  const newThemeRequested = req.body?.currentTheme;
 
   // currentTheme 화이트리스트 검증
   if (newThemeRequested && newThemeRequested !== prevTheme) {
@@ -137,7 +137,7 @@ router.post('/config', async (req, res) => {
   }
 
   // config 업데이트 (원자적 쓰기는 config.js 내부에서 처리)
-  const newConfig = configModule.updateConfig(req.body);
+  const newConfig = configModule.updateConfig(req.body || {});
 
   console.log('\n======================================================');
   console.log(`[Admin] ⚙️ 관리자 설정 라이브 반영 완료!`);
@@ -220,7 +220,7 @@ router.get('/build-status', (req, res) => {
 // POST /api/admin/build-db — 수동 빌드 트리거 (기존 API 유지)
 router.post('/build-db', async (req, res) => {
   const config = configModule.getConfig();
-  const theme = req.body.theme || config.currentTheme || 'default_nasa';
+  const theme = req.body?.theme || config.currentTheme || 'default_nasa';
 
   // 화이트리스트 검증
   const validThemes = getAvailableThemes();
@@ -244,7 +244,7 @@ router.post('/build-db', async (req, res) => {
 // POST /api/admin/theme-upload-chunk — 폴더 분할 업로드 수신 및 Sharp 최적화
 router.post('/theme-upload-chunk', upload.array('images', 100), async (req, res) => {
   try {
-    const themeName = req.body.themeName;
+    const themeName = req.body?.themeName;
     if (!themeName) return res.status(400).json({ error: '테마 이름이 누락되었습니다.' });
 
     const themeDir = path.join(RAW_TILES_DIR, themeName);
@@ -280,7 +280,7 @@ router.post('/theme-upload-chunk', upload.array('images', 100), async (req, res)
 
 // POST /api/admin/theme-upload-finish — 업로드 완료 후 중복 제거 호출
 router.post('/theme-upload-finish', express.json(), (req, res) => {
-  const themeName = req.body.themeName;
+  const themeName = req.body?.themeName;
   if (!themeName) return res.status(400).json({ error: '테마 이름이 누락되었습니다.' });
 
   console.log(`\n[Admin] 테마 '${themeName}' 업로드 완료. 중복 제거 스크립트 실행 시작...`);

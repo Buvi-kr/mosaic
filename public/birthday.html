@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>🎂 생일 축하 모자이크 | 디스플레이</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Noto Sans KR', sans-serif;
+      background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 25%, #fbcfe8 50%, #f9a8d4 75%, #f472b6 100%);
+    }
+
+    /* 부드러운 움직이는 그라데이션 배경 */
+    .bg-animated {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: -2;
+      background: linear-gradient(-45deg, #fdf2f8, #fce7f3, #fff1f2, #fef3c7, #fdf2f8);
+      background-size: 400% 400%;
+      animation: gradientShift 15s ease infinite;
+    }
+
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* 떠다니는 꽃잎/하트 파티클 */
+    .particle-container {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: -1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .floating-particle {
+      position: absolute;
+      font-size: 24px;
+      opacity: 0;
+      animation: floatUp linear infinite;
+    }
+
+    @keyframes floatUp {
+      0% {
+        opacity: 0;
+        transform: translateY(100vh) rotate(0deg) scale(0.5);
+      }
+      10% { opacity: 0.8; }
+      90% { opacity: 0.6; }
+      100% {
+        opacity: 0;
+        transform: translateY(-10vh) rotate(360deg) scale(1.2);
+      }
+    }
+
+    #canvas-container {
+      position: absolute;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      box-shadow: 0 8px 60px rgba(244, 114, 182, 0.3), 0 0 100px rgba(251, 191, 36, 0.15);
+      border-radius: 8px;
+    }
+
+    #idle-message {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      z-index: 10;
+      color: rgba(136, 19, 55, 0.85);
+      transition: opacity 1s;
+    }
+
+    /* 우측 하단 고정 QR 안내 */
+    #qr-overlay {
+      position: absolute;
+      bottom: 40px; right: 40px;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(244, 114, 182, 0.3);
+      padding: 20px;
+      border-radius: 24px;
+      text-align: center;
+      z-index: 20;
+      box-shadow: 0 8px 32px rgba(244, 114, 182, 0.15);
+    }
+    .cropper-container { max-height: 50vh; }
+  </style>
+</head>
+<body>
+  <div class="bg-animated"></div>
+  <div class="particle-container" id="particleContainer"></div>
+
+  <div id="idle-message">
+    <div style="font-size: 64px; margin-bottom: 16px;">🎂</div>
+    <h1 class="text-7xl font-black mb-6 tracking-tight" style="background: linear-gradient(135deg, #be185d, #e11d48, #db2777, #c026d3); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">생일 축하해요, 엄마!</h1>
+    <p class="text-3xl font-light" style="color: rgba(136, 19, 55, 0.7);">QR을 스캔하거나 우측 버튼을 눌러 사진을 보내주세요 💐</p>
+  </div>
+
+  <div id="canvas-container">
+    <canvas id="mosaicCanvas"></canvas>
+  </div>
+
+  <div id="qr-overlay" style="position: absolute; bottom: 40px; left: 40px; background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(244, 114, 182, 0.3); padding: 20px; border-radius: 24px; text-align: center; z-index: 20; box-shadow: 0 8px 32px rgba(244, 114, 182, 0.15);">
+    <div id="qrcode" class="bg-white p-2 rounded-xl mb-3 w-32 h-32 mx-auto flex items-center justify-center" style="border: 2px solid rgba(244, 114, 182, 0.3);">
+      <span class="text-pink-400 text-sm">QR Code</span>
+    </div>
+    <p class="font-bold text-lg" style="color: #be185d;">참여하기 💝</p>
+  </div>
+
+  <!-- QR코드 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+  <!-- 업로드 버튼 및 파일 입력 -->
+  <div style="position: absolute; bottom: 40px; right: 40px; z-index: 20;">
+    <input type="file" id="photoInput" accept="image/*" class="hidden">
+    <button id="mainUploadBtn" class="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-xl border border-pink-300 text-pink-600 font-bold text-xl flex items-center gap-3 hover:bg-pink-50 hover:scale-105 transition-all cursor-pointer">
+      <span style="font-size: 28px;">📸</span> 추억 사진 올리기
+    </button>
+  </div>
+
+  <!-- 업로드 및 크롭 모달 -->
+  <div id="uploadModal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 100; flex-direction: column; align-items: center; justify-content: center; padding: 20px; font-family: 'Noto Sans KR', sans-serif;">
+    <!-- 크롭 단계 -->
+    <div id="cropStep" class="w-full max-w-md bg-white p-6 rounded-3xl shadow-2xl">
+      <h2 class="text-2xl font-bold mb-4 text-pink-600 text-center">사진 크롭하기</h2>
+      <div class="bg-black rounded-xl overflow-hidden mb-4" style="max-height: 50vh; display: flex; justify-content: center; align-items: center;">
+        <img id="imageToCrop" src="" style="max-width: 100%; max-height: 100%;">
+      </div>
+      <div class="flex gap-3">
+        <button id="cancelCropBtn" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-xl font-bold transition-colors">취소</button>
+        <button id="submitCropBtn" class="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-3 rounded-xl font-bold shadow-lg transition-transform hover:scale-105">이대로 전송 🚀</button>
+      </div>
+    </div>
+
+    <!-- 업로드 진행 단계 -->
+    <div id="progressStep" class="hidden w-full max-w-md bg-white p-8 rounded-3xl shadow-2xl text-center">
+      <h3 id="progressTitle" class="text-xl font-bold text-pink-500 mb-4">사진을 모자이크로 변환 중...</h3>
+      <div class="w-full bg-pink-100 rounded-full h-4 mb-3 overflow-hidden">
+         <div id="progressFill" class="bg-gradient-to-r from-pink-400 to-rose-500 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+      </div>
+      <p id="progressText" class="text-sm text-gray-600 font-medium">잠시만 기다려주세요...</p>
+    </div>
+  </div>
+  <script>
+    // === 떠다니는 파티클 생성 ===
+    const particleEmojis = ['🌸', '💐', '🌷', '💕', '✨', '🎀', '🌺', '💖', '🎂', '🎁'];
+    const particleContainer = document.getElementById('particleContainer');
+
+    function createFloatingParticle() {
+      const el = document.createElement('div');
+      el.className = 'floating-particle';
+      el.textContent = particleEmojis[Math.floor(Math.random() * particleEmojis.length)];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.fontSize = (16 + Math.random() * 24) + 'px';
+      el.style.animationDuration = (12 + Math.random() * 18) + 's';
+      el.style.animationDelay = Math.random() * 5 + 's';
+      particleContainer.appendChild(el);
+
+      setTimeout(() => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 35000);
+    }
+
+    for (let i = 0; i < 30; i++) {
+      setTimeout(createFloatingParticle, Math.random() * 8000);
+    }
+    setInterval(createFloatingParticle, 1200);
+
+    // === Socket.io ===
+    const socket = io();
+    
+    // === QR 로직 ===
+    let uploadUrl = window.location.origin + '/birthday.html';
+
+    function drawQR(url) {
+      QRCode.toCanvas(document.createElement('canvas'), url, { width: 120, margin: 1 }, function (err, canvas) {
+        if(!err) {
+          const qrContainer = document.getElementById('qrcode');
+          qrContainer.innerHTML = '';
+          qrContainer.appendChild(canvas);
+        }
+      });
+    }
+
+    drawQR(uploadUrl);
+
+    socket.on('tunnel_url', (url) => {
+      console.log('클라우드플레어 터널 주소 수신:', url);
+      drawQR(url + '/birthday.html');
+    });
+
+    // === 업로드 로직 ===
+    const photoInput = document.getElementById('photoInput');
+    const mainUploadBtn = document.getElementById('mainUploadBtn');
+    const uploadModal = document.getElementById('uploadModal');
+    const cropStep = document.getElementById('cropStep');
+    const progressStep = document.getElementById('progressStep');
+    const imageToCrop = document.getElementById('imageToCrop');
+    const cancelCropBtn = document.getElementById('cancelCropBtn');
+    const submitCropBtn = document.getElementById('submitCropBtn');
+    
+    const progressTitle = document.getElementById('progressTitle');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+
+    let cropper = null;
+    let uploadSessionId = null;
+
+    mainUploadBtn.addEventListener('click', () => {
+      photoInput.click();
+    });
+
+    photoInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        imageToCrop.src = URL.createObjectURL(file);
+        
+        uploadModal.style.display = 'flex';
+        cropStep.classList.remove('hidden');
+        progressStep.classList.add('hidden');
+
+        if(cropper) cropper.destroy();
+        cropper = new Cropper(imageToCrop, {
+          viewMode: 1,
+          dragMode: 'none',
+          autoCropArea: 0.8,
+          restore: false,
+          guides: true,
+          center: true,
+          highlight: false,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          toggleDragModeOnDblclick: false,
+        });
+      }
+    });
+
+    cancelCropBtn.addEventListener('click', () => {
+      uploadModal.style.display = 'none';
+      photoInput.value = '';
+      if(cropper) {
+        cropper.destroy();
+        cropper = null;
+      }
+    });
+
+    submitCropBtn.addEventListener('click', () => {
+      if (!cropper) return;
+
+      cropStep.classList.add('hidden');
+      progressStep.classList.remove('hidden');
+      
+      progressFill.style.width = '0%';
+      progressText.textContent = '잠시만 기다려주세요...';
+      progressTitle.textContent = '사진을 변환하는 중...';
+      
+      uploadSessionId = 'upload_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+      socket.emit('join_session', uploadSessionId);
+
+      const cvs = cropper.getCroppedCanvas({
+        maxWidth: 4096,
+        maxHeight: 4096,
+      });
+
+      if (!cvs) {
+        alert('영역을 인식할 수 없습니다. 다시 시도해주세요.');
+        cropStep.classList.remove('hidden');
+        progressStep.classList.add('hidden');
+        return;
+      }
+
+      cvs.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append('photo', blob, 'birthday_upload.jpg');
+
+        try {
+          const res = await fetch(`/api/upload?sessionId=${encodeURIComponent(uploadSessionId)}`, {
+            method: 'POST',
+            body: formData
+          });
+          const data = await res.json();
+          
+          if(data.success) {
+            // 업로드 성공 시 모달을 닫음
+            uploadModal.style.display = 'none';
+            photoInput.value = '';
+            if(cropper) {
+              cropper.destroy();
+              cropper = null;
+            }
+          } else {
+            alert('업로드 실패: ' + data.error);
+            uploadModal.style.display = 'none';
+          }
+        } catch(e) {
+          alert('서버 통신 에러가 발생했습니다.');
+          uploadModal.style.display = 'none';
+        }
+      }, 'image/jpeg', 0.9);
+    });
+
+    socket.on('mosaic_progress', (data) => {
+      if (data.percent !== undefined) {
+        progressFill.style.width = data.percent + '%';
+      }
+      if (data.phase === 'matching') {
+        progressTitle.textContent = '색상 분석 및 타일 매칭 중...';
+        progressText.textContent = '사진을 수많은 조각으로 분석하고 있습니다.';
+      } else if (data.phase === 'compositing') {
+        progressTitle.textContent = '타일을 조합하는 중...';
+        const placed = (data.placedCount || 0).toLocaleString();
+        const total = (data.totalCount || 0).toLocaleString();
+        progressText.textContent = `${placed} / ${total} 타일 완성 중!`;
+      } else if (data.phase === 'done') {
+        progressTitle.textContent = '✅ 완성!';
+        progressFill.style.width = '100%';
+        progressText.textContent = '모자이크 변환 완료!';
+      }
+    });
+
+    const idleMessage = document.getElementById('idle-message');
+    const canvas = document.getElementById('mosaicCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let CANVAS_W = 1920;
+    let CANVAS_H = 1080;
+    let currentTileSize = 20;
+
+    function resizeCanvas() {
+      const scale = Math.min(window.innerWidth / CANVAS_W, window.innerHeight / CANVAS_H) * 0.95;
+      canvas.width = CANVAS_W;
+      canvas.height = CANVAS_H;
+      canvas.style.transform = `scale(${scale})`;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let particles = [];
+    let sparkles = [];
+    let shockwave = null;
+    let finishFlash = 0;
+    let animationFrame;
+    let landedCount = 0;
+    let totalParticles = 0;
+    let shockwaveFired = false;
+    let finishFired = false;
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const useRotation = totalParticles < 3000;
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (p.alpha <= 0) continue;
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+
+        if (useRotation && p.rotation !== 0) {
+          const cx = p.x + currentTileSize / 2;
+          const cy = p.y + currentTileSize / 2;
+          ctx.translate(cx, cy);
+          ctx.rotate(p.rotation);
+          ctx.scale(p.scale, p.scale);
+          ctx.drawImage(p.img, p.sx, p.sy, p.sWidth || currentTileSize, p.sHeight || currentTileSize, -currentTileSize / 2, -currentTileSize / 2, currentTileSize, currentTileSize);
+        } else {
+          if (p.scale !== 1) {
+            const cx = p.x + currentTileSize / 2;
+            const cy = p.y + currentTileSize / 2;
+            ctx.translate(cx, cy);
+            ctx.scale(p.scale, p.scale);
+            ctx.drawImage(p.img, p.sx, p.sy, p.sWidth || currentTileSize, p.sHeight || currentTileSize, -currentTileSize / 2, -currentTileSize / 2, currentTileSize, currentTileSize);
+          } else {
+            ctx.drawImage(p.img, p.sx, p.sy, p.sWidth || currentTileSize, p.sHeight || currentTileSize, p.x, p.y, currentTileSize, currentTileSize);
+          }
+        }
+        ctx.restore();
+      }
+
+      // 글로우 — 핑크/골드
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (p.glow > 0) {
+          ctx.globalAlpha = p.glow * 0.6;
+          const glowSize = currentTileSize * (1 + p.glow * 0.5);
+          const offset = (glowSize - currentTileSize) / 2;
+          ctx.fillStyle = `hsl(${330 + Math.random() * 40}, 80%, 70%)`;
+          ctx.fillRect(p.destX - offset, p.destY - offset, glowSize, glowSize);
+        }
+      }
+      ctx.restore();
+
+      // 스파클
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = sparkles.length - 1; i >= 0; i--) {
+        const s = sparkles[i];
+        s.x += s.vx;
+        s.y += s.vy;
+        s.life -= 0.025;
+        if (s.life <= 0) { sparkles.splice(i, 1); continue; }
+
+        ctx.globalAlpha = s.life * 0.8;
+        ctx.fillStyle = s.color;
+
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(s.angle);
+        const sz = s.size * s.life;
+        ctx.fillRect(-sz/2, -sz*2, sz, sz*4);
+        ctx.fillRect(-sz*2, -sz/2, sz*4, sz);
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // 충격파 — 핑크
+      if (shockwave) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = shockwave.alpha;
+        ctx.strokeStyle = `rgba(244, 114, 182, ${shockwave.alpha})`;
+        ctx.lineWidth = 4 + (1 - shockwave.alpha) * 8;
+        ctx.beginPath();
+        ctx.arc(CANVAS_W / 2, CANVAS_H / 2, shockwave.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.globalAlpha = shockwave.alpha * 0.5;
+        ctx.strokeStyle = `rgba(251, 191, 36, ${shockwave.alpha * 0.5})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(CANVAS_W / 2, CANVAS_H / 2, shockwave.radius * 0.85, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 피니시 플래시 — 따뜻한 핑크
+      if (finishFlash > 0) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = finishFlash;
+        ctx.fillStyle = 'rgba(252, 231, 243, 1)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+      }
+
+      ctx.globalAlpha = 1;
+      animationFrame = requestAnimationFrame(render);
+    }
+
+    function startFlyInAnimation(imgElement) {
+      cancelAnimationFrame(animationFrame);
+      particles = [];
+      sparkles = [];
+      shockwave = null;
+      finishFlash = 0;
+      landedCount = 0;
+      shockwaveFired = false;
+      finishFired = false;
+
+      const cols = Math.floor(CANVAS_W / currentTileSize);
+      const rows = Math.floor(CANVAS_H / currentTileSize);
+      totalParticles = cols * rows;
+
+      // 물리적 캔버스 이미지 크기와 가상 그리드 비율 계산
+      const scaleX = imgElement.width / CANVAS_W;
+      const scaleY = imgElement.height / CANVAS_H;
+      const sWidth = currentTileSize * scaleX;
+      const sHeight = currentTileSize * scaleY;
+
+      const centerX = CANVAS_W / 2;
+      const centerY = CANVAS_H / 2;
+      const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
+      const useRotation = totalParticles < 3000;
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const destX = x * currentTileSize;
+          const destY = y * currentTileSize;
+
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 2000 + Math.random() * 3000;
+          const startX = destX + Math.cos(angle) * dist;
+          const startY = destY + Math.sin(angle) * dist;
+
+          const tileCenterX = destX + currentTileSize / 2;
+          const tileCenterY = destY + currentTileSize / 2;
+          const distFromCenter = Math.sqrt(
+            (tileCenterX - centerX) ** 2 + (tileCenterY - centerY) ** 2
+          );
+
+          const waveDelay = (distFromCenter / maxDist) * 4.0;
+          const randomJitter = Math.random() * 0.8;
+
+          const particle = {
+            img: imgElement,
+            sx: destX * scaleX, sy: destY * scaleY,
+            sWidth: sWidth, sHeight: sHeight,
+            x: startX, y: startY,
+            destX: destX, destY: destY,
+            alpha: 0,
+            rotation: useRotation ? (Math.random() - 0.5) * Math.PI * 1.5 : 0,
+            scale: 0.3,
+            glow: 0,
+            landed: false
+          };
+          particles.push(particle);
+
+          const totalDelay = waveDelay + randomJitter;
+          const duration = 2.4 + Math.random() * 2.0;
+
+          const tl = gsap.timeline({ delay: totalDelay });
+
+          tl.to(particle, {
+            x: destX, y: destY,
+            alpha: 1, rotation: 0, scale: 1.15,
+            duration: duration,
+            ease: "power3.out",
+            onComplete: () => {
+              particle.landed = true;
+
+              const sparkCount = 3 + Math.floor(Math.random() * 3);
+              for (let s = 0; s < sparkCount; s++) {
+                sparkles.push({
+                  x: destX + currentTileSize / 2,
+                  y: destY + currentTileSize / 2,
+                  vx: (Math.random() - 0.5) * 4,
+                  vy: (Math.random() - 0.5) * 4,
+                  size: 1.5 + Math.random() * 2,
+                  life: 1,
+                  color: Math.random() > 0.5
+                    ? `hsl(${330 + Math.random() * 30}, 90%, ${70 + Math.random() * 20}%)`
+                    : `hsl(${40 + Math.random() * 15}, 95%, ${60 + Math.random() * 20}%)`,
+                  angle: Math.random() * Math.PI
+                });
+              }
+
+              landedCount++;
+
+              if (!finishFired && landedCount >= totalParticles) {
+                finishFired = true;
+                if (!shockwaveFired) {
+                  shockwaveFired = true;
+                  shockwave = { radius: 0, alpha: 0.8 };
+                  gsap.to(shockwave, {
+                    radius: maxDist * 1.2, alpha: 0,
+                    duration: 2.0, ease: "power2.out",
+                    onComplete: () => { shockwave = null; }
+                  });
+                }
+                finishFlash = 0.4;
+                gsap.to({ v: 0.4 }, {
+                  v: 0, duration: 1.0, ease: "power2.out",
+                  onUpdate: function() { finishFlash = this.targets()[0].v; }
+                });
+              }
+            }
+          });
+
+          tl.to(particle, {
+            scale: 1, duration: 0.3, ease: "elastic.out(1, 0.5)"
+          }, "-=0.1");
+        }
+      }
+
+      render();
+    }
+
+    let lastImg = null;
+
+    socket.on('new_mosaic', (data) => {
+      console.log('새 모자이크 수신!', data.imageUrl);
+      if (data.tileSize) currentTileSize = data.tileSize;
+      if (data.width && data.height) {
+        CANVAS_W = data.width;
+        CANVAS_H = data.height;
+        resizeCanvas();
+      }
+
+      idleMessage.style.opacity = '0';
+
+      const img = new Image();
+      img.onload = () => {
+        lastImg = img;
+        if (document.hidden) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
+        } else {
+          startFlyInAnimation(img);
+        }
+      };
+      img.src = data.imageUrl;
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && lastImg) {
+        if (particles.length > 0) {
+          particles.forEach(p => gsap.killTweensOf(p));
+          particles = [];
+          sparkles = [];
+          shockwave = null;
+          finishFlash = 0;
+          cancelAnimationFrame(animationFrame);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(lastImg, 0, 0, CANVAS_W, CANVAS_H);
+        }
+      }
+    });
+
+    socket.on('config_updated', (config) => {
+      console.log('관리자 설정 업데이트 수신:', config);
+      if (config.tileSize) currentTileSize = config.tileSize;
+
+      idleMessage.innerHTML = `<div style="font-size:48px;">🎂</div><br><span style="color: #be185d; font-weight: bold;">설정이 실시간 반영되었습니다.</span><br><span style="font-size: 14px; color: rgba(136,19,55,0.5);">다음 사진부터 즉시 적용됩니다.</span>`;
+      idleMessage.style.opacity = '1';
+
+      setTimeout(() => {
+        if (!lastImg) {
+          idleMessage.innerHTML = `<div style="font-size: 64px; margin-bottom: 16px;">🎂</div><h1 class="text-7xl font-black mb-6 tracking-tight" style="background: linear-gradient(135deg, #be185d, #e11d48, #db2777, #c026d3); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">생일 축하해요, 엄마!</h1><p class="text-3xl font-light" style="color: rgba(136, 19, 55, 0.7);">QR을 스캔하거나 우측 버튼을 눌러 사진을 보내주세요 💐</p>`;
+        } else {
+          idleMessage.style.opacity = '0';
+        }
+      }, 4000);
+    });
+
+  </script>
+</body>
+</html>
