@@ -111,6 +111,15 @@ graph TD
 
 이 프로젝트는 터미널(CMD) 명령어를 직접 칠 필요 없이, 최상위 경로의 **`start.bat`** 파일 하나로 즉시 실행할 수 있도록 설계되었습니다.
 
+### 4-1. 🪄 마법의 한 줄 설치 (완전 깡통 PC용 - Public 레포지토리 전용)
+인터넷만 연결되어 있고 Git이나 Node.js가 전혀 없는 백지 상태의 윈도우 PC라면, 굳이 깃허브 웹사이트에 들어가서 다운로드할 필요 없이 **파워쉘(PowerShell)을 열고 아래 명령어 한 줄만 복사하여 붙여넣기** 하시면 전체 소스코드 다운로드부터 압축 해제, 의존성 설치, 서버 실행까지 100% 자동 진행됩니다.
+
+```powershell
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri "https://github.com/Buvi-kr/mosaic/archive/refs/heads/master.zip" -OutFile "mosaic.zip"; Expand-Archive -Path "mosaic.zip" -DestinationPath "."; cd mosaic-master; .\start.bat
+```
+*(※ 주의: 중간에 Node.js 설치 창이 뜨면 수동으로 Next 버튼을 눌러 완료해 주셔야 이후 백그라운드 자동 설치가 계속 진행됩니다.)*
+
+### 4-2. 수동 다운로드 후 실행
 1. 깃허브에서 우측 상단 Code 버튼을 눌러 **Download ZIP**으로 소스코드를 다운로드하고 압축을 풉니다.
 2. 폴더 내의 **`start.bat` 더블 클릭**
 3. 실행 시 시스템이 알아서 `Node.js`, `npm` 라이브러리 패키지, `Cloudflared` 의존성을 순차적으로 확인합니다.
@@ -118,7 +127,7 @@ graph TD
 5. 포트와 좀비 프로세스를 모두 초기화한 뒤 서버가 완벽하게 구동됩니다.
 6. 모든 관리 작업(새 테마 빌드, 릴리즈 포터블 패키징)은 브라우저에서 **관리자 패널(`admin.html`)**을 통해 직관적으로 진행할 수 있습니다.
 
-### 4-1. 접속 URL (Endpoints)
+### 4-3. 접속 URL (Endpoints)
 - **전시용 대형 스크린**: `http://localhost:3000/display.html`
 - **관리자 컨트롤 패널**: `http://localhost:3000/admin.html`
 - **방문객 스마트폰 업로드**: `http://localhost:3000/upload.html` (Cloudflare Tunnel을 통해 모바일용 외부 도메인과 자동 연결됩니다)
