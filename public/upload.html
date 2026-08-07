@@ -25,6 +25,36 @@
     /* 크롭 화면일 때 상단 정렬로 전환 */
     body.cropping { align-items: flex-start; padding-top: 1rem; }
     
+    /* ===== 모바일 크로퍼 터치 타겟 확장 (바깥쪽으로만) ===== */
+    .cropper-point {
+      width: 12px !important;
+      height: 12px !important;
+      background-color: #3b82f6 !important;
+      border-radius: 50% !important;
+      opacity: 1 !important;
+      /* 투명한 터치 영역을 바깥쪽으로 확장 (안쪽 침범 방지) */
+      outline: 18px solid transparent !important;
+    }
+    .cropper-line {
+      background-color: #3b82f6 !important;
+      opacity: 0.6 !important;
+    }
+    /* 세로 선: 좌/우 바깥으로만 터치 영역 확장 */
+    .cropper-line.line-w, .cropper-line.line-e {
+      width: 3px !important;
+      outline: 15px solid transparent !important;
+    }
+    /* 가로 선: 위/아래 바깥으로만 터치 영역 확장 */
+    .cropper-line.line-n, .cropper-line.line-s {
+      height: 3px !important;
+      outline: 15px solid transparent !important;
+    }
+    /* 크롭 박스 테두리 강조 */
+    .cropper-view-box {
+      outline: 2px solid #3b82f6 !important;
+      outline-color: rgba(59, 130, 246, 0.75) !important;
+    }
+    
     /* 진행률 바 */
     .progress-bar-bg {
       background: rgba(255,255,255,0.1);
@@ -89,8 +119,8 @@
     <!-- 크롭 화면 -->
     <div id="step-2" class="hidden">
       <h2 class="text-base font-bold mb-2">원하는 영역을 선택하세요</h2>
-      <div class="bg-black rounded-xl overflow-hidden mb-3">
-        <img id="image-to-crop" src="" class="max-w-full">
+      <div class="bg-black/50 rounded-xl overflow-hidden mb-4 border border-white/10 flex items-center justify-center" style="height: 60vh; width: 100%;">
+        <img id="image-to-crop" src="" style="max-width: 100%; max-height: 100%; display: block;">
       </div>
       <div class="flex gap-3">
         <button id="cancelBtn" class="flex-1 bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold">취소</button>
@@ -115,19 +145,23 @@
       </div>
     </div>
 
-    <!-- 완료 화면 (애니메이션 캔버스) -->
-    <div id="step-4" class="hidden py-4 relative">
-      <h3 class="text-2xl font-extrabold text-green-400 mb-4 z-10 relative">모자이크 완성! ✨</h3>
-      <p class="text-gray-300 mb-4 z-10 relative text-sm">결과물은 안전하게 전송되었습니다.</p>
-      
-      <div id="resultCanvasContainer" class="relative w-full rounded-xl overflow-hidden shadow-2xl border border-white/10 mb-6 bg-black" style="aspect-ratio: 1/1;">
-        <canvas id="resultCanvas" class="w-full h-full object-contain"></canvas>
-        <div id="particleOverlayStep4" class="absolute inset-0 pointer-events-none"></div>
+    <!-- 완료 화면 (풀스크린 캔버스 애니메이션) -->
+    <div id="step-4" class="hidden fixed inset-0 z-50 bg-black flex flex-col p-4 sm:p-8">
+      <div class="text-center mb-4">
+        <h3 class="text-2xl font-extrabold text-green-400 mb-1">모자이크 완성! ✨</h3>
+        <p class="text-gray-300 text-sm">수천 장의 별빛으로 그려진 당신의 우주입니다.</p>
       </div>
       
-      <div class="flex flex-col gap-3 z-10 relative">
-        <button id="downloadBtn" class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 py-3 rounded-xl font-bold shadow-lg text-center">내 모자이크 원본 저장하기 💾</button>
-        <button onclick="location.reload()" class="w-full bg-white/10 hover:bg-white/20 py-3 rounded-xl font-bold">다른 사진 해보기</button>
+      <div id="resultCanvasContainer" class="flex-1 w-full relative rounded-2xl overflow-hidden shadow-2xl border border-white/20 mb-6 bg-slate-900 flex items-center justify-center">
+        <!-- 캔버스와 롱프레스용 이미지 겹치기 -->
+        <canvas id="resultCanvas" class="absolute w-full h-full object-contain pointer-events-none"></canvas>
+        <img id="resultImageLayer" src="" class="absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000 z-10" alt="완성된 모자이크">
+        <div id="particleOverlayStep4" class="absolute inset-0 pointer-events-none z-0"></div>
+      </div>
+      
+      <div class="flex flex-col gap-3 pb-safe">
+        <button id="downloadBtn" class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 py-4 rounded-xl font-bold shadow-[0_0_15px_rgba(37,99,235,0.5)] text-center text-lg">내 사진 저장하기 💾</button>
+        <button onclick="location.reload()" class="w-full bg-white/10 hover:bg-white/20 py-4 rounded-xl font-bold text-lg">다른 사진 해보기</button>
       </div>
     </div>
   </div>
@@ -171,16 +205,19 @@
 
         if(cropper) cropper.destroy();
         cropper = new Cropper(imageToCrop, {
-          viewMode: 1,
-          dragMode: 'none',
-          autoCropArea: 0.8,
+          viewMode: 1,                 // 크롭 상자가 이미지를 벗어나지 않도록 제한
+          dragMode: 'none',            // 배경 사진 자체는 드래그되지 않도록 고정
+          zoomable: false,             // 확대/축소 비활성화 (무조건 화면에 꽉 차게 고정)
+          autoCropArea: 0.9,
           restore: false,
           guides: true,
           center: true,
           highlight: false,
-          cropBoxMovable: true,
-          cropBoxResizable: true,
+          cropBoxMovable: true,        // 크롭 상자 위치 이동 가능
+          cropBoxResizable: true,      // 크기 조절 가능
           toggleDragModeOnDblclick: false,
+          minCropBoxWidth: 50,
+          minCropBoxHeight: 50,
         });
       }
     });
@@ -204,7 +241,7 @@
       // 진행 상황 수신
       socket.off('mosaic_progress'); // 기존 리스너 제거
       socket.on('mosaic_progress', (data) => {
-        // 진행률 바 업데이트
+        // 진행률 바 업데이트 (워커에서 10% 단위로 전송)
         if (data.percent !== undefined) {
           progressFill.style.width = data.percent + '%';
         }
@@ -220,14 +257,19 @@
         
         switch (data.phase) {
           case 'matching':
-            addLog(`그리드 분석 및 타일 매칭 중... [${data.cols || '?'}x${data.rows || '?'}]`);
+            addLog(data.message || `타일 매칭 중... [${data.cols || '?'}x${data.rows || '?'}]`);
+            break;
+            
+          case 'caching':
+            addLog(data.message || '타일 이미지 로딩 중...', true);
             break;
             
           case 'compositing':
-            const placed = (data.placedCount || 0).toLocaleString();
-            const total = (data.totalCount || 0).toLocaleString();
-            if (data.placedCount === 1) addLog('이미지 합성 단계 진입...');
-            addLog(`타일 배치 중: ${placed} / ${total}`, true);
+            addLog(data.message || '캔버스 합성 중...', true);
+            break;
+
+          case 'blending':
+            addLog(data.message || '블렌딩 처리 중...', true);
             break;
             
           case 'done':
@@ -300,9 +342,14 @@
             img.src = data.imageUrl;
             
             
-            // iOS 호환 다운로드 버튼 설정
+            // iOS/카카오 호환 다운로드 버튼 설정
             const dlBtn = document.getElementById('downloadBtn');
             dlBtn.onclick = async () => {
+              const isKakao = navigator.userAgent.match(/kakaotalk/i);
+              if (isKakao) {
+                alert("카카오톡 브라우저에서는 직접 다운로드가 제한됩니다.\n화면 중앙의 완성된 사진을 '꾹' 눌러서 [이미지 저장]을 선택해주세요!");
+                return;
+              }
               try {
                 // Blob 방식 다운로드 시도 (Android/PC에서 동작)
                 const imgRes = await fetch(data.imageUrl);
@@ -333,47 +380,112 @@
       }, 'image/jpeg', 0.9);
     });
 
-    // 캔버스 애니메이션
+    // 고품질 타일 비행 애니메이션 (모바일 최적화 버전)
     function startUploadFlyInAnimation(img, width, height, tileSize) {
       const cvs = document.getElementById('resultCanvas');
       const ctx = cvs.getContext('2d');
-      cvs.width = width;
-      cvs.height = height;
-      ctx.drawImage(img, 0, 0, width, height);
+      const imgLayer = document.getElementById('resultImageLayer');
       
-      // GSAP 스케일 업 & 파티클 이펙트
-      gsap.fromTo(cvs, 
-        { scale: 0.8, opacity: 0, rotation: -5 }, 
-        { scale: 1, opacity: 1, rotation: 0, duration: 1.5, ease: 'elastic.out(1, 0.5)' }
-      );
-      
-      // 파티클 생성
-      const overlay = document.getElementById('particleOverlayStep4');
-      for(let i=0; i<30; i++) {
-        const p = document.createElement('div');
-        p.style.position = 'absolute';
-        p.style.width = '6px';
-        p.style.height = '6px';
-        p.style.background = 'white';
-        p.style.borderRadius = '50%';
-        p.style.left = '50%';
-        p.style.top = '50%';
-        p.style.boxShadow = '0 0 10px white, 0 0 20px #c084fc';
-        overlay.appendChild(p);
-        
-        const angle = Math.random() * Math.PI * 2;
-        const radius = 50 + Math.random() * 150;
-        
-        gsap.to(p, {
-          x: Math.cos(angle) * radius,
-          y: Math.sin(angle) * radius,
-          opacity: 0,
-          scale: Math.random() * 2,
-          duration: 1 + Math.random(),
-          ease: 'power2.out',
-          onComplete: () => p.remove()
-        });
+      // 모바일 사파리 등에서 14000px 이미지를 매 프레임 조각내서 그리면 뻗습니다.
+      // 1. 애니메이션용 저해상도 오프스크린 캔버스 생성 (최대 1000px)
+      const maxAnimSize = 1000;
+      let animScale = 1;
+      if (width > maxAnimSize || height > maxAnimSize) {
+        animScale = maxAnimSize / Math.max(width, height);
       }
+      
+      const animW = Math.floor(width * animScale);
+      const animH = Math.floor(height * animScale);
+      
+      const offCanvas = document.createElement('canvas');
+      offCanvas.width = animW;
+      offCanvas.height = animH;
+      const offCtx = offCanvas.getContext('2d');
+      offCtx.drawImage(img, 0, 0, animW, animH); // 딱 1번만 리사이즈해서 그림
+      
+      // 화면용 캔버스 설정
+      cvs.width = animW;
+      cvs.height = animH;
+      ctx.clearRect(0, 0, animW, animH);
+      
+      // 2. 가볍게 12x12 (144개) 조각으로 분할
+      const cols = 12;
+      const rows = 12;
+      const chunkW = animW / cols;
+      const chunkH = animH / rows;
+      
+      const chunks = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          chunks.push({
+            c, r,
+            x: c * chunkW,
+            y: r * chunkH,
+            // 화면 밖 랜덤한 좌표에서 시작 (우주에서 날아오는 느낌)
+            startX: (Math.random() - 0.5) * animW * 3,
+            startY: (Math.random() - 0.5) * animH * 3 + animH,
+            scale: Math.random() * 2 + 0.5,
+            opacity: 0,
+            rotation: (Math.random() - 0.5) * Math.PI
+          });
+        }
+      }
+
+      // 3. 초경량 렌더 루프 (저해상도 이미지를 소스로 사용하므로 매우 빠름)
+      function render() {
+        ctx.clearRect(0, 0, animW, animH);
+        for (const ch of chunks) {
+          if (ch.opacity <= 0) continue;
+          ctx.save();
+          ctx.translate(ch.x + chunkW/2, ch.y + chunkH/2);
+          ctx.rotate(ch.rotation);
+          ctx.scale(ch.scale, ch.scale);
+          ctx.globalAlpha = ch.opacity;
+          
+          // 오프스크린 캔버스의 조각을 그려옴
+          ctx.drawImage(offCanvas, 
+            ch.c * chunkW, ch.r * chunkH, chunkW, chunkH,
+            -chunkW/2, -chunkH/2, chunkW, chunkH
+          );
+          ctx.restore();
+        }
+      }
+
+      gsap.ticker.add(render);
+
+      // 4. 조각들이 날아와서 합체되는 화려한 GSAP 애니메이션
+      gsap.fromTo(chunks, {
+        x: (i, ch) => ch.startX,
+        y: (i, ch) => ch.startY
+      }, {
+        x: (i, ch) => ch.c * chunkW,
+        y: (i, ch) => ch.r * chunkH,
+        scale: 1,
+        opacity: 1,
+        rotation: 0,
+        duration: 1.5,
+        ease: 'power3.out',
+        stagger: {
+          amount: 1.0,
+          from: 'random'
+        },
+        onComplete: () => {
+          gsap.ticker.remove(render);
+          // 최종본 깔끔하게 마무리 렌더링
+          ctx.globalAlpha = 1;
+          ctx.drawImage(offCanvas, 0, 0, animW, animH);
+          
+          // 5. 애니메이션이 끝난 후, 고해상도 원본 <img> 태그를 오버레이 페이드인 (저장용)
+          imgLayer.src = img.src;
+          imgLayer.classList.remove('opacity-0');
+        }
+      });
+      
+      // 배경 캔버스 자체 부유 효과
+      gsap.fromTo(cvs, 
+        { scale: 0.9, opacity: 0 }, 
+        { scale: 1, opacity: 1, duration: 1, ease: 'power2.out' }
+      );
     }
   </script>
 </body>

@@ -5,10 +5,10 @@ const configModule = require('./config');
 
 class MosaicQueue {
   constructor() {
-    this.queue = [];           // 대기 중인 작업 [{jobData, resolve, reject, jobId}]
+    this.queue = [];           // 대기 중인 작업 [{jobData, resolve, reject, jobId, onProgress}]
     this.workers = [];         // 고정 워커 풀
     this.workerBusy = [];      // 각 워커의 사용 중 여부
-    this.pendingJobs = new Map(); // jobId → {resolve, reject}
+    this.pendingJobs = new Map(); // jobId → {resolve, reject, onProgress, workerIndex}
     this.jobCounter = 0;
     this.poolSize = 0;
     this.initialized = false;
@@ -22,6 +22,9 @@ class MosaicQueue {
     this.currentTileDB = null;
     this.currentKDTree = null;
     this.currentConfig = null;
+
+    // 상태 변경 콜백 (디스플레이 상태 머신용)
+    this.onStateChange = null;
   }
 
   /**
@@ -56,7 +59,7 @@ class MosaicQueue {
       });
 
       worker.on('message', (result) => {
-        this.handleWorkerResult(i, result);
+        this.handleWorkerMessage(i, result);
       });
 
       worker.on('error', (err) => {
@@ -104,7 +107,7 @@ class MosaicQueue {
       }
     });
 
-    worker.on('message', (result) => this.handleWorkerResult(index, result));
+    worker.on('message', (result) => this.handleWorkerMessage(index, result));
     worker.on('error', (err) => this.handleWorkerError(index, err));
     worker.on('exit', (code) => {
       if (code !== 0 && this.initialized) {
@@ -119,9 +122,23 @@ class MosaicQueue {
   }
 
   /**
-   * 워커 결과 핸들러
+   * 워커 메시지 핸들러 (PROGRESS + 완료 결과 모두 처리)
    */
-  handleWorkerResult(workerIndex, result) {
+  handleWorkerMessage(workerIndex, result) {
+    // PROGRESS 메시지: 워커가 작업 중간에 진행률을 보고함
+    if (result.type === 'PROGRESS') {
+      const pending = this.pendingJobs.get(result.jobId);
+      if (pending && pending.onProgress) {
+        pending.onProgress({
+          percent: result.percent,
+          phase: result.phase,
+          detail: result.detail
+        });
+      }
+      return; // PROGRESS는 작업 완료가 아니므로 워커를 해제하지 않음
+    }
+
+    // 작업 완료 메시지
     this.workerBusy[workerIndex] = false;
 
     const { jobId } = result;
@@ -141,6 +158,9 @@ class MosaicQueue {
       }
     }
 
+    // 상태 변경 알림
+    this._notifyStateChange();
+
     this.processNext();
   }
 
@@ -159,13 +179,16 @@ class MosaicQueue {
       }
     }
 
+    this._notifyStateChange();
     this.processNext();
   }
 
   /**
-   * 작업을 큐에 추가
+   * 작업을 큐에 추가 (progress 콜백 지원)
+   * @param {Object} jobData - 워커에 전달할 작업 데이터
+   * @param {Function} onProgress - 진행률 콜백 ({percent, phase, detail})
    */
-  addJob(jobData) {
+  addJob(jobData, onProgress) {
     return new Promise((resolve, reject) => {
       const jobId = ++this.jobCounter;
 
@@ -180,7 +203,11 @@ class MosaicQueue {
         reject,
         jobId,
         startTime: Date.now(),
+        onProgress: onProgress || null,
       });
+
+      // 상태 변경 알림
+      this._notifyStateChange();
 
       this.processNext();
     });
@@ -220,12 +247,13 @@ class MosaicQueue {
     const job = this.queue.shift();
     this.workerBusy[freeIndex] = true;
 
-    // pending에 워커 인덱스 기록 (에러 핸들링용)
+    // pending에 워커 인덱스 및 progress 콜백 기록
     this.pendingJobs.set(job.jobId, {
       resolve: job.resolve,
       reject: job.reject,
       workerIndex: freeIndex,
       startTime: job.startTime,
+      onProgress: job.onProgress,
     });
 
     // 워커에 작업 전송 (globalTileDB는 이미 워커 내부에 있으므로 보내지 않음)
@@ -235,6 +263,9 @@ class MosaicQueue {
       jobId: job.jobId,
       jobData: lightJobData,
     });
+
+    // 상태 변경 알림
+    this._notifyStateChange();
   }
 
   /**
@@ -295,6 +326,40 @@ class MosaicQueue {
   }
 
   /**
+   * 현재 시스템 상태 (디스플레이 상태 머신용)
+   */
+  getSystemState() {
+    const stats = this.getStats();
+    const totalBusy = stats.activeWorkers + stats.queueLength;
+    const maxSlots = stats.maxWorkers + 2;
+
+    // 다중 접속(큐)을 지원하므로, 단순히 1명이 작업중이라고 QR을 숨기면 안 됨.
+    // 수용량 한계치(maxSlots)에 도달했을 때만 'overloaded'를 반환하여 QR을 숨김.
+    if (totalBusy >= maxSlots) {
+      return 'overloaded';
+    }
+    
+    // 그 외에는 항상 큐가 열려있으므로 'idle' (QR 표시) 상태 유지
+    // 개별 유저의 진행 상황은 각자의 모바일 폰에서 확인하므로 사이니지는 계속 접속을 받음.
+    return 'idle';
+  }
+
+  /**
+   * 슬롯 사용 가능 여부 (업로드 입구 제어용)
+   */
+  canAcceptUpload() {
+    const stats = this.getStats();
+    const totalBusy = stats.activeWorkers + stats.queueLength;
+    const maxSlots = stats.maxWorkers + 1; // 워커 수 + 대기 1명까지 허용
+    return {
+      available: totalBusy < maxSlots,
+      position: totalBusy + 1,
+      totalSlots: maxSlots,
+      waitTime: this.estimateWaitTime(),
+    };
+  }
+
+  /**
    * 예상 대기시간 (EMA 기반)
    */
   estimateWaitTime() {
@@ -302,6 +367,19 @@ class MosaicQueue {
     if (stats.queueLength === 0) return 0;
     const effectiveWorkers = Math.max(1, stats.maxWorkers);
     return Math.ceil(this.emaProcessTime * stats.queueLength / effectiveWorkers);
+  }
+
+  /**
+   * 상태 변경 알림 (내부 헬퍼)
+   */
+  _notifyStateChange() {
+    if (this.onStateChange) {
+      try {
+        this.onStateChange(this.getSystemState(), this.getStats());
+      } catch (e) {
+        // 콜백 에러 무시
+      }
+    }
   }
 }
 

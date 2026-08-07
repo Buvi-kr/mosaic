@@ -28,7 +28,31 @@
     #promo-video {
       width: 100%;
       height: 100%;
-      object-fit: cover; /* 화면에 꽉 차게 */
+      object-fit: cover;
+    }
+
+    /* 모자이크 결과 풀스크린 (SHOWCASE 상태) */
+    #showcase-container {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      background: #000;
+      z-index: 10;
+    }
+
+    #showcase-container img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      animation: showcaseZoomIn 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    @keyframes showcaseZoomIn {
+      0% { transform: scale(0.7); opacity: 0; filter: blur(10px); }
+      100% { transform: scale(1); opacity: 1; filter: blur(0); }
     }
 
     /* 우측 QR 안내 영역 (30%) */
@@ -43,6 +67,18 @@
       border-left: 1px solid rgba(255, 255, 255, 0.1);
       padding: 40px;
       box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+      transition: all 0.6s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* QR 영역 상태별 전환 */
+    #qr-container.processing {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+
+    #qr-container.overloaded {
+      background: linear-gradient(135deg, #2d1b1b 0%, #1a0f0f 100%);
     }
 
     #qrcode-box {
@@ -51,7 +87,7 @@
       border-radius: 24px;
       margin-bottom: 40px;
       box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
-      transition: transform 0.3s;
+      transition: all 0.6s ease;
     }
 
     #qrcode-box:hover {
@@ -64,33 +100,103 @@
       color: transparent;
       background-image: linear-gradient(90deg, #c084fc, #818cf8);
     }
+
+    /* 프로세싱 오버레이 */
+    #processing-overlay {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    /* 진행률 바 */
+    .display-progress-bg {
+      width: 80%;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 100px;
+      overflow: hidden;
+      margin-top: 24px;
+    }
+    .display-progress-fill {
+      height: 100%;
+      border-radius: 100px;
+      background: linear-gradient(90deg, #818cf8, #a78bfa, #c084fc);
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+    }
+
+    /* 과부하 오버레이 */
+    #overloaded-overlay {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    /* 스피너 애니메이션 */
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid rgba(255,255,255,0.15);
+      border-top-color: #a78bfa;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 24px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
   <div id="video-container">
-    <!-- 임시 우주 영상 (Pixabay 무료 라이선스) -->
-    <!-- 나중에 사용자님이 public/video/promo.mp4 파일을 준비하면 src="/video/promo.mp4" 로 변경하면 됩니다. -->
     <video id="promo-video" autoplay loop muted playsinline>
       <source src="https://cdn.pixabay.com/video/2020/04/18/36551-412217614_large.mp4" type="video/mp4">
       Your browser does not support the video tag.
     </video>
+
+    <!-- SHOWCASE: 모자이크 결과 풀스크린 -->
+    <div id="showcase-container">
+      <img id="showcase-image" src="" alt="모자이크 결과">
+    </div>
   </div>
 
   <div id="qr-container">
-    <h1 class="text-5xl font-extrabold mb-4 tracking-tighter title-gradient text-center">QR을 스캔하여<br>당신의 우주를<br>만들어보세요</h1>
-    <p class="text-xl font-light text-indigo-200 mb-12 text-center break-keep">
-      스마트폰에 사진을 올려<br>거대한 모자이크 아트를 완성하세요.
-    </p>
+    <!-- IDLE 상태: QR 코드 -->
+    <div id="idle-content">
+      <h1 class="text-5xl font-extrabold mb-4 tracking-tighter title-gradient text-center">QR을 스캔하여<br>당신의 우주를<br>만들어보세요</h1>
+      <p class="text-xl font-light text-indigo-200 mb-12 text-center break-keep">
+        스마트폰에 사진을 올려<br>거대한 모자이크 아트를 완성하세요.
+      </p>
 
-    <div id="qrcode-box">
-      <div id="qrcode" class="w-80 h-80 flex items-center justify-center">
-        <span class="text-gray-400">QR 로딩 중...</span>
+      <div id="qrcode-box">
+        <div id="qrcode" class="w-80 h-80 flex items-center justify-center">
+          <span class="text-gray-400">QR 로딩 중...</span>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-3 text-slate-400">
+        <span class="text-lg font-semibold">스마트폰 카메라로 스캔하세요</span>
       </div>
     </div>
-    
-    <div class="flex items-center space-x-3 text-slate-400">
-      <span class="text-lg font-semibold">스마트폰 카메라로 스캔하세요</span>
+
+    <!-- PROCESSING 상태: 진행률 표시 -->
+    <div id="processing-overlay">
+      <div class="spinner"></div>
+      <h2 class="text-3xl font-extrabold mb-2 title-gradient">모자이크 생성 중</h2>
+      <p id="processing-detail" class="text-indigo-200 text-lg mb-4">타일을 매칭하는 중...</p>
+      <p id="processing-percent" class="text-5xl font-black text-white mb-2">0%</p>
+      <div class="display-progress-bg">
+        <div id="display-progress-fill" class="display-progress-fill" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- OVERLOADED 상태: 대기 안내 -->
+    <div id="overloaded-overlay">
+      <div class="text-6xl mb-6">⏳</div>
+      <h2 class="text-3xl font-extrabold mb-4 text-red-300">잠시만 기다려주세요</h2>
+      <p class="text-lg text-gray-300">현재 많은 분들이 참여 중입니다.<br>곧 다시 이용하실 수 있습니다.</p>
     </div>
   </div>
 
@@ -99,7 +205,10 @@
     const socket = io();
     
     let uploadUrl = window.location.origin + '/upload.html';
-    
+    let showcaseTimer = null;
+    let currentDisplayState = 'idle';
+
+    // QR 코드 그리기
     function drawQR(url) {
       QRCode.toCanvas(document.createElement('canvas'), url, { width: 320, margin: 1, color: { dark: '#0f172a', light: '#ffffff' } }, function (err, canvas) {
         if(!err) {
@@ -116,6 +225,83 @@
       console.log('클라우드플레어 터널 주소 수신:', url);
       drawQR(url + '/upload.html');
     });
+
+    // ===== 디스플레이 상태 머신 =====
+    function setDisplayState(state, data) {
+      currentDisplayState = state;
+      const qrPanel = document.getElementById('qr-container');
+      const idleContent = document.getElementById('idle-content');
+      const processingOverlay = document.getElementById('processing-overlay');
+      const overloadedOverlay = document.getElementById('overloaded-overlay');
+      const showcaseContainer = document.getElementById('showcase-container');
+
+      // 모든 오버레이 숨기기
+      idleContent.style.display = 'none';
+      processingOverlay.style.display = 'none';
+      overloadedOverlay.style.display = 'none';
+      
+      // QR 패널 기본적으로 보이기
+      qrPanel.style.opacity = '1';
+      qrPanel.style.pointerEvents = 'auto';
+
+      // 클래스 정리
+      qrPanel.classList.remove('processing', 'overloaded');
+
+      switch (state) {
+        case 'idle':
+          idleContent.style.display = 'flex';
+          idleContent.style.flexDirection = 'column';
+          idleContent.style.alignItems = 'center';
+          showcaseContainer.style.display = 'none';
+          break;
+
+        case 'processing':
+          qrPanel.classList.add('processing');
+          processingOverlay.style.display = 'flex';
+          if (data && data.percent !== undefined) {
+            document.getElementById('processing-percent').textContent = data.percent + '%';
+            document.getElementById('display-progress-fill').style.width = data.percent + '%';
+          }
+          break;
+
+        case 'showcase':
+          // 사이니지(Signage) 용도이므로 완성 상태 대기 없이 즉시 IDLE(QR)로 복귀
+          setDisplayState('idle', {});
+          break;
+
+        case 'overloaded':
+          qrPanel.classList.add('overloaded');
+          overloadedOverlay.style.display = 'flex';
+          break;
+      }
+    }
+
+    // 서버에서 상태 전환 수신
+    socket.on('display_state', (data) => {
+      // showcase 중에는 processing 이벤트 무시 (10초 전시 보장)
+      if (currentDisplayState === 'showcase' && data.state === 'processing') return;
+      
+      if (data.state === 'processing' && data.percent !== undefined) {
+        // 진행률 업데이트만
+        document.getElementById('processing-percent').textContent = data.percent + '%';
+        document.getElementById('display-progress-fill').style.width = data.percent + '%';
+        if (currentDisplayState !== 'processing') {
+          setDisplayState('processing', data);
+        }
+      } else {
+        setDisplayState(data.state, data);
+      }
+    });
+
+    // 새 모자이크 수신 → SHOWCASE
+    socket.on('new_mosaic', (data) => {
+      const showcaseImg = document.getElementById('showcase-image');
+      showcaseImg.src = data.imageUrl;
+      setDisplayState('showcase', data);
+    });
+
+    // 접속 시 현재 상태 요청
+    socket.emit('request_display_state');
   </script>
 </body>
 </html>

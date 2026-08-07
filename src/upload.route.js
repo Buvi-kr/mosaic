@@ -17,8 +17,6 @@ const DB_ROOT = path.join(__dirname, '../data/themes');
 
 let globalTileDB = [];
 let globalKDTree = null;
-const globalTileCache = new Map();
-let globalCachedTileSize = -1;
 let currentLoadedTheme = '';
 
 // ===== 테마별 경로 헬퍼 =====
@@ -79,31 +77,26 @@ loadTileDB();
 router.reloadTileDB = loadTileDB;
 router.getTileCount = () => globalTileDB.length;
 
-// ===== 타일 이미지 RAM 캐시 =====
-async function preloadTileCache(targetTileSize, theme) {
-  if (!theme) {
-    const config = configModule.getConfig();
-    theme = config.currentTheme || 'default_nasa';
+// ===== 디스플레이 상태 머신 연결 =====
+mosaicQueue.onStateChange = (state, stats) => {
+  try {
+    const io = socketManager.getIo();
+    io.emit('display_state', {
+      state,  // 'idle' | 'processing' | 'overloaded'
+      queueLength: stats.queueLength,
+      activeWorkers: stats.activeWorkers,
+      maxWorkers: stats.maxWorkers,
+    });
+  } catch (e) {
+    // 소켓 미초기화 시 무시
   }
+};
 
-  const paths = themeDataPaths(theme);
-
-  // 테마가 바뀌었거나 사이즈가 바뀌면 캐시 전체 flush
-  if (currentLoadedTheme !== theme || globalCachedTileSize !== targetTileSize) {
-    globalTileCache.clear();
-    globalCachedTileSize = targetTileSize;
-    console.log(`[캐시] 테마 전환으로 타일 캐시 전체 flush (${theme}, ${targetTileSize}px)`);
-  }
-
-  // Lazy Loading으로 전환되었으므로 전체 사전 적재는 생략합니다.
-}
-
-// 최초 설정값 기준으로 즉시 장전 시작 (renderTileSize로 적재)
-const initialConfig = configModule.getConfig();
-preloadTileCache(initialConfig.renderTileSize || 200, initialConfig.currentTheme || 'default_nasa');
-
-// 외부에서 설정 변경 시 재장전 가능하도록 노출
-router.preloadTileCache = preloadTileCache;
+// ===== 슬롯 확인 API =====
+router.get('/slot-check', (req, res) => {
+  const slotInfo = mosaicQueue.canAcceptUpload();
+  res.json(slotInfo);
+});
 
 // ===== 업로드 및 모자이크 생성 =====
 router.post('/', upload.single('photo'), async (req, res) => {
@@ -138,7 +131,6 @@ router.post('/', upload.single('photo'), async (req, res) => {
     }
 
     // 2. 가로/세로 모자이크 칸 수(장수) 계산 (Density)
-    // 예: targetWidth가 1920이고 TILE_SIZE가 20이면 가로로 96장의 타일이 들어감
     const cols = Math.floor(targetWidth / TILE_SIZE);
     const rows = Math.floor(targetHeight / TILE_SIZE);
     
@@ -146,7 +138,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
     let safeRenderTileSize = RENDER_TILE_SIZE;
     if (cols * safeRenderTileSize > 15000) {
       safeRenderTileSize = Math.floor(15000 / cols);
-      if (safeRenderTileSize < TILE_SIZE) safeRenderTileSize = TILE_SIZE; // 최소한 매칭 사이즈보다는 크도록 보장
+      if (safeRenderTileSize < TILE_SIZE) safeRenderTileSize = TILE_SIZE;
       console.warn(`[OOM 보호] 최종 캔버스가 너무 거대합니다! RENDER_TILE_SIZE 강제 하향 조정: ${RENDER_TILE_SIZE}px -> ${safeRenderTileSize}px`);
     }
 
@@ -161,172 +153,79 @@ router.post('/', upload.single('photo'), async (req, res) => {
     // 2. 픽셀 데이터 추출
     const { data: rawData, info } = await sharp(originalResized).raw().toBuffer({ resolveWithObject: true });
 
-    // 3. Worker Thread Queue에 작업 등록
+    // 디스플레이 상태 → processing
+    io.emit('display_state', { state: 'processing', percent: 0, queueLength: mosaicQueue.getStats().queueLength });
+
+    // 3. 워커에 전체 파이프라인(매칭+합성+블렌딩) 위임
+    const currentTheme = config.currentTheme || 'default_nasa';
+    const tilesDir = path.join(FRONTEND_DIR, 'tiles', currentTheme);
+
     const workerJobData = {
       rawData,
       info,
       cols,
       rows,
       tileSize: TILE_SIZE,
-      globalTileDB,  // 고정 풀 모드에서는 무시됨 (워커 내부 참조 사용)
+      renderTileSize: safeRenderTileSize,
+      originalBuffer: req.file.buffer,
+      tilesDir,
+      theme: currentTheme,
+      globalTileDB,    // 고정 풀 모드에서는 무시됨 (워커 내부 참조 사용)
       kdTree: globalKDTree,
       config: {
         maxTileUsage: config.maxTileUsage,
         banRadius: config.banRadius,
         candidatePoolSize: config.candidatePoolSize,
+        turboMode: config.turboMode,
+        opacity: config.opacity || 0,
+        blendMode: config.blendMode || 'multiply',
+        secondOpacity: config.secondOpacity || 0,
       }
     };
 
-    // 진행 상황 알림
+    // 진행률 콜백: 워커의 PROGRESS를 소켓으로 중계
+    const onProgress = (progressData) => {
+      if (sessionId) {
+        io.to(sessionId).emit('mosaic_progress', {
+          phase: progressData.phase,
+          message: progressData.detail,
+          percent: progressData.percent,
+          cols, rows,
+        });
+      }
+      // 디스플레이에도 진행률 전달
+      io.emit('display_state', {
+        state: 'processing',
+        percent: progressData.percent,
+        queueLength: mosaicQueue.getStats().queueLength,
+      });
+    };
+
+    // 진행 상황 알림: 업로드 수신됨
     if (sessionId) {
       io.to(sessionId).emit('mosaic_progress', {
         phase: 'matching',
-        message: '타일을 매칭하는 중...',
-        percent: 0
+        message: `그리드 분석 시작 [${cols}×${rows}]`,
+        percent: 0,
+        cols, rows,
       });
     }
 
-    const { matchedTiles } = await mosaicQueue.addJob(workerJobData);
+    // ★ 전체 파이프라인을 워커에 위임 (매칭+합성+블렌딩)
+    const result = await mosaicQueue.addJob(workerJobData, onProgress);
 
-    // 4. 모자이크 베이스 합성 (고화질 타일 사용)
-    const canvasWidth = cols * safeRenderTileSize;
-    const canvasHeight = rows * safeRenderTileSize;
-    const rawCanvas = Buffer.alloc(canvasWidth * canvasHeight * 3);
-
-    // 타일 이미지 캐시 확인 & 누락분 로드
-    const currentTheme = config.currentTheme || 'default_nasa';
-    const tilesDir = path.join(FRONTEND_DIR, 'tiles', currentTheme);
-
-    if (globalCachedTileSize !== safeRenderTileSize) {
-      globalTileCache.clear();
-      globalCachedTileSize = safeRenderTileSize;
-    }
-
-    const uniqueFilenames = [...new Set(matchedTiles.map(t => t.filename))];
-    const missingFilenames = uniqueFilenames.filter(f => !globalTileCache.has(f));
-
-    const CACHE_BATCH_SIZE = 50;
-    for (let i = 0; i < missingFilenames.length; i += CACHE_BATCH_SIZE) {
-      const batch = missingFilenames.slice(i, i + CACHE_BATCH_SIZE);
-      await Promise.all(batch.map(async (filename) => {
-        try {
-          const { data: tileRaw } = await sharp(path.join(tilesDir, filename))
-            .resize(safeRenderTileSize, safeRenderTileSize)
-            .removeAlpha()
-            .raw()
-            .toBuffer({ resolveWithObject: true });
-          globalTileCache.set(filename, tileRaw);
-        } catch (err) {
-          // 파일 누락 시 스킵
-        }
-      }));
-    }
-
-    // 진행 상황: 합성 시작
-    if (sessionId) {
-      io.to(sessionId).emit('mosaic_progress', {
-        phase: 'compositing',
-        message: '타일을 조합하는 중...',
-        percent: 10,
-        placedCount: 0,
-        totalCount: matchedTiles.length
-      });
-    }
-
-    // 메모리 캐시를 이용해 캔버스에 픽셀 덮어쓰기
-    for (let i = 0; i < matchedTiles.length; i++) {
-      const t = matchedTiles[i];
-      const tileRaw = globalTileCache.get(t.filename);
-      if (!tileRaw) continue; // 캐시 누락 시 스킵
-      
-      // 매칭 좌표(tileSize 기준)를 safeRenderTileSize 기준으로 스케일링
-      const renderLeft = Math.floor(t.left / TILE_SIZE) * safeRenderTileSize;
-      const renderTop = Math.floor(t.top / TILE_SIZE) * safeRenderTileSize;
-      
-      for (let y = 0; y < safeRenderTileSize; y++) {
-        const destOffset = ((renderTop + y) * canvasWidth + renderLeft) * 3;
-        const srcOffset = y * safeRenderTileSize * 3;
-        tileRaw.copy(rawCanvas, destOffset, srcOffset, srcOffset + safeRenderTileSize * 3);
-      }
-    }
-
-    // 5. 블렌딩
-    let finalImageBuffer;
-
-    if (config.opacity > 0) {
-      const baseOriginal = await sharp(req.file.buffer)
-        .resize({ width: canvasWidth, height: canvasHeight, fit: 'cover' })
-        .toBuffer();
-
-      const tilesBuffer = await sharp(rawCanvas, {
-        raw: { width: canvasWidth, height: canvasHeight, channels: 3 }
-      }).png().toBuffer();
-
-      let fullyBlendedBuffer;
-      if (config.blendMode === 'over') {
-        // 'over' 모드는 단순히 원본 사진으로 덮어쓰는 모드이므로 원본 이미지 그대로 반환
-        fullyBlendedBuffer = baseOriginal;
-      } else if (config.blendMode === 'multiply') {
-        // multiply는 교환법칙이 성립하므로 원본 위에 타일을 곱합
-        fullyBlendedBuffer = await sharp(baseOriginal)
-          .composite([{ input: tilesBuffer, blend: 'multiply' }])
-          .toBuffer();
-        
-        // 이중 하이브리드 복원
-        if (config.secondOpacity > 0) {
-          const secondAlphaVal = Math.max(0, Math.min(255, Math.round(255 * config.secondOpacity)));
-          const secondTransparentOriginal = await sharp(baseOriginal)
-            .ensureAlpha()
-            .composite([{
-              input: Buffer.from([255, 255, 255, secondAlphaVal]),
-              raw: { width: 1, height: 1, channels: 4 },
-              tile: true,
-              blend: 'dest-in'
-            }]).png().toBuffer();
-          fullyBlendedBuffer = await sharp(fullyBlendedBuffer)
-            .composite([{ input: secondTransparentOriginal, blend: 'over' }])
-            .toBuffer();
-        }
-      } else {
-        // Overlay, Soft-light 등 레이어 순서가 중요한 모드: 원본(배경) 위에 타일(Foreground) 합성
-        fullyBlendedBuffer = await sharp(baseOriginal)
-          .composite([{ input: tilesBuffer, blend: config.blendMode }])
-          .toBuffer();
-      }
-
-      // 최종적으로 사용자가 설정한 투명도(opacity)만큼만 블렌딩 효과 적용
-      // A(순수 타일) 위에 B(완전 합성본)를 투명도를 줘서 덮음
-      const alphaVal = Math.max(0, Math.min(255, Math.round(255 * config.opacity)));
-      const transparentBlended = await sharp(fullyBlendedBuffer)
-        .ensureAlpha()
-        .composite([{
-          input: Buffer.from([255, 255, 255, alphaVal]),
-          raw: { width: 1, height: 1, channels: 4 },
-          tile: true,
-          blend: 'dest-in'
-        }]).png().toBuffer();
-
-      finalImageBuffer = await sharp(tilesBuffer)
-        .composite([{ input: transparentBlended, blend: 'over' }])
-        .jpeg({ quality: 95 })
-        .toBuffer();
-
-    } else {
-      finalImageBuffer = await sharp(rawCanvas, {
-        raw: { width: canvasWidth, height: canvasHeight, channels: 3 }
-      }).jpeg({ quality: 95 }).toBuffer();
-    }
-
+    // 4. 워커에서 받은 최종 이미지 버퍼를 파일로 저장
     const outputFilename = `mosaic_${Date.now()}.jpg`;
     
     if (!fs.existsSync(OUTPUTS_DIR)) {
       fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
     }
     
-    await sharp(finalImageBuffer).toFile(path.join(OUTPUTS_DIR, outputFilename));
+    await sharp(result.finalImageBuffer).toFile(path.join(OUTPUTS_DIR, outputFilename));
 
     // --- 타일 사용 통계 및 로그 ---
     const usageLog = {};
+    const matchedTiles = result.matchedTiles;
     const detailedPlacements = [];
 
     matchedTiles.forEach(t => {
@@ -346,6 +245,8 @@ router.post('/', upload.single('photo'), async (req, res) => {
     });
 
     const sortedUsage = Object.entries(usageLog).sort((a, b) => b[1] - a[1]);
+    const canvasWidth = result.canvasWidth;
+    const canvasHeight = result.canvasHeight;
 
     const logData = {
       timestamp: new Date().toISOString(),
@@ -395,7 +296,8 @@ router.post('/', upload.single('photo'), async (req, res) => {
       });
     }
 
-    // 디스플레이에 푸시
+    // 디스플레이에 결과 전시 (SHOWCASE 상태)
+    io.emit('display_state', { state: 'showcase' });
     socketManager.getIo().emit('new_mosaic', {
       imageUrl: `/outputs/${outputFilename}`,
       tileSize: TILE_SIZE,

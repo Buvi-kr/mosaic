@@ -12,5 +12,5 @@
   "gridDownscaleThreshold": 10,
   "candidatePoolSize": 150,
   "renderTileSize": 200,
-  "turboMode": true
+  "turboMode": false
 }
