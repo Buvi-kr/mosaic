@@ -145,24 +145,27 @@
       </div>
     </div>
 
-    <!-- 완료 화면 (풀스크린 캔버스 애니메이션) -->
-    <div id="step-4" class="hidden fixed inset-0 z-50 bg-black flex flex-col p-4 sm:p-8">
-      <div class="text-center mb-4">
-        <h3 class="text-2xl font-extrabold text-green-400 mb-1">모자이크 완성! ✨</h3>
-        <p class="text-gray-300 text-sm">수천 장의 별빛으로 그려진 당신의 우주입니다.</p>
-      </div>
-      
-      <div id="resultCanvasContainer" class="flex-1 w-full relative rounded-2xl overflow-hidden shadow-2xl border border-white/20 mb-6 bg-slate-900 flex items-center justify-center">
-        <!-- 캔버스와 롱프레스용 이미지 겹치기 -->
-        <canvas id="resultCanvas" class="absolute w-full h-full object-contain pointer-events-none"></canvas>
-        <img id="resultImageLayer" src="" class="absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000 z-10" alt="완성된 모자이크">
-        <div id="particleOverlayStep4" class="absolute inset-0 pointer-events-none z-0"></div>
-      </div>
-      
-      <div class="flex flex-col gap-3 pb-safe">
-        <button id="downloadBtn" class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 py-4 rounded-xl font-bold shadow-[0_0_15px_rgba(37,99,235,0.5)] text-center text-lg">내 사진 저장하기 💾</button>
-        <button onclick="location.reload()" class="w-full bg-white/10 hover:bg-white/20 py-4 rounded-xl font-bold text-lg">다른 사진 해보기</button>
-      </div>
+      <!-- step-4가 원래 여기 있었으나, backdrop-filter 버그 방지를 위해 밖으로 빼냈습니다. -->
+    </div>
+  </div>
+
+  <!-- 완료 화면 (풀스크린 캔버스 애니메이션) -->
+  <div id="step-4" class="hidden fixed inset-0 z-50 bg-black flex flex-col p-4 sm:p-8">
+    <div class="text-center mb-4 pt-8">
+      <h3 class="text-3xl font-extrabold text-green-400 mb-2">모자이크 완성! ✨</h3>
+      <p class="text-gray-300 text-base">수천 장의 별빛으로 그려진 당신의 우주입니다.</p>
+    </div>
+    
+    <div id="resultCanvasContainer" class="flex-1 w-full relative rounded-2xl overflow-hidden shadow-2xl border border-white/20 mb-8 bg-slate-900 flex items-center justify-center">
+      <!-- 캔버스와 롱프레스용 이미지 겹치기 -->
+      <canvas id="resultCanvas" class="absolute w-full h-full object-contain pointer-events-none"></canvas>
+      <img id="resultImageLayer" src="" class="absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000 z-10" alt="완성된 모자이크">
+      <div id="particleOverlayStep4" class="absolute inset-0 pointer-events-none z-0"></div>
+    </div>
+    
+    <div class="flex flex-col gap-3 pb-safe max-w-lg mx-auto w-full">
+      <button id="downloadBtn" class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 py-4 rounded-xl font-bold shadow-[0_0_15px_rgba(37,99,235,0.5)] text-center text-lg">내 사진 저장하기 💾</button>
+      <button onclick="location.reload()" class="w-full bg-white/10 hover:bg-white/20 py-4 rounded-xl font-bold text-lg">다른 사진 해보기</button>
     </div>
   </div>
 
