@@ -63,11 +63,22 @@ async function processBuildQueue() {
 const RAW_TILES_DIR = path.join(__dirname, '../public/raw_tiles');
 
 function getAvailableThemes() {
-  if (!fs.existsSync(RAW_TILES_DIR)) return [];
-  return fs.readdirSync(RAW_TILES_DIR).filter(name => {
-    const fullPath = path.join(RAW_TILES_DIR, name);
-    return fs.statSync(fullPath).isDirectory();
-  });
+  const themes = new Set();
+  const dataDir = path.join(__dirname, '../data/themes');
+  
+  if (fs.existsSync(RAW_TILES_DIR)) {
+    fs.readdirSync(RAW_TILES_DIR).forEach(name => {
+      if (fs.statSync(path.join(RAW_TILES_DIR, name)).isDirectory()) themes.add(name);
+    });
+  }
+  
+  if (fs.existsSync(dataDir)) {
+    fs.readdirSync(dataDir).forEach(name => {
+      if (fs.statSync(path.join(dataDir, name)).isDirectory()) themes.add(name);
+    });
+  }
+  
+  return Array.from(themes);
 }
 
 function isThemeBuilt(theme) {
