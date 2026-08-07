@@ -115,7 +115,7 @@ graph TD
 인터넷만 연결되어 있고 Git이나 Node.js가 전혀 없는 백지 상태의 윈도우 PC라면, 굳이 깃허브 웹사이트에 들어가서 다운로드할 필요 없이 **파워쉘(PowerShell)을 열고 아래 명령어 한 줄만 복사하여 붙여넣기** 하시면 전체 소스코드 다운로드부터 압축 해제, 의존성 설치, 서버 실행까지 100% 자동 진행됩니다.
 
 ```powershell
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri "https://github.com/Buvi-kr/mosaic/archive/refs/heads/master.zip" -OutFile "mosaic.zip"; Expand-Archive -Path "mosaic.zip" -DestinationPath "."; cd mosaic-master; .\start.bat
+cd $env:USERPROFILE\Desktop; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri "https://github.com/Buvi-kr/mosaic/archive/refs/heads/master.zip" -OutFile "mosaic.zip"; Expand-Archive -Path "mosaic.zip" -DestinationPath "."; cd mosaic-master; .\start.bat
 ```
 *(※ 주의: 중간에 Node.js 설치 창이 뜨면 수동으로 Next 버튼을 눌러 완료해 주셔야 이후 백그라운드 자동 설치가 계속 진행됩니다.)*
 
