@@ -24,12 +24,12 @@ if %ERRORLEVEL% neq 0 (
         if not exist "node-v20.15.1-x64.msi" (
             echo [INFO] Node.js is not installed on this PC and installer was not found.
             echo [INFO] Downloading Node.js Installer...
-            powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.15.1/node-v20.15.1-x64.msi' -OutFile 'node-v20.15.1-x64.msi'"
+            powershell -Command "$ProgressPreference = 'SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.15.1/node-v20.15.1-x64.msi' -OutFile 'node-v20.15.1-x64.msi'"
         )
         if exist "node-v20.15.1-x64.msi" (
-            echo [INFO] Automatically launching Node.js Installer...
-            echo [INFO] Please complete the installer window.
-            start /wait node-v20.15.1-x64.msi
+            echo [INFO] Automatically installing Node.js (Silent Mode)...
+            echo [INFO] Please wait. This may take a minute...
+            start /wait msiexec.exe /i "node-v20.15.1-x64.msi" /passive /norestart
             if exist "%ProgramFiles%\\nodejs\\node.exe" (
                 set NODE_CMD="%ProgramFiles%\\nodejs\\node.exe"
                 echo [SUCCESS] Node.js installed successfully!
