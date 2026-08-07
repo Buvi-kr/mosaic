@@ -411,9 +411,9 @@
       cvs.height = animH;
       ctx.clearRect(0, 0, animW, animH);
       
-      // 2. 가볍게 12x12 (144개) 조각으로 분할
-      const cols = 12;
-      const rows = 12;
+      // 2. 수천 개의 별빛 느낌을 극대화하기 위해 36x36 (1296개) 조각으로 잘게 분할
+      const cols = 36;
+      const rows = 36;
       const chunkW = animW / cols;
       const chunkH = animH / rows;
       
