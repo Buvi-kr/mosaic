@@ -27,9 +27,13 @@ if %ERRORLEVEL% neq 0 (
             powershell -Command "$ProgressPreference = 'SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.15.1/node-v20.15.1-x64.msi' -OutFile 'node-v20.15.1-x64.msi'"
         )
         if exist "node-v20.15.1-x64.msi" (
-            echo [INFO] Automatically installing Node.js (Silent Mode)...
-            echo [INFO] Please wait. This may take a minute...
-            start /wait msiexec.exe /i "node-v20.15.1-x64.msi" /passive /norestart
+            echo [INFO] Launching Node.js Installer...
+            echo ==================================================================
+            echo [WARNING] Please complete the installation by clicking 'Next'.
+            echo [WARNING] DO NOT check the box for "Tools for Native Modules" 
+            echo           (Chocolatey/C++), as it will disrupt the auto-launch!
+            echo ==================================================================
+            start /wait node-v20.15.1-x64.msi
             if exist "%ProgramFiles%\\nodejs\\node.exe" (
                 set NODE_CMD="%ProgramFiles%\\nodejs\\node.exe"
                 echo [SUCCESS] Node.js installed successfully!
