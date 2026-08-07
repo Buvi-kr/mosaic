@@ -20,7 +20,7 @@ if %ERRORLEVEL% neq 0 (
             echo ==================================================================
             echo [WARNING] Please complete the installation by clicking 'Next'.
             echo [WARNING] DO NOT check the box for "Tools for Native Modules" 
-            echo           (Chocolatey/C++), as it will disrupt the auto-launch!
+            echo           [Chocolatey/C++], as it will disrupt the auto-launch!
             echo ==================================================================
             start /wait node-v20.15.1-x64.msi
             if exist "%ProgramFiles%\nodejs\node.exe" (
