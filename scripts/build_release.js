@@ -20,23 +20,29 @@ node -v >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     if exist "%ProgramFiles%\\nodejs\\node.exe" (
         set NODE_CMD="%ProgramFiles%\\nodejs\\node.exe"
-    ) else if exist "node-v20.15.1-x64.msi" (
-        echo [INFO] Node.js is not installed on this PC.
-        echo [INFO] Automatically launching Node.js Installer...
-        echo [INFO] Please complete the installer window.
-        start /wait node-v20.15.1-x64.msi
-        if exist "%ProgramFiles%\\nodejs\\node.exe" (
-            set NODE_CMD="%ProgramFiles%\\nodejs\\node.exe"
-            echo [SUCCESS] Node.js installed successfully!
+    ) else (
+        if not exist "node-v20.15.1-x64.msi" (
+            echo [INFO] Node.js is not installed on this PC and installer was not found.
+            echo [INFO] Downloading Node.js Installer...
+            powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.15.1/node-v20.15.1-x64.msi' -OutFile 'node-v20.15.1-x64.msi'"
+        )
+        if exist "node-v20.15.1-x64.msi" (
+            echo [INFO] Automatically launching Node.js Installer...
+            echo [INFO] Please complete the installer window.
+            start /wait node-v20.15.1-x64.msi
+            if exist "%ProgramFiles%\\nodejs\\node.exe" (
+                set NODE_CMD="%ProgramFiles%\\nodejs\\node.exe"
+                echo [SUCCESS] Node.js installed successfully!
+            ) else (
+                echo [ERROR] Node.js installation was canceled or failed.
+                pause
+                exit /b 1
+            )
         ) else (
-            echo [ERROR] Node.js installation was canceled or failed.
+            echo [ERROR] Failed to download Node.js installer. Check your internet connection.
             pause
             exit /b 1
         )
-    ) else (
-        echo [ERROR] Node.js is not installed and node-v20.15.1-x64.msi was not found.
-        pause
-        exit /b 1
     )
 )
 
@@ -73,7 +79,23 @@ goto check_port
 :port_free
 echo [CLEANUP] Port 3000 is free. Ready to start.
 
-:: 4. Start Server
+:: 4. Check dependencies
+if not exist "node_modules" (
+    echo [INFO] node_modules folder not found. Installing npm dependencies...
+    if "%NODE_CMD%"=="node" (
+        call npm install
+    ) else (
+        call "%ProgramFiles%\\nodejs\\npm.cmd" install
+    )
+    if %ERRORLEVEL% neq 0 (
+        echo [ERROR] Failed to install npm dependencies. Please check your internet connection or install manually using 'npm install'.
+        pause
+        exit /b 1
+    )
+    echo [SUCCESS] Dependencies installed successfully.
+)
+
+:: 5. Start Server
 echo ==============================================
 echo [START] Starting Reverse Cosmos Mosaic Server...
 echo ==============================================
