@@ -304,6 +304,11 @@ router.post('/', upload.single('photo'), async (req, res) => {
     }
 
     const outputFilename = `mosaic_${Date.now()}.jpg`;
+    
+    if (!fs.existsSync(OUTPUTS_DIR)) {
+      fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
+    }
+    
     await sharp(finalImageBuffer).toFile(path.join(OUTPUTS_DIR, outputFilename));
 
     // --- 타일 사용 통계 및 로그 ---
