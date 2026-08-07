@@ -98,32 +98,35 @@
       </div>
     </div>
 
-    <!-- 로딩 화면 (실시간 조립 애니메이션) -->
-    <div id="step-3" class="hidden py-4">
-      <h3 id="progressTitle" class="text-lg font-bold text-indigo-300 mb-3">우주 데이터를 조합 중...</h3>
+    <!-- 로딩 화면 (해커톤 스타일 터미널 로그) -->
+    <div id="step-3" class="hidden py-4 text-left">
+      <h3 class="text-xl font-bold text-indigo-400 mb-3 flex items-center">
+        <span class="animate-spin mr-2">⚙️</span> 연산 중...
+      </h3>
       
-      <!-- 미니 캔버스: 서버 스냅샷이 실시간으로 표시됨 -->
-      <div class="relative mb-3 flex justify-center" style="min-height: 120px;">
-        <canvas id="miniCanvas" width="360" height="200"></canvas>
-        <!-- 오버레이 파티클 -->
-        <div id="particleOverlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></div>
+      <div id="terminalLog" class="bg-black/80 rounded-xl p-4 font-mono text-xs text-green-400 h-48 overflow-y-auto border border-green-500/30 shadow-inner mb-4">
+        <div>> 시스템 초기화 완료</div>
+        <div>> 업로드된 이미지 분석 중...</div>
       </div>
       
       <!-- 진행률 -->
       <div class="progress-bar-bg mb-2">
-        <div id="progressFill" class="progress-bar-fill" style="width: 0%;"></div>
+        <div id="progressFill" class="progress-bar-fill transition-all duration-300" style="width: 0%;"></div>
       </div>
-      <p id="progressText" class="text-sm text-gray-400">잠시만 기다려주세요...</p>
-      <p id="progressDetail" class="text-xs text-gray-500 mt-1"></p>
     </div>
 
-    <!-- 완료 화면 -->
-    <div id="step-4" class="hidden py-6">
-      <h3 class="text-2xl font-extrabold text-green-400 mb-2">모자이크 완성! ✨</h3>
-      <p class="text-gray-300 mb-6">전방의 대형 스크린을 확인해보세요.</p>
-      <canvas id="resultCanvas" class="w-full rounded-xl shadow-lg border-2 border-white/10 mb-4" style="max-width: 100%; height: auto; transition: transform 0.3s; transform-origin: center;"></canvas>
-      <div class="flex flex-col gap-3">
-        <button id="downloadBtn" class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 py-3 rounded-xl font-bold shadow-lg text-center">내 모자이크 저장하기 💾</button>
+    <!-- 완료 화면 (애니메이션 캔버스) -->
+    <div id="step-4" class="hidden py-4 relative">
+      <h3 class="text-2xl font-extrabold text-green-400 mb-4 z-10 relative">모자이크 완성! ✨</h3>
+      <p class="text-gray-300 mb-4 z-10 relative text-sm">결과물은 안전하게 전송되었습니다.</p>
+      
+      <div id="resultCanvasContainer" class="relative w-full rounded-xl overflow-hidden shadow-2xl border border-white/10 mb-6 bg-black" style="aspect-ratio: 1/1;">
+        <canvas id="resultCanvas" class="w-full h-full object-contain"></canvas>
+        <div id="particleOverlayStep4" class="absolute inset-0 pointer-events-none"></div>
+      </div>
+      
+      <div class="flex flex-col gap-3 z-10 relative">
+        <button id="downloadBtn" class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 py-3 rounded-xl font-bold shadow-lg text-center">내 모자이크 원본 저장하기 💾</button>
         <button onclick="location.reload()" class="w-full bg-white/10 hover:bg-white/20 py-3 rounded-xl font-bold">다른 사진 해보기</button>
       </div>
     </div>
@@ -149,12 +152,7 @@
     const cropBtn = document.getElementById('cropBtn');
     
     // 진행 UI 요소
-    const progressTitle = document.getElementById('progressTitle');
     const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    const progressDetail = document.getElementById('progressDetail');
-    const miniCanvas = document.getElementById('miniCanvas');
-    const miniCtx = miniCanvas.getContext('2d');
     
     let cropper = null;
     let socket = null;
@@ -203,10 +201,6 @@
       }
       socket.emit('join_session', currentSessionId);
       
-      // 미니 캔버스 초기화 (검은색)
-      miniCtx.fillStyle = '#0f172a';
-      miniCtx.fillRect(0, 0, miniCanvas.width, miniCanvas.height);
-      
       // 진행 상황 수신
       socket.off('mosaic_progress'); // 기존 리스너 제거
       socket.on('mosaic_progress', (data) => {
@@ -215,28 +209,30 @@
           progressFill.style.width = data.percent + '%';
         }
         
+        const terminalLog = document.getElementById('terminalLog');
+        const addLog = (msg, isDetail = false) => {
+          const div = document.createElement('div');
+          div.textContent = `> ${msg}`;
+          if (isDetail) div.className = 'text-gray-500 ml-4';
+          terminalLog.appendChild(div);
+          terminalLog.scrollTop = terminalLog.scrollHeight;
+        };
+        
         switch (data.phase) {
           case 'matching':
-            progressTitle.textContent = '🔭 색상 분석 및 타일 매칭 중...';
-            progressText.textContent = `${data.cols || '?'} × ${data.rows || '?'} 그리드를 분석하고 있습니다.`;
-            progressDetail.textContent = '';
-            // 분석 중 스캔 라인 애니메이션
-            drawScanAnimation(data.cols, data.rows);
+            addLog(`그리드 분석 및 타일 매칭 중... [${data.cols || '?'}x${data.rows || '?'}]`);
             break;
             
           case 'compositing':
-            progressTitle.textContent = '✨ 타일을 조합하는 중...';
             const placed = (data.placedCount || 0).toLocaleString();
             const total = (data.totalCount || 0).toLocaleString();
-            progressText.textContent = `${placed} / ${total} 타일 배치 준비 완료`;
-            progressDetail.textContent = '곧 조립이 시작됩니다!';
+            if (data.placedCount === 1) addLog('이미지 합성 단계 진입...');
+            addLog(`타일 배치 중: ${placed} / ${total}`, true);
             break;
             
           case 'done':
-            progressTitle.textContent = '✅ 완성!';
+            addLog('모자이크 렌더링 완료. 전송 중...', false);
             progressFill.style.width = '100%';
-            progressText.textContent = '모자이크가 완성되었습니다!';
-            progressDetail.textContent = '';
             
             // 캔버스 애니메이션용 메타데이터 저장
             window.mosaicInfo = {
@@ -251,320 +247,6 @@
       return currentSessionId;
     }
     
-    // (스냅샷 표시 기능 제거됨)
-    // 매칭 단계 스캔 라인 애니메이션
-    let scanAnimFrame = null;
-    function drawScanAnimation(cols, rows) {
-      if (scanAnimFrame) cancelAnimationFrame(scanAnimFrame);
-      
-      const aspect = (cols || 16) / (rows || 9);
-      miniCanvas.width = Math.min(360, Math.round(200 * aspect));
-      miniCanvas.height = Math.round(miniCanvas.width / aspect);
-      
-      let scanY = 0;
-      const cellW = miniCanvas.width / (cols || 16);
-      const cellH = miniCanvas.height / (rows || 9);
-      
-      function animateScan() {
-        miniCtx.fillStyle = '#0f172a';
-        miniCtx.fillRect(0, 0, miniCanvas.width, miniCanvas.height);
-        
-        // 그리드 라인
-        miniCtx.strokeStyle = 'rgba(129, 140, 248, 0.15)';
-        miniCtx.lineWidth = 0.5;
-        for (let x = 0; x <= cols; x++) {
-          miniCtx.beginPath();
-          miniCtx.moveTo(x * cellW, 0);
-          miniCtx.lineTo(x * cellW, miniCanvas.height);
-          miniCtx.stroke();
-        }
-        for (let y = 0; y <= rows; y++) {
-          miniCtx.beginPath();
-          miniCtx.moveTo(0, y * cellH);
-          miniCtx.lineTo(miniCanvas.width, y * cellH);
-          miniCtx.stroke();
-        }
-        
-        // 스캔 라인 (보라색 수평선이 위에서 아래로 이동)
-        const gradient = miniCtx.createLinearGradient(0, scanY - 15, 0, scanY + 15);
-        gradient.addColorStop(0, 'rgba(168, 85, 247, 0)');
-        gradient.addColorStop(0.5, 'rgba(168, 85, 247, 0.6)');
-        gradient.addColorStop(1, 'rgba(168, 85, 247, 0)');
-        miniCtx.fillStyle = gradient;
-        miniCtx.fillRect(0, scanY - 15, miniCanvas.width, 30);
-        
-        scanY += 1.5;
-        if (scanY > miniCanvas.height + 15) scanY = -15;
-        
-        scanAnimFrame = requestAnimationFrame(animateScan);
-      }
-      animateScan();
-    }
-    
-    function stopScanAnimation() {
-      if (scanAnimFrame) {
-        cancelAnimationFrame(scanAnimFrame);
-        scanAnimFrame = null;
-      }
-    }
-
-    let u_particles = [];
-    let u_sparkles = [];
-    let u_shockwave = null;
-    let u_finishFlash = 0;
-    let u_animationFrame;
-    let u_landedCount = 0;
-    let u_totalParticles = 0;
-    let u_shockwaveFired = false;
-    let u_finishFired = false;
-    let u_ctx = null;
-    let u_canvas = null;
-    let u_canvasW = 0;
-    let u_canvasH = 0;
-    let u_tileSize = 20;
-
-    function renderUploadAnim() {
-      u_ctx.clearRect(0, 0, u_canvas.width, u_canvas.height);
-      const useRotation = u_totalParticles < 3000;
-      
-      for (let i = 0; i < u_particles.length; i++) {
-        const p = u_particles[i];
-        if (p.alpha <= 0) continue;
-        
-        u_ctx.save();
-        u_ctx.globalAlpha = p.alpha;
-        
-        if (useRotation && p.rotation !== 0) {
-          const cx = p.x + u_tileSize / 2;
-          const cy = p.y + u_tileSize / 2;
-          u_ctx.translate(cx, cy);
-          u_ctx.rotate(p.rotation);
-          u_ctx.scale(p.scale, p.scale);
-          u_ctx.drawImage(
-            p.img,
-            p.sx, p.sy, p.sWidth || u_tileSize, p.sHeight || u_tileSize,
-            -u_tileSize / 2, -u_tileSize / 2, u_tileSize, u_tileSize
-          );
-        } else {
-          if (p.scale !== 1) {
-            const cx = p.x + u_tileSize / 2;
-            const cy = p.y + u_tileSize / 2;
-            u_ctx.translate(cx, cy);
-            u_ctx.scale(p.scale, p.scale);
-            u_ctx.drawImage(
-              p.img,
-              p.sx, p.sy, p.sWidth || u_tileSize, p.sHeight || u_tileSize,
-              -u_tileSize / 2, -u_tileSize / 2, u_tileSize, u_tileSize
-            );
-          } else {
-            u_ctx.drawImage(
-              p.img,
-              p.sx, p.sy, p.sWidth || u_tileSize, p.sHeight || u_tileSize,
-              p.x, p.y, u_tileSize, u_tileSize
-            );
-          }
-        }
-        u_ctx.restore();
-      }
-      
-      u_ctx.save();
-      u_ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < u_particles.length; i++) {
-        const p = u_particles[i];
-        if (p.glow > 0) {
-          u_ctx.globalAlpha = p.glow * 0.6;
-          const glowSize = u_tileSize * (1 + p.glow * 0.5);
-          const offset = (glowSize - u_tileSize) / 2;
-          u_ctx.fillStyle = `hsl(${260 + Math.random() * 30}, 80%, 70%)`;
-          u_ctx.fillRect(p.destX - offset, p.destY - offset, glowSize, glowSize);
-        }
-      }
-      u_ctx.restore();
-      
-      u_ctx.save();
-      u_ctx.globalCompositeOperation = 'lighter';
-      for (let i = u_sparkles.length - 1; i >= 0; i--) {
-        const s = u_sparkles[i];
-        s.x += s.vx;
-        s.y += s.vy;
-        s.life -= 0.025;
-        if (s.life <= 0) { u_sparkles.splice(i, 1); continue; }
-        
-        u_ctx.globalAlpha = s.life * 0.8;
-        u_ctx.fillStyle = s.color;
-        
-        u_ctx.save();
-        u_ctx.translate(s.x, s.y);
-        u_ctx.rotate(s.angle);
-        const sz = s.size * s.life;
-        u_ctx.fillRect(-sz/2, -sz*2, sz, sz*4);
-        u_ctx.fillRect(-sz*2, -sz/2, sz*4, sz);
-        u_ctx.restore();
-      }
-      u_ctx.restore();
-      
-      if (u_shockwave) {
-        u_ctx.save();
-        u_ctx.globalCompositeOperation = 'lighter';
-        u_ctx.globalAlpha = u_shockwave.alpha;
-        u_ctx.strokeStyle = `rgba(168, 85, 247, ${u_shockwave.alpha})`;
-        u_ctx.lineWidth = 4 + (1 - u_shockwave.alpha) * 8;
-        u_ctx.beginPath();
-        u_ctx.arc(u_canvasW / 2, u_canvasH / 2, u_shockwave.radius, 0, Math.PI * 2);
-        u_ctx.stroke();
-        
-        u_ctx.globalAlpha = u_shockwave.alpha * 0.5;
-        u_ctx.strokeStyle = `rgba(99, 102, 241, ${u_shockwave.alpha * 0.5})`;
-        u_ctx.lineWidth = 2;
-        u_ctx.beginPath();
-        u_ctx.arc(u_canvasW / 2, u_canvasH / 2, u_shockwave.radius * 0.85, 0, Math.PI * 2);
-        u_ctx.stroke();
-        u_ctx.restore();
-      }
-      
-      if (u_finishFlash > 0) {
-        u_ctx.save();
-        u_ctx.globalCompositeOperation = 'lighter';
-        u_ctx.globalAlpha = u_finishFlash;
-        u_ctx.fillStyle = 'rgba(200, 180, 255, 1)';
-        u_ctx.fillRect(0, 0, u_canvas.width, u_canvas.height);
-        u_ctx.restore();
-      }
-      
-      u_ctx.globalAlpha = 1;
-      u_animationFrame = requestAnimationFrame(renderUploadAnim);
-    }
-
-    function startUploadFlyInAnimation(imgElement, width, height, tileSize) {
-      u_canvas = document.getElementById('resultCanvas');
-      u_ctx = u_canvas.getContext('2d');
-      u_canvas.width = width;
-      u_canvas.height = height;
-      u_canvasW = width;
-      u_canvasH = height;
-      u_tileSize = tileSize;
-
-      cancelAnimationFrame(u_animationFrame);
-      u_particles = [];
-      u_sparkles = [];
-      u_shockwave = null;
-      u_finishFlash = 0;
-      u_landedCount = 0;
-      u_shockwaveFired = false;
-      u_finishFired = false;
-
-      const cols = Math.floor(width / tileSize);
-      const rows = Math.floor(height / tileSize);
-      u_totalParticles = cols * rows;
-      
-      const scaleX = imgElement.width / width;
-      const scaleY = imgElement.height / height;
-      const sWidth = tileSize * scaleX;
-      const sHeight = tileSize * scaleY;
-      
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
-      const useRotation = u_totalParticles < 3000;
-
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const destX = x * tileSize;
-          const destY = y * tileSize;
-
-          const angle = Math.random() * Math.PI * 2;
-          const dist = 1000 + Math.random() * 2000;
-          const startX = destX + Math.cos(angle) * dist;
-          const startY = destY + Math.sin(angle) * dist;
-
-          const tileCenterX = destX + tileSize / 2;
-          const tileCenterY = destY + tileSize / 2;
-          const distFromCenter = Math.sqrt(
-            (tileCenterX - centerX) ** 2 + (tileCenterY - centerY) ** 2
-          );
-          
-          const waveDelay = (distFromCenter / maxDist) * 4.0; 
-          const randomJitter = Math.random() * 0.8; 
-
-          const particle = {
-            img: imgElement,
-            sx: destX * scaleX, sy: destY * scaleY,
-            sWidth: sWidth, sHeight: sHeight,
-            x: startX, y: startY,
-            destX: destX, destY: destY,
-            alpha: 0,
-            rotation: useRotation ? (Math.random() - 0.5) * Math.PI * 1.5 : 0,
-            scale: 0.3,
-            glow: 0,
-            landed: false
-          };
-          u_particles.push(particle);
-
-          const totalDelay = waveDelay + randomJitter;
-          const duration = 2.4 + Math.random() * 2.0;
-
-          const tl = gsap.timeline({ delay: totalDelay });
-          tl.to(particle, {
-            x: destX,
-            y: destY,
-            alpha: 1,
-            rotation: 0,
-            scale: 1.15, 
-            duration: duration,
-            ease: "power3.out",
-            onComplete: () => {
-              particle.landed = true;
-              
-              const sparkCount = 2 + Math.floor(Math.random() * 2);
-              for (let s = 0; s < sparkCount; s++) {
-                u_sparkles.push({
-                  x: destX + tileSize / 2,
-                  y: destY + tileSize / 2,
-                  vx: (Math.random() - 0.5) * 4,
-                  vy: (Math.random() - 0.5) * 4,
-                  size: 1.5 + Math.random() * 2,
-                  life: 1,
-                  color: `hsl(${250 + Math.random() * 40}, 90%, ${70 + Math.random() * 20}%)`,
-                  angle: Math.random() * Math.PI
-                });
-              }
-              
-              u_landedCount++;
-              
-              if (!u_finishFired && u_landedCount >= u_totalParticles) {
-                u_finishFired = true;
-                
-                if (!u_shockwaveFired) {
-                  u_shockwaveFired = true;
-                  u_shockwave = { radius: 0, alpha: 0.8 };
-                  gsap.to(u_shockwave, {
-                    radius: maxDist * 1.2,
-                    alpha: 0,
-                    duration: 2.0,
-                    ease: "power2.out",
-                    onComplete: () => { u_shockwave = null; }
-                  });
-                }
-                
-                u_finishFlash = 0.4;
-                gsap.to({ v: 0.4 }, {
-                  v: 0,
-                  duration: 1.5,
-                  onUpdate: function() { u_finishFlash = this.targets()[0].v; }
-                });
-              }
-            }
-          });
-          
-          tl.to(particle, {
-            scale: 1,
-            duration: 0.2,
-            ease: "bounce.out"
-          });
-        }
-      }
-      renderUploadAnim();
-    }
 
     cropBtn.addEventListener('click', () => {
       if (!cropper) return;
@@ -575,10 +257,8 @@
       
       // 진행률 초기화
       progressFill.style.width = '0%';
-      progressText.textContent = '잠시만 기다려주세요...';
-      progressDetail.textContent = '';
-      progressTitle.textContent = '우주 데이터를 조합 중...';
-      lastSnapshotImg = null;
+      const terminalLog = document.getElementById('terminalLog');
+      terminalLog.innerHTML = '<div>> 시스템 초기화 완료</div><div>> 업로드된 이미지 전송 중...</div>';
       
       // Socket.io 연결 및 세션 참가
       const sessionId = setupProgressSocket();
@@ -592,7 +272,6 @@
         alert('영역을 인식할 수 없습니다. 크롭 영역을 다시 한 번 터치해주세요!');
         step3.classList.add('hidden');
         step2.classList.remove('hidden');
-        stopScanAnimation();
         return;
       }
 
@@ -608,7 +287,6 @@
           });
           const data = await res.json();
           
-          stopScanAnimation();
           step3.classList.add('hidden');
           if(data.success) {
             step4.classList.remove('hidden');
@@ -649,12 +327,54 @@
             step1.classList.remove('hidden');
           }
         } catch(e) {
-          stopScanAnimation();
           alert('서버와 통신할 수 없습니다.');
           location.reload();
         }
       }, 'image/jpeg', 0.9);
     });
+
+    // 캔버스 애니메이션
+    function startUploadFlyInAnimation(img, width, height, tileSize) {
+      const cvs = document.getElementById('resultCanvas');
+      const ctx = cvs.getContext('2d');
+      cvs.width = width;
+      cvs.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      // GSAP 스케일 업 & 파티클 이펙트
+      gsap.fromTo(cvs, 
+        { scale: 0.8, opacity: 0, rotation: -5 }, 
+        { scale: 1, opacity: 1, rotation: 0, duration: 1.5, ease: 'elastic.out(1, 0.5)' }
+      );
+      
+      // 파티클 생성
+      const overlay = document.getElementById('particleOverlayStep4');
+      for(let i=0; i<30; i++) {
+        const p = document.createElement('div');
+        p.style.position = 'absolute';
+        p.style.width = '6px';
+        p.style.height = '6px';
+        p.style.background = 'white';
+        p.style.borderRadius = '50%';
+        p.style.left = '50%';
+        p.style.top = '50%';
+        p.style.boxShadow = '0 0 10px white, 0 0 20px #c084fc';
+        overlay.appendChild(p);
+        
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 50 + Math.random() * 150;
+        
+        gsap.to(p, {
+          x: Math.cos(angle) * radius,
+          y: Math.sin(angle) * radius,
+          opacity: 0,
+          scale: Math.random() * 2,
+          duration: 1 + Math.random(),
+          ease: 'power2.out',
+          onComplete: () => p.remove()
+        });
+      }
+    }
   </script>
 </body>
 </html>

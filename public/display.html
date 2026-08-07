@@ -5,93 +5,103 @@
   <title>코즈믹 모자이크 | 전시 디스플레이</title>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <style>
     body {
       margin: 0;
-      background-color: #000;
+      background-color: #050505;
       overflow: hidden;
       font-family: 'Pretendard', sans-serif;
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      color: white;
     }
     
-    #canvas-container {
-      position: absolute;
-      top: 0; left: 0; width: 100vw; height: 100vh;
+    /* 좌측 비디오 영역 (70%) */
+    #video-container {
+      width: 70%;
+      height: 100%;
+      position: relative;
+      background: #000;
+    }
+    
+    #promo-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* 화면에 꽉 차게 */
+    }
+
+    /* 우측 QR 안내 영역 (30%) */
+    #qr-container {
+      width: 30%;
+      height: 100%;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
+      background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 40px;
+      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
     }
 
-    canvas {
-      box-shadow: 0 0 50px rgba(138, 43, 226, 0.2);
-    }
-
-    #idle-message {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      z-index: 10;
-      color: rgba(255,255,255,0.8);
-      transition: opacity 1s;
-    }
-
-    .stars {
-      background: transparent url('https://s3-us-west-2.amazonaws.com/s.cdpn.io/1231630/stars.png') repeat top center;
-      z-index: -1;
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      animation: move-twink-back 200s linear infinite;
-    }
-
-    @keyframes move-twink-back {
-      from {background-position: 0 0;}
-      to {background-position: -10000px 5000px;}
-    }
-
-    /* 우측 하단 고정 QR 안내 */
-    #qr-overlay {
-      position: absolute;
-      bottom: 40px; right: 40px;
-      background: rgba(15, 23, 42, 0.7);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.2);
-      padding: 20px;
+    #qrcode-box {
+      background: white;
+      padding: 24px;
       border-radius: 24px;
-      text-align: center;
-      z-index: 20;
+      margin-bottom: 40px;
+      box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
+      transition: transform 0.3s;
+    }
+
+    #qrcode-box:hover {
+      transform: scale(1.05);
+    }
+
+    .title-gradient {
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      background-image: linear-gradient(90deg, #c084fc, #818cf8);
     }
   </style>
 </head>
 <body>
-  <div class="stars"></div>
 
-  <div id="idle-message">
-    <h1 class="text-7xl font-extrabold mb-6 tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-indigo-400">당신의 우주를 만들어 드립니다</h1>
-    <p class="text-3xl font-light">QR 코드를 스캔하여 사진을 올려주세요</p>
+  <div id="video-container">
+    <!-- 임시 우주 영상 (Pixabay 무료 라이선스) -->
+    <!-- 나중에 사용자님이 public/video/promo.mp4 파일을 준비하면 src="/video/promo.mp4" 로 변경하면 됩니다. -->
+    <video id="promo-video" autoplay loop muted playsinline>
+      <source src="https://cdn.pixabay.com/video/2020/04/18/36551-412217614_large.mp4" type="video/mp4">
+      Your browser does not support the video tag.
+    </video>
   </div>
 
-  <div id="canvas-container">
-    <canvas id="mosaicCanvas"></canvas>
-  </div>
+  <div id="qr-container">
+    <h1 class="text-5xl font-extrabold mb-4 tracking-tighter title-gradient text-center">QR을 스캔하여<br>당신의 우주를<br>만들어보세요</h1>
+    <p class="text-xl font-light text-indigo-200 mb-12 text-center break-keep">
+      스마트폰에 사진을 올려<br>거대한 모자이크 아트를 완성하세요.
+    </p>
 
-  <div id="qr-overlay">
-    <div id="qrcode" class="bg-white p-2 rounded-xl mb-3 w-32 h-32 mx-auto flex items-center justify-center">
-      <span class="text-gray-500 text-sm">QR Code</span>
+    <div id="qrcode-box">
+      <div id="qrcode" class="w-80 h-80 flex items-center justify-center">
+        <span class="text-gray-400">QR 로딩 중...</span>
+      </div>
     </div>
-    <p class="text-white font-bold text-lg">참여하기</p>
+    
+    <div class="flex items-center space-x-3 text-slate-400">
+      <span class="text-lg font-semibold">스마트폰 카메라로 스캔하세요</span>
+    </div>
   </div>
 
-  <!-- QR코드 라이브러리 -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script>
     const socket = io();
     
-    // 기본 로컬 주소로 초기화
     let uploadUrl = window.location.origin + '/upload.html';
     
     function drawQR(url) {
-      QRCode.toCanvas(document.createElement('canvas'), url, { width: 120, margin: 1 }, function (err, canvas) {
+      QRCode.toCanvas(document.createElement('canvas'), url, { width: 320, margin: 1, color: { dark: '#0f172a', light: '#ffffff' } }, function (err, canvas) {
         if(!err) {
           const qrContainer = document.getElementById('qrcode');
           qrContainer.innerHTML = '';
@@ -106,353 +116,6 @@
       console.log('클라우드플레어 터널 주소 수신:', url);
       drawQR(url + '/upload.html');
     });
-
-    const idleMessage = document.getElementById('idle-message');
-    const canvas = document.getElementById('mosaicCanvas');
-    const ctx = canvas.getContext('2d');
-
-    // 동적 캔버스 스케일링
-    let CANVAS_W = 1920;
-    let CANVAS_H = 1080;
-    let currentTileSize = 20;
-
-    // 반응형 스케일링
-    function resizeCanvas() {
-      const scale = Math.min(window.innerWidth / CANVAS_W, window.innerHeight / CANVAS_H) * 0.95;
-      canvas.width = CANVAS_W;
-      canvas.height = CANVAS_H;
-      canvas.style.transform = `scale(${scale})`;
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    let particles = [];
-    let sparkles = [];
-    let shockwave = null;
-    let finishFlash = 0;
-    let animationFrame;
-    let landedCount = 0;
-    let totalParticles = 0;
-    let shockwaveFired = false;
-    let finishFired = false;
-
-    function render() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // 1. 타일 파티클 렌더링
-      const useRotation = totalParticles < 3000; // 저사양 대비: 3000개 미만일 때만 회전 적용
-      
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        if (p.alpha <= 0) continue;
-        
-        ctx.save();
-        ctx.globalAlpha = p.alpha;
-        
-        if (useRotation && p.rotation !== 0) {
-          const cx = p.x + currentTileSize / 2;
-          const cy = p.y + currentTileSize / 2;
-          ctx.translate(cx, cy);
-          ctx.rotate(p.rotation);
-          ctx.scale(p.scale, p.scale);
-          ctx.drawImage(
-            p.img,
-            p.sx, p.sy, p.sWidth || currentTileSize, p.sHeight || currentTileSize,
-            -currentTileSize / 2, -currentTileSize / 2, currentTileSize, currentTileSize
-          );
-        } else {
-          if (p.scale !== 1) {
-            const cx = p.x + currentTileSize / 2;
-            const cy = p.y + currentTileSize / 2;
-            ctx.translate(cx, cy);
-            ctx.scale(p.scale, p.scale);
-            ctx.drawImage(
-              p.img,
-              p.sx, p.sy, p.sWidth || currentTileSize, p.sHeight || currentTileSize,
-              -currentTileSize / 2, -currentTileSize / 2, currentTileSize, currentTileSize
-            );
-          } else {
-            ctx.drawImage(
-              p.img,
-              p.sx, p.sy, p.sWidth || currentTileSize, p.sHeight || currentTileSize,
-              p.x, p.y, currentTileSize, currentTileSize
-            );
-          }
-        }
-        ctx.restore();
-      }
-      
-      // 2. 글로우 효과 — 안착 직후 밝은 빛 (additive blending)
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        if (p.glow > 0) {
-          ctx.globalAlpha = p.glow * 0.6;
-          const glowSize = currentTileSize * (1 + p.glow * 0.5);
-          const offset = (glowSize - currentTileSize) / 2;
-          // 보라-파란 글로우
-          ctx.fillStyle = `hsl(${260 + Math.random() * 30}, 80%, 70%)`;
-          ctx.fillRect(p.destX - offset, p.destY - offset, glowSize, glowSize);
-        }
-      }
-      ctx.restore();
-      
-      // 3. 스파클(별 반짝이) 렌더링
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = sparkles.length - 1; i >= 0; i--) {
-        const s = sparkles[i];
-        s.x += s.vx;
-        s.y += s.vy;
-        s.life -= 0.025;
-        if (s.life <= 0) { sparkles.splice(i, 1); continue; }
-        
-        ctx.globalAlpha = s.life * 0.8;
-        ctx.fillStyle = s.color;
-        
-        // 4각 별 모양
-        ctx.save();
-        ctx.translate(s.x, s.y);
-        ctx.rotate(s.angle);
-        const sz = s.size * s.life;
-        ctx.fillRect(-sz/2, -sz*2, sz, sz*4);
-        ctx.fillRect(-sz*2, -sz/2, sz*4, sz);
-        ctx.restore();
-      }
-      ctx.restore();
-      
-      // 4. 충격파 효과
-      if (shockwave) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = shockwave.alpha;
-        ctx.strokeStyle = `rgba(168, 85, 247, ${shockwave.alpha})`;
-        ctx.lineWidth = 4 + (1 - shockwave.alpha) * 8;
-        ctx.beginPath();
-        ctx.arc(CANVAS_W / 2, CANVAS_H / 2, shockwave.radius, 0, Math.PI * 2);
-        ctx.stroke();
-        
-        // 두 번째 얇은 링
-        ctx.globalAlpha = shockwave.alpha * 0.5;
-        ctx.strokeStyle = `rgba(99, 102, 241, ${shockwave.alpha * 0.5})`;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(CANVAS_W / 2, CANVAS_H / 2, shockwave.radius * 0.85, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-      
-      // 5. 피니시 플래시 (전체 화면 밝게)
-      if (finishFlash > 0) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = finishFlash;
-        ctx.fillStyle = 'rgba(200, 180, 255, 1)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.restore();
-      }
-      
-      ctx.globalAlpha = 1;
-      animationFrame = requestAnimationFrame(render);
-    }
-
-    function startFlyInAnimation(imgElement) {
-      cancelAnimationFrame(animationFrame);
-      particles = [];
-      sparkles = [];
-      shockwave = null;
-      finishFlash = 0;
-      landedCount = 0;
-      shockwaveFired = false;
-      finishFired = false;
-
-      const cols = Math.floor(CANVAS_W / currentTileSize);
-      const rows = Math.floor(CANVAS_H / currentTileSize);
-      totalParticles = cols * rows;
-      
-      // 물리적 캔버스 이미지 크기와 가상 그리드 비율 계산
-      const scaleX = imgElement.width / CANVAS_W;
-      const scaleY = imgElement.height / CANVAS_H;
-      const sWidth = currentTileSize * scaleX;
-      const sHeight = currentTileSize * scaleY;
-      
-      const centerX = CANVAS_W / 2;
-      const centerY = CANVAS_H / 2;
-      const maxDist = Math.sqrt(centerX * centerX + centerY * centerY);
-      const useRotation = totalParticles < 3000;
-
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const destX = x * currentTileSize;
-          const destY = y * currentTileSize;
-
-          // 시작점: 화면 밖 임의의 위치 (더 넓은 범위)
-          const angle = Math.random() * Math.PI * 2;
-          const dist = 2000 + Math.random() * 3000;
-          const startX = destX + Math.cos(angle) * dist;
-          const startY = destY + Math.sin(angle) * dist;
-
-          // 중심까지 거리 계산 (방사형 웨이브용)
-          const tileCenterX = destX + currentTileSize / 2;
-          const tileCenterY = destY + currentTileSize / 2;
-          const distFromCenter = Math.sqrt(
-            (tileCenterX - centerX) ** 2 + (tileCenterY - centerY) ** 2
-          );
-          
-          // 방사형 delay: 중심 타일은 먼저, 외곽은 나중에 (속도 2배 느리게)
-          const waveDelay = (distFromCenter / maxDist) * 4.0; // 0 ~ 4초
-          const randomJitter = Math.random() * 0.8; // 약간의 랜덤성 (2배)
-
-          const particle = {
-            img: imgElement,
-            sx: destX * scaleX, sy: destY * scaleY,
-            sWidth: sWidth, sHeight: sHeight,
-            x: startX, y: startY,
-            destX: destX, destY: destY,
-            alpha: 0,
-            rotation: useRotation ? (Math.random() - 0.5) * Math.PI * 1.5 : 0,
-            scale: 0.3,
-            glow: 0,
-            landed: false
-          };
-          particles.push(particle);
-
-          const totalDelay = waveDelay + randomJitter;
-          const duration = 2.4 + Math.random() * 2.0; // 애니메이션 속도 2배 느리게
-
-          // GSAP 타임라인으로 단계별 애니메이션
-          const tl = gsap.timeline({ delay: totalDelay });
-          
-          // Phase 1: 날아오기 + 페이드인
-          tl.to(particle, {
-            x: destX,
-            y: destY,
-            alpha: 1,
-            rotation: 0,
-            scale: 1.15, // 살짝 커진 상태로 도착
-            duration: duration,
-            ease: "power3.out",
-            onComplete: () => {
-              // 안착 시 글로우 제거 (사용자 요청)
-              particle.landed = true;
-              
-              // 스파클 생성 (3~5개)
-              const sparkCount = 3 + Math.floor(Math.random() * 3);
-              for (let s = 0; s < sparkCount; s++) {
-                sparkles.push({
-                  x: destX + currentTileSize / 2,
-                  y: destY + currentTileSize / 2,
-                  vx: (Math.random() - 0.5) * 4,
-                  vy: (Math.random() - 0.5) * 4,
-                  size: 1.5 + Math.random() * 2,
-                  life: 1,
-                  color: `hsl(${250 + Math.random() * 40}, 90%, ${70 + Math.random() * 20}%)`,
-                  angle: Math.random() * Math.PI
-                });
-              }
-              
-              landedCount++;
-              
-              // 100% 완성: 충격파 및 피니시 플래시
-              if (!finishFired && landedCount >= totalParticles) {
-                finishFired = true;
-                
-                // 보라색 충격파 발사 (기존 70%에서 100%로 변경)
-                if (!shockwaveFired) {
-                  shockwaveFired = true;
-                  shockwave = { radius: 0, alpha: 0.8 };
-                  gsap.to(shockwave, {
-                    radius: maxDist * 1.2,
-                    alpha: 0,
-                    duration: 2.0,
-                    ease: "power2.out",
-                    onComplete: () => { shockwave = null; }
-                  });
-                }
-                
-                finishFlash = 0.4;
-                gsap.to({ v: 0.4 }, {
-                  v: 0,
-                  duration: 1.0,
-                  ease: "power2.out",
-                  onUpdate: function() { finishFlash = this.targets()[0].v; }
-                });
-              }
-            }
-          });
-          
-          // Phase 2: 바운스 (살짝 커졌다가 원래 크기로)
-          tl.to(particle, {
-            scale: 1,
-            duration: 0.3,
-            ease: "elastic.out(1, 0.5)"
-          }, "-=0.1");
-        }
-      }
-
-      render();
-    }
-
-    let lastImg = null;
-
-    socket.on('new_mosaic', (data) => {
-      console.log('새 모자이크 수신!', data.imageUrl);
-      if (data.tileSize) currentTileSize = data.tileSize;
-      if (data.width && data.height) {
-        CANVAS_W = data.width;
-        CANVAS_H = data.height;
-        resizeCanvas();
-      }
-      
-      idleMessage.style.opacity = '0';
-      
-      const img = new Image();
-      img.onload = () => {
-        lastImg = img;
-        if (document.hidden) {
-          // 탭이 백그라운드에 있으면 애니메이션 생략하고 캔버스에 100% 즉시 렌더링
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, CANVAS_W, CANVAS_H);
-        } else {
-          startFlyInAnimation(img);
-        }
-      };
-      img.src = data.imageUrl;
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && lastImg) {
-        if (particles.length > 0) {
-          particles.forEach(p => gsap.killTweensOf(p));
-          particles = [];
-          sparkles = [];
-          shockwave = null;
-          finishFlash = 0;
-          cancelAnimationFrame(animationFrame);
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(lastImg, 0, 0, CANVAS_W, CANVAS_H);
-        }
-      }
-    });
-
-    socket.on('config_updated', (config) => {
-      console.log('관리자 설정 업데이트 수신:', config);
-      if (config.tileSize) currentTileSize = config.tileSize;
-      
-      // 설정 변경 알림 시각적 피드백
-      idleMessage.innerHTML = `<span class="material-symbols-outlined text-4xl mb-2 text-indigo-400">settings</span><br><span class="text-indigo-300">관리자 설정이 실시간 반영되었습니다.</span><br><span class="text-sm text-gray-400">다음 사진부터 즉시 적용됩니다.</span>`;
-      idleMessage.style.opacity = '1';
-      
-      setTimeout(() => {
-        if (!lastImg) {
-          idleMessage.innerHTML = `<span class="material-symbols-outlined text-6xl mb-4">qr_code_scanner</span><br>사진을 업로드하여<br>거대한 모자이크를 만들어보세요`;
-        } else {
-          idleMessage.style.opacity = '0';
-        }
-      }, 4000);
-    });
-
   </script>
 </body>
 </html>

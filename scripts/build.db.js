@@ -81,6 +81,7 @@ async function processTiles(themeName, options = {}) {
       // 고화질 정사각형 크롭 타일 생성 (원본에서 직접, WebP 최적화)
       const buffer = await sharp(rawPath)
         .resize({ width: RENDER_TILE_SIZE, height: RENDER_TILE_SIZE, fit: 'cover' })
+        .modulate({ lightness: 15 })
         .webp({ quality: 95 })
         .toBuffer();
 

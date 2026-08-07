@@ -254,46 +254,60 @@ router.post('/', upload.single('photo'), async (req, res) => {
     let finalImageBuffer;
 
     if (config.opacity > 0) {
-      const alphaVal = Math.max(0, Math.min(255, Math.round(255 * config.opacity)));
-      // 원본 이미지도 캔버스 크기로 리사이즈
-      const originalForBlend = await sharp(req.file.buffer)
+      const baseOriginal = await sharp(req.file.buffer)
         .resize({ width: canvasWidth, height: canvasHeight, fit: 'cover' })
         .toBuffer();
-      const transparentOriginal = await sharp(originalForBlend)
+
+      const tilesBuffer = await sharp(rawCanvas, {
+        raw: { width: canvasWidth, height: canvasHeight, channels: 3 }
+      }).png().toBuffer();
+
+      let fullyBlendedBuffer;
+      if (config.blendMode === 'over') {
+        // 'over' 모드는 단순히 원본 사진으로 덮어쓰는 모드이므로 원본 이미지 그대로 반환
+        fullyBlendedBuffer = baseOriginal;
+      } else if (config.blendMode === 'multiply') {
+        // multiply는 교환법칙이 성립하므로 원본 위에 타일을 곱합
+        fullyBlendedBuffer = await sharp(baseOriginal)
+          .composite([{ input: tilesBuffer, blend: 'multiply' }])
+          .toBuffer();
+        
+        // 이중 하이브리드 복원
+        if (config.secondOpacity > 0) {
+          const secondAlphaVal = Math.max(0, Math.min(255, Math.round(255 * config.secondOpacity)));
+          const secondTransparentOriginal = await sharp(baseOriginal)
+            .ensureAlpha()
+            .composite([{
+              input: Buffer.from([255, 255, 255, secondAlphaVal]),
+              raw: { width: 1, height: 1, channels: 4 },
+              tile: true,
+              blend: 'dest-in'
+            }]).png().toBuffer();
+          fullyBlendedBuffer = await sharp(fullyBlendedBuffer)
+            .composite([{ input: secondTransparentOriginal, blend: 'over' }])
+            .toBuffer();
+        }
+      } else {
+        // Overlay, Soft-light 등 레이어 순서가 중요한 모드: 원본(배경) 위에 타일(Foreground) 합성
+        fullyBlendedBuffer = await sharp(baseOriginal)
+          .composite([{ input: tilesBuffer, blend: config.blendMode }])
+          .toBuffer();
+      }
+
+      // 최종적으로 사용자가 설정한 투명도(opacity)만큼만 블렌딩 효과 적용
+      // A(순수 타일) 위에 B(완전 합성본)를 투명도를 줘서 덮음
+      const alphaVal = Math.max(0, Math.min(255, Math.round(255 * config.opacity)));
+      const transparentBlended = await sharp(fullyBlendedBuffer)
         .ensureAlpha()
         .composite([{
           input: Buffer.from([255, 255, 255, alphaVal]),
           raw: { width: 1, height: 1, channels: 4 },
           tile: true,
           blend: 'dest-in'
-        }])
-        .png()
-        .toBuffer();
+        }]).png().toBuffer();
 
-      let composites = [{ input: transparentOriginal, blend: config.blendMode }];
-
-      // 이중 하이브리드 (Multiply + Over) 로직 추가
-      if (config.blendMode === 'multiply' && config.secondOpacity > 0) {
-        const secondAlphaVal = Math.max(0, Math.min(255, Math.round(255 * config.secondOpacity)));
-        const secondTransparentOriginal = await sharp(originalForBlend)
-          .ensureAlpha()
-          .composite([{
-            input: Buffer.from([255, 255, 255, secondAlphaVal]),
-            raw: { width: 1, height: 1, channels: 4 },
-            tile: true,
-            blend: 'dest-in'
-          }])
-          .png()
-          .toBuffer();
-
-        // 1차로 Multiply 적용 후, 2차로 옅게 Over 적용
-        composites.push({ input: secondTransparentOriginal, blend: 'over' });
-      }
-
-      finalImageBuffer = await sharp(rawCanvas, {
-        raw: { width: canvasWidth, height: canvasHeight, channels: 3 }
-      })
-        .composite(composites)
+      finalImageBuffer = await sharp(tilesBuffer)
+        .composite([{ input: transparentBlended, blend: 'over' }])
         .jpeg({ quality: 95 })
         .toBuffer();
 

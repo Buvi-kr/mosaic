@@ -130,7 +130,31 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree) {
     let validCandidates = [];
     let fallbackIdx = 0;
 
-    if (useKDTree) {
+    if (currentConfig.turboMode) {
+      // ===== 100% 랜덤 터보 모드 (색상 매칭 생략) =====
+      const filterFn = (i) => {
+        if (usedCounts[i] >= MAX_USAGE) return false;
+        if (bannedTiles.has(i)) return false;
+        return true;
+      };
+
+      // 시도 횟수 제한 (무한루프 방지)
+      let found = false;
+      for (let attempt = 0; attempt < 50; attempt++) {
+        const rIdx = Math.floor(Math.random() * dbSize);
+        if (filterFn(rIdx)) {
+          fallbackIdx = rIdx;
+          validCandidates = [{ idx: rIdx, dist: 0 }];
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        fallbackIdx = Math.floor(Math.random() * dbSize);
+        validCandidates = [{ idx: fallbackIdx, dist: 0 }];
+      }
+
+    } else if (useKDTree) {
       // ===== ONE-PASS 매칭: k-d tree 내에서 공간/사용 제약 필터링 =====
       const filterFn = (i) => {
         // 조건 1: 사용 횟수 제한
