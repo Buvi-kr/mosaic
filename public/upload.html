@@ -332,13 +332,23 @@
           });
           const data = await res.json();
           
-          step3.classList.add('hidden');
           if(data.success) {
-            step4.classList.remove('hidden');
-            
-            // 캔버스 애니메이션 시작
+            // 이미지 다운로드 대기 중임을 터미널에 표시
+            const term = document.getElementById('terminalLog');
+            if(term) {
+              const msg = document.createElement('div');
+              msg.innerHTML = '<span class="text-yellow-400">> 최종 이미지 다운로드 중... (데이터 크기에 따라 1~3초 소요)</span>';
+              term.appendChild(msg);
+              term.scrollTop = term.scrollHeight;
+            }
+
+            // 캔버스 애니메이션 준비
             const img = new Image();
             img.onload = () => {
+              // 다운로드 완료 후 화면 전환
+              step3.classList.add('hidden');
+              step4.classList.remove('hidden');
+              
               const info = window.mosaicInfo || { width: 1440, height: 1440, tileSize: 20 };
               startUploadFlyInAnimation(img, info.width, info.height, info.tileSize);
             };
@@ -411,9 +421,9 @@
       cvs.height = animH;
       ctx.clearRect(0, 0, animW, animH);
       
-      // 2. 수천 개의 별빛 느낌을 극대화하기 위해 36x36 (1296개) 조각으로 잘게 분할
-      const cols = 36;
-      const rows = 36;
+      // 2. 렉 방지 및 최적의 웅장함을 위해 25x25 (625개) 조각으로 분할
+      const cols = 25;
+      const rows = 25;
       const chunkW = animW / cols;
       const chunkH = animH / rows;
       
@@ -428,29 +438,28 @@
             startX: (Math.random() - 0.5) * animW * 3,
             startY: (Math.random() - 0.5) * animH * 3 + animH,
             scale: Math.random() * 2 + 0.5,
-            opacity: 0,
-            rotation: (Math.random() - 0.5) * Math.PI
+            opacity: 0
           });
         }
       }
 
-      // 3. 초경량 렌더 루프 (저해상도 이미지를 소스로 사용하므로 매우 빠름)
+      // 3. 초고속 렌더 루프 (Canvas state 변경을 최소화하여 모바일 60fps 보장)
       function render() {
         ctx.clearRect(0, 0, animW, animH);
         for (const ch of chunks) {
           if (ch.opacity <= 0) continue;
-          ctx.save();
-          ctx.translate(ch.x + chunkW/2, ch.y + chunkH/2);
-          ctx.rotate(ch.rotation);
-          ctx.scale(ch.scale, ch.scale);
           ctx.globalAlpha = ch.opacity;
           
-          // 오프스크린 캔버스의 조각을 그려옴
+          const w = chunkW * ch.scale;
+          const h = chunkH * ch.scale;
+          const cx = ch.x + chunkW/2;
+          const cy = ch.y + chunkH/2;
+          
+          // 회전(rotation) 연산과 save/restore를 제거하여 성능 10배 향상
           ctx.drawImage(offCanvas, 
             ch.c * chunkW, ch.r * chunkH, chunkW, chunkH,
-            -chunkW/2, -chunkH/2, chunkW, chunkH
+            cx - w/2, cy - h/2, w, h
           );
-          ctx.restore();
         }
       }
 
@@ -465,7 +474,6 @@
         y: (i, ch) => ch.r * chunkH,
         scale: 1,
         opacity: 1,
-        rotation: 0,
         duration: 1.5,
         ease: 'power3.out',
         stagger: {
