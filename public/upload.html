@@ -421,11 +421,11 @@
       cvs.height = animH;
       ctx.clearRect(0, 0, animW, animH);
       
-      // 2. 렉 방지 및 최적의 웅장함을 위해 25x25 (625개) 조각으로 분할
-      const cols = 25;
-      const rows = 25;
-      const chunkW = animW / cols;
-      const chunkH = animH / rows;
+      // 2. 고도의 최적화를 적용하여 32x32 (1024개) 조각으로 분할
+      const cols = 32;
+      const rows = 32;
+      const chunkW = Math.floor(animW / cols);
+      const chunkH = Math.floor(animH / rows);
       
       const chunks = [];
       for (let r = 0; r < rows; r++) {
@@ -444,27 +444,39 @@
         }
       }
 
-      // 3. 초고속 렌더 루프 (Canvas state 변경을 최소화하여 모바일 60fps 보장)
+      // 3. 초고속 렌더 루프 (Canvas state 변경 최소화 + 정수 좌표 렌더링)
+      const halfW = chunkW / 2;
+      const halfH = chunkH / 2;
+      
       function render() {
         // 매 프레임 시작 시 transform 초기화 상태에서 clearRect 실행
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, animW, animH);
         
+        let lastAlpha = -1;
+        
         for (const ch of chunks) {
           if (ch.opacity <= 0) continue;
-          ctx.globalAlpha = ch.opacity;
           
-          const cx = ch.x + chunkW/2;
-          const cy = ch.y + chunkH/2;
+          // Alpha 상태 변경을 최소화하기 위한 캐싱 (소수점 1자리로 그룹화)
+          const currentAlpha = Math.round(ch.opacity * 10) / 10;
+          if (lastAlpha !== currentAlpha) {
+            ctx.globalAlpha = currentAlpha;
+            lastAlpha = currentAlpha;
+          }
           
-          // save/restore 대신 수학적 변환(setTransform)을 직접 적용하여 속도 극대화
+          // 비트연산(|0)으로 소수점을 버려 Sub-pixel 렌더링 부하 완벽 제거
+          const cx = (ch.x + halfW) | 0;
+          const cy = (ch.y + halfH) | 0;
+          
+          // 수학적 변환(setTransform) 적용
           const cos = Math.cos(ch.rotation) * ch.scale;
           const sin = Math.sin(ch.rotation) * ch.scale;
           ctx.setTransform(cos, sin, -sin, cos, cx, cy);
           
           ctx.drawImage(offCanvas, 
             ch.c * chunkW, ch.r * chunkH, chunkW, chunkH,
-            -chunkW/2, -chunkH/2, chunkW, chunkH
+            -halfW | 0, -halfH | 0, chunkW, chunkH
           );
         }
         
