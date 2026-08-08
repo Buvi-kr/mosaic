@@ -438,29 +438,38 @@
             startX: (Math.random() - 0.5) * animW * 3,
             startY: (Math.random() - 0.5) * animH * 3 + animH,
             scale: Math.random() * 2 + 0.5,
-            opacity: 0
+            opacity: 0,
+            rotation: (Math.random() - 0.5) * Math.PI * 2
           });
         }
       }
 
       // 3. 초고속 렌더 루프 (Canvas state 변경을 최소화하여 모바일 60fps 보장)
       function render() {
+        // 매 프레임 시작 시 transform 초기화 상태에서 clearRect 실행
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, animW, animH);
+        
         for (const ch of chunks) {
           if (ch.opacity <= 0) continue;
           ctx.globalAlpha = ch.opacity;
           
-          const w = chunkW * ch.scale;
-          const h = chunkH * ch.scale;
           const cx = ch.x + chunkW/2;
           const cy = ch.y + chunkH/2;
           
-          // 회전(rotation) 연산과 save/restore를 제거하여 성능 10배 향상
+          // save/restore 대신 수학적 변환(setTransform)을 직접 적용하여 속도 극대화
+          const cos = Math.cos(ch.rotation) * ch.scale;
+          const sin = Math.sin(ch.rotation) * ch.scale;
+          ctx.setTransform(cos, sin, -sin, cos, cx, cy);
+          
           ctx.drawImage(offCanvas, 
             ch.c * chunkW, ch.r * chunkH, chunkW, chunkH,
-            cx - w/2, cy - h/2, w, h
+            -chunkW/2, -chunkH/2, chunkW, chunkH
           );
         }
+        
+        // 마지막에 globalAlpha 리셋
+        ctx.globalAlpha = 1;
       }
 
       gsap.ticker.add(render);
@@ -473,6 +482,7 @@
         y: (i, ch) => ch.r * chunkH,
         scale: 1,
         opacity: 1,
+        rotation: 0,
         // 우주 느낌을 극대화하기 위해 개별 조각의 비행 시간을 2.5초로 늘림
         duration: 2.5,
         ease: 'power3.out',
@@ -484,6 +494,7 @@
         onComplete: () => {
           gsap.ticker.remove(render);
           // 최종본 깔끔하게 마무리 렌더링
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
           ctx.globalAlpha = 1;
           ctx.drawImage(offCanvas, 0, 0, animW, animH);
           
