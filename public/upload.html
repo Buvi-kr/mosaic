@@ -169,7 +169,43 @@
     </div>
   </div>
 
+  <!-- 커스텀 알림 모달 (카카오톡 내장 브라우저 alert 무시 대비) -->
+  <div id="customAlertModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity opacity-0">
+    <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform scale-95 transition-transform duration-300">
+      <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-blue-500/20 rounded-full">
+        <span class="text-2xl">ℹ️</span>
+      </div>
+      <p id="customAlertMessage" class="text-white text-center whitespace-pre-line text-sm leading-relaxed mb-6"></p>
+      <button onclick="closeCustomAlert()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors">
+        확인
+      </button>
+    </div>
+  </div>
+
   <script>
+    function showCustomAlert(message) {
+      const modal = document.getElementById('customAlertModal');
+      document.getElementById('customAlertMessage').innerText = message;
+      modal.classList.remove('hidden');
+      // 트랜지션 애니메이션 적용
+      requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        modal.firstElementChild.classList.remove('scale-95');
+        modal.firstElementChild.classList.add('scale-100');
+      });
+    }
+
+    function closeCustomAlert() {
+      const modal = document.getElementById('customAlertModal');
+      modal.classList.add('opacity-0');
+      modal.firstElementChild.classList.remove('scale-100');
+      modal.firstElementChild.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+      }, 300);
+    }
+
+
     const step0 = document.getElementById('step-0');
     const startBtn = document.getElementById('startBtn');
     const step1 = document.getElementById('step-1');
@@ -314,7 +350,8 @@
       });
 
       if (!cvs) {
-        alert('영역을 인식할 수 없습니다. 크롭 영역을 다시 한 번 터치해주세요!');
+        photoInput.value = ''; // 초기화
+        showCustomAlert('사진이 너무 작습니다. 최소 100x100px 이상의 이미지를 업로드해주세요.');
         step3.classList.add('hidden');
         step2.classList.remove('hidden');
         return;
@@ -365,13 +402,13 @@
 
               // 1. 카카오톡/인스타그램 등 인앱 브라우저 (가장 악질적인 차단 환경)
               if (isKakao || isInsta) {
-                alert("카카오톡/인스타 내장 브라우저에서는 파일 다운로드가 완전히 차단되어 있습니다.\n\n해결 방법 2가지:\n1. 화면 중앙의 완성된 사진을 꾹~ 눌러서 '이미지 저장' 선택\n2. 화면 우측 하단/상단 메뉴(⋮)를 눌러 '다른 브라우저로 열기(Safari/Chrome)' 선택 후 다운로드");
+                showCustomAlert("카카오톡/인스타 내장 브라우저에서는 파일 다운로드가 완전히 차단되어 있습니다.\n\n해결 방법 2가지:\n1. 화면 중앙의 완성된 사진을 꾹~ 눌러서 '이미지 저장' 선택\n2. 화면 우측 하단/상단 메뉴(⋮)를 눌러 '다른 브라우저로 열기(Safari/Chrome)' 선택 후 다운로드");
                 return; // 인앱 브라우저는 여기서 중단시켜 무의미한 에러 방지
               }
 
               // 2. iOS Safari (다운로드 시 '파일' 앱으로 들어가버리는 문제 해결)
               if (isIOS) {
-                alert("아이폰(Safari)은 보안상 사진첩 자동 저장이 제한됩니다.\n새 창으로 사진이 열리면, 사진을 '꾹' 눌러서 [사진 앱에 저장]을 선택해주세요!");
+                showCustomAlert("아이폰(Safari)은 보안상 사진첩 자동 저장이 제한됩니다.\n새 창으로 사진이 열리면, 사진을 '꾹' 눌러서 [사진 앱에 저장]을 선택해주세요!");
                 window.open(data.imageUrl, '_blank');
                 return;
               }
@@ -385,11 +422,11 @@
               document.body.removeChild(a);
             };
           } else {
-            alert('오류: ' + data.error);
+            showCustomAlert('오류: ' + data.error);
             step1.classList.remove('hidden');
           }
         } catch(e) {
-          alert('서버와 통신할 수 없습니다.');
+          showCustomAlert('서버와 통신할 수 없습니다.');
           location.reload();
         }
       }, 'image/jpeg', 0.9);
