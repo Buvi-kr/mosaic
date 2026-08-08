@@ -465,7 +465,6 @@
 
       gsap.ticker.add(render);
 
-      // 4. 조각들이 날아와서 합체되는 화려한 GSAP 애니메이션
       gsap.fromTo(chunks, {
         x: (i, ch) => ch.startX,
         y: (i, ch) => ch.startY
@@ -474,10 +473,12 @@
         y: (i, ch) => ch.r * chunkH,
         scale: 1,
         opacity: 1,
-        duration: 1.5,
+        // 우주 느낌을 극대화하기 위해 개별 조각의 비행 시간을 2.5초로 늘림
+        duration: 2.5,
         ease: 'power3.out',
         stagger: {
-          amount: 1.0,
+          // 전체 조각이 출발하는 간격을 2.0초로 늘려 총 4.5초에 걸쳐 완성되도록 연출
+          amount: 2.0,
           from: 'random'
         },
         onComplete: () => {
@@ -492,10 +493,10 @@
         }
       });
       
-      // 배경 캔버스 자체 부유 효과
+      // 배경 캔버스 자체 부유 효과 (천천히 등장)
       gsap.fromTo(cvs, 
         { scale: 0.9, opacity: 0 }, 
-        { scale: 1, opacity: 1, duration: 1, ease: 'power2.out' }
+        { scale: 1, opacity: 1, duration: 3, ease: 'power2.out' }
       );
     }
   </script>
