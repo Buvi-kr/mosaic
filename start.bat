@@ -1,7 +1,7 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-title Reverse Cosmos Mosaic (V6) - Startup
+title Reverse Cosmos Mosaic (V7) - Startup
 
 :: 1. Check and Auto-Install Node.js
 set NODE_CMD=node

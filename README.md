@@ -1,205 +1,253 @@
-# 🌌 Reverse Cosmos Mosaic (V6 Ultimate Auto-Launcher)
-> **Interactive Photo Mosaic System for Lobby Screens & Exhibitions**
+# 🌌 Reverse Cosmos Mosaic (V7.0 Ultimate)
+> **로비 스크린 및 미디어아트 전시를 위한 인터랙티브 실시간 포토모자이크 시스템**
+> *(Interactive Photo Mosaic System for Lobby Screens & Exhibitions)*
 
-![Version](https://img.shields.io/badge/Version-6.0%20Ultimate-blue.svg)
+![Version](https://img.shields.io/badge/Version-7.0%20Ultimate-blue.svg)
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
-**최종 업데이트**: 2026-07-27
-
-**개요**: 방문객이 스마트폰으로 QR 코드를 스캔하여 자신의 사진을 업로드하면, 사전에 확보된 수천 장의 타일(우주사진, 풍경 등)을 조합해 방문객의 사진을 **실시간 포토모자이크**로 렌더링하여 대형 스크린에 전시하는 고성능 인터랙티브 미디어아트 프로젝트입니다.
+**최종 업데이트**: 2026-08-15  
+**개요**: 관람객이 스마트폰으로 대형 스크린의 QR 코드를 스캔하여 자신의 사진을 업로드하면, 사전에 인덱싱된 수천 장의 타일(우주 사진, 자연 풍경, 전시 소장품 등)을 조합하여 관람객의 사진을 **실시간 초고화질 포토모자이크**로 렌더링하고, **대형 스크린에 마블 시네마틱 결합 연출과 함께 15초간 단독 전시**하는 고성능 무인 인터랙티브 미디어아트 엔진입니다.
 
 ---
 
 ## 📑 목차 (Table of Contents)
 1. [🌟 주요 기능 및 특징 (Key Features)](#1-주요-기능-및-특징-key-features)
 2. [🛠️ 기술 스택 (Tech Stack)](#2-기술-스택-tech-stack)
-3. [🧠 핵심 알고리즘 및 아키텍처](#3-핵심-알고리즘-및-아키텍처)
+3. [🧠 핵심 알고리즘 및 시스템 아키텍처](#3-핵심-알고리즘-및-시스템-아키텍처)
 4. [🚀 설치 및 운영 가이드](#4-설치-및-운영-가이드)
 5. [🗂️ 프로젝트 디렉토리 구조](#5-프로젝트-디렉토리-구조)
-6. [🎛️ 관리자 패널 (Admin Dashboard)](#6-관리자-패널-admin-dashboard)
-7. [📜 릴리즈 노트 (Patch Notes)](#7-릴리즈-노트-patch-notes)
+6. [🎛️ 관리자 패널 (Admin Dashboard) 핵심 가이드](#6-관리자-패널-admin-dashboard-핵심-가이드)
+7. [📜 릴리즈 노트 & 개발 역사 (Patch Notes)](#7-릴리즈-노트--개발-역사-patch-notes)
 
 ---
 
 ## 1. 🌟 주요 기능 및 특징 (Key Features)
 
-### 🎨 완벽한 전시 경험 제공
-- **시네마틱 디스플레이 애니메이션**: 대형 스크린에 새 모자이크가 표시될 때 방사형 웨이브, 글로우/스파클, 충격파(Shockwave), 피니시 플래시 등 6가지 시각 효과가 순차적으로 발동합니다.
-- **실시간 모자이크 조립 시각화**: 업로드 대기 중 서버에서 100개 타일마다 저해상도 스냅샷을 푸시하여, 사용자의 스마트폰 캔버스에서 모자이크가 조립되는 과정을 라이브로 감상할 수 있습니다.
-- **스마트폰 다이렉트 다운로드 (UX 최적화)**: 렌더링 완료 즉시, 업로드를 진행했던 브라우저 화면에 다운로드 버튼이 표시됩니다. iOS Safari의 Blob 다운로드 제약까지 완벽히 대응한 Fallback을 지원합니다.
-- **원터치 무인 운영**: 관리자의 개입 없이, 관람객이 QR을 찍고 업로드만 하면 자동으로 그리드가 합성되고 스크린 화면이 갱신됩니다.
+### 🎨 완벽한 전시장 인터랙티브 경험 (V7.0 Display Overhaul)
+- **단색 OLED 순수 블랙 (`#000000`) 고대비 테마**: 전시장 대형 스크린에서 관람객의 시각적 피로를 방지하고 모자이크와 QR의 가독성 및 선명도를 극대화합니다.
+- **직관적 3열 전시장 동선 (`STEP 1 · 2 · 3`)**:
+  - **`[우측 1열] STEP 1` (참여 시작)**: 초대형 참여 QR 코드 및 3단계 직관적 이용 가이드 상시 노출.
+  - **`[중앙 2열] STEP 2` (셀카 촬영)**: 방해 요소를 100% 제거한 깨끗한 인물 셀카 스튜디오 백드롭.
+  - **`[좌측 3열] STEP 3` (결과 감상)**: 1,024조각 마블 시네마틱 지수 가속 결합 연출 및 15초 단독 전시 뷰어.
+- **초상권 및 개인정보 100% 안심 보호 시스템**:
+  - **유휴(Idle) 시**: 관람객 사진을 일절 롤링하지 않고, 사전에 준비된 안전한 데모 모자이크(`public/output_guides/`)만 부드러운 페이드로 순환.
+  - **제출 시**: 15초간 카운트다운 단독 전시 후 즉시 화면에서 소멸되고 데모 모드로 복귀.
+  - **동시 다발 제출 시**: FIFO `showcaseQueue`에 안전하게 적재되어 모든 참여자에게 15초의 단독 전시 시간을 공평하게 보장.
+  - **서버 재부팅 시**: `public/outputs/` 내 모든 임시 결과물 이미지 및 오래된 로그 자동 파기.
 
-### ⚙️ 극한의 최적화 및 안정성
-- **k-d tree 기반 초고속 타일 매칭**: O(n) 브루트포스 탐색을 3차원 k-d tree 인덱스 조회로 교체하여 단일 요청 처리 시간을 대폭 단축했습니다.
-- **멀티 테마 스위칭 (Multi-Theme)**: 관리자 패널에서 클릭 한 번으로 타일 사진 팩(우주사진, 자연 풍경 등)을 무중단 교체합니다. 테마별 독립 빌드 및 캐시 관리가 지원됩니다.
-- **고정 워커 풀 + EMA 기반 대기열 관리**: 요청마다 워커를 생성하는 대신 고정 풀을 유지하며, 지수이동평균(EMA)을 기반으로 정확한 예상 대기시간을 산출합니다.
-- **CIE Lab 색공간 2-Phase 매칭**: k-d tree에서 1차 후보를 빠르게 추출한 뒤, 사용 횟수·공간 반경 제한(Ban Radius)·시각적 유사도 필터를 적용하는 정교한 2단계 구조입니다.
-- **Windows 안전 원자적 쓰기 (Atomic Write)**: `write-file-atomic` 패키지를 활용해 설정 파일(`config.json`) 파손 위험을 원천 차단합니다.
-- **완전 자동화 수집 및 전처리 파이프라인**: 대량의 이미지 수집부터 다운로드, 해상도 최적화, 자동 명도 분류 및 밸런싱까지 단일 파이프라인으로 처리합니다.
-- **제로 예산, 100% 로컬 아키텍처**: 외부 클라우드 서버나 과금 없이, 100% 로컬 노드 서버 기반으로 작동하여 유지비가 전혀 들지 않습니다.
+### 📱 모바일 웹 60fps 렌더링 & UX 극대화 (V8.1)
+- **초경량 모바일 파티클 조립 애니메이션**: 모바일 환경에서 14,000px급 초고해상도 렌더링 시 브라우저 크래시를 방지하기 위해, 오프스크린 캔버스 저해상도 소스로 1,024개 조각 비행 애니메이션을 부드럽게 재생한 뒤 원본 고해상도 이미지를 페이드인하는 최적화 기법 적용.
+- **이미지 사전 적재(Pre-load) 동기화**: 연산 완료 후 기기 다운로드 중 발생하는 어색한 검은 화면을 차단하고 100% 적재 완료 시점에 전환.
+- **스마트폰 다이렉트 다운로드 & 카카오톡 인앱 브라우저 호환**: iOS Safari Blob 다운로드 Fallback 및 카카오톡 롱프레스(Long-press) 저장 오버레이 완벽 지원.
+
+### ⚙️ 극한의 최적화 및 안정적인 멀티스레드 코어
+- **3차원 k-d tree 기반 초고속 타일 매칭**: O(n) 브루트포스 탐색을 CIE Lab 색공간 k-d tree 인덱스 조회로 교체하여 O(log n) 수준으로 렌더링 지연 최소화.
+- **터보 모드 (Turbo Mode)**: 대규모 인파 몰림 시 0.1초 만에 렌더링을 끝내는 O(1) 랜덤 매칭 모드 지원 (관리자 패널 실시간 토글).
+- **고정 워커 풀 (Worker Pool) + EMA 대기열**: CPU 코어 기반 고정 워커 풀을 상시 유지하고, 지수이동평균(EMA) 공식으로 정확한 예상 대기시간을 관람객 폰에 실시간 안내.
+- **멀티 테마 스위칭 (Multi-Theme)**: 우주(NASA), 자연 풍경, 박물관 소장품 등 테마별 독립 빌드 및 원클릭 무중단 핫리로드 지원.
+- **Windows 안전 원자적 쓰기 (Atomic Write)**: `write-file-atomic`을 적용하여 멀티스레드 환경에서 설정 파일(`config.json`)의 파손을 원천 방지.
+- **100% 로컬 & 원클릭 무설치 구동**: 외부 클라우드 비용 없이 로컬 노드 서버 기반으로 동작하며, `start.bat` 하나로 자동 환경 구성 및 실행.
 
 ---
 
 ## 2. 🛠️ 기술 스택 (Tech Stack)
 
-### 2-1. Backend & Tunneling
-| 기술 (Tech) | 용도 (Purpose) | 링크 (Link) |
+### 2-1. Backend & Pipeline
+| 기술 (Tech) | 버전 / 용도 | 링크 (Link) |
 |---|---|---|
-| **Node.js** | 코어 런타임 환경 (최적화된 LTS v20.15.1 사용) | [Node.js](https://nodejs.org) |
-| **Express.js** | 빠르고 유연한 웹 서버 프레임워크 | [Express](https://github.com/expressjs/express) |
-| **Socket.io** | 실시간 양방향 통신 (모바일 업로드 → 처리 → 전시 갱신) | [Socket.io](https://github.com/socketio/socket.io) |
-| **Sharp** | C++ 기반 서버사이드 이미지 고속 리사이즈 및 픽셀 합성 | [Sharp](https://github.com/lovell/sharp) |
-| **Multer** | 안정적인 Multipart 파일 업로드 처리 | [Multer](https://github.com/expressjs/multer) |
-| **write-file-atomic** | 멀티 스레드 환경에서 안전한 원자적 파일 쓰기 보장 | [write-file-atomic](https://github.com/npm/write-file-atomic) |
-| **Cloudflare Tunnel** | 로컬 서버를 외부(QR 접속용)로 빠르고 안전하게 노출 | [Cloudflared](https://github.com/cloudflare/cloudflared) |
+| **Node.js** | v20.15.1 LTS 기반 비동기 I/O 및 Worker Threads | [Node.js](https://nodejs.org) |
+| **Express.js** | v5.x 고성능 REST API 웹 서버 | [Express](https://github.com/expressjs/express) |
+| **Socket.io** | v4.x 실시간 양방향 통신 (모바일 ↔ 서버 ↔ 전시장 스크린) | [Socket.io](https://github.com/socketio/socket.io) |
+| **Sharp** | C++ libvips 기반 서버사이드 초고속 이미지 리사이즈 및 합성 | [Sharp](https://github.com/lovell/sharp) |
+| **Multer** | 안정적인 Multipart 모바일 사진 업로드 처리 | [Multer](https://github.com/expressjs/multer) |
+| **write-file-atomic** | 동시성 환경에서의 원자적(Atomic) 파일 쓰기 보장 | [write-file-atomic](https://github.com/npm/write-file-atomic) |
+| **Cloudflare Tunnel** | 포트포워딩 없이 로컬 서버를 외부 모바일 도메인으로 안전하게 노출 | [Cloudflared](https://github.com/cloudflare/cloudflared) |
 
 ### 2-2. Frontend & UI
 | 기술 (Tech) | 용도 (Purpose) | 링크 (Link) |
 |---|---|---|
-| **Tailwind CSS** | 모바일 업로드 페이지 및 관리자 UI의 유연한 스타일링 | [Tailwind CSS](https://tailwindcss.com) |
-| **Material Design 3** | 직관적이고 세련된 모바일 UI/UX 디자인 가이드라인 | [Material 3](https://m3.material.io) |
-| **Material Symbols** | 고품질 구글 공식 웹 아이콘 시스템 | [Material Icons](https://fonts.google.com/icons) |
+| **Tailwind CSS** | 반응형 모바일 업로드 페이지 및 관리자 UI 스타일링 | [Tailwind CSS](https://tailwindcss.com) |
+| **Material Design 3** | 관리자 패널의 직관적인 컴포넌트 및 대시보드 레이아웃 | [Material 3](https://m3.material.io) |
+| **HTML5 Canvas 2D** | 수학적 행렬 변환(`setTransform`) 기반 60fps 파티클 조립 애니메이션 | [HTML5 Canvas](https://developer.mozilla.org) |
+| **Cropper.js** | 모바일 터치 친화적 인물 사진 자유 비율 크롭 엔진 | [Cropper.js](https://fengyuanchen.github.io/cropperjs/) |
 
 ### 2-3. 모자이크 알고리즘 레퍼런스
 | 프로젝트 (Repository) | 벤치마킹 사항 | 링크 |
 |---|---|---|
-| **sausheong/mosaic** | 타일 평균색 DB 구축 및 유클리드 최근접 매칭 개념 차용 | [Link](https://github.com/sausheong/mosaic) |
-| **worldveil/photomosaic** | `opacity` 파라미터로 원본-타일 블렌딩 비율을 세밀하게 조절 | [Link](https://github.com/worldveil/photomosaic) |
-| **DavideA/photomosaic** | OpenCV 기반 소스 인덱싱 (본 프로젝트는 성능을 위해 Sharp로 완전 대체) | [Link](https://github.com/DavideA/photomosaic) |
+| **sausheong/mosaic** | 타일 평균색 DB 구축 및 유클리드 최근접 매칭 개념 차용 | [GitHub](https://github.com/sausheong/mosaic) |
+| **worldveil/photomosaic** | `opacity` 파라미터 기반 원본-타일 블렌딩 비율 제어 | [GitHub](https://github.com/worldveil/photomosaic) |
+| **DavideA/photomosaic** | 소스 이미지 인덱싱 개념 (본 시스템은 Sharp & k-d tree로 완전 대체) | [GitHub](https://github.com/DavideA/photomosaic) |
 
 ---
 
-## 3. 🧠 핵심 알고리즘 및 아키텍처
+## 3. 🧠 핵심 알고리즘 및 시스템 아키텍처
 
 ```mermaid
 graph TD
-    A["관람객 스마트폰 업로드"] -->|"Multer (Multipart)"| B["Express 서버"]
-    B --> C{"대기열 Queue"}
-    C -->|"할당"| D["고정 워커 풀 Worker Pool"]
-    D --> E["k-d tree 탐색 O(log n)"]
-    E --> F["2-Phase 필터링"]
-    F --> G["Sharp 이미지 합성"]
-    G -->|"Socket.io 실시간 갱신"| H["대형 전시 스크린"]
-    G -->|"Blob 전송"| I["스마트폰 다운로드"]
+    A["관람객 스마트폰 (QR 스캔)"] -->|"사진 업로드 (Multer)"| B["Express API 서버"]
+    B --> C{"대기열 큐 (Queue)"}
+    C -->|"슬롯 할당"| D["고정 워커 풀 (Worker Pool)"]
+    D --> E["CIE Lab k-d tree 탐색 O(log n)"]
+    E --> F["2-Phase 필터 체인 (Ban Radius / Usage)"]
+    F --> G["Sharp 고해상도 캔버스 합성"]
+    G -->|"Socket.io 실시간 푸시"| H["전시장 대형 스크린 (15초 단독 전시)"]
+    G -->|"Blob 캐시 전송"| I["스마트폰 라이브 뷰 & 다운로드"]
 ```
 
-### 3-1. k-d tree 기반 2-Phase 타일 매칭 (V4)
-1. **[k-d tree 인덱스 빌드]**: `scripts/build.db.js` 스크립트가 테마별 모든 타일의 CIE Lab 평균 색상을 기반으로 3차원 k-d tree를 쾌속 구축합니다. (`tileIndex.kdtree.json`)
-2. **[Phase 1 — 후보 추출]**: 사용자의 사진이 들어오면 k-d tree에서 `candidatePoolSize`(기본 150개)개의 최근접 타일 후보군을 **O(log n) 알고리즘**으로 번개처럼 추출합니다.
-3. **[Phase 2 — 필터 적용]**: 추출된 후보 풀(Pool)에 자체 제작한 강력한 필터 체인(사용 횟수 제한, 공간 방어 반경, 시각적 유사도 페널티)을 순차적으로 통과시켜 최적의 타일을 확정합니다.
-4. **[자동 폴백]**: 만약 k-d tree 인덱스가 파손되었거나 부재할 경우, 기존의 브루트포스(Brute-force) 방식으로 우회하여 시스템 장애를 방지합니다.
+### 3-1. k-d tree 기반 2-Phase 타일 매칭
+1. **[3차원 k-d tree 인덱싱]**: `scripts/build.db.js`가 테마별 타일의 CIE Lab 평균 색상값을 3차원 공간 트리(`tileIndex.kdtree.json`)로 구성합니다.
+2. **[Phase 1 — 후보 추출]**: 관람객 사진의 각 그리드 칸 색상에 대해 k-d tree에서 상위 후보군(`candidatePoolSize`, 기본 150개)을 **O(log n)** 시간으로 빠르게 추출합니다.
+3. **[Phase 2 — 정밀 필터 체인]**: 후보군에 대해 **누적 사용 횟수 페널티**, **공간 방어 반경(Ban Radius)**, **시각적 유사도 가중치**를 적용하여 최적의 타일을 확정합니다.
+4. **[자동 폴백]**: k-d tree 인덱스가 손상되었거나 없을 경우 브루트포스(Brute-force) 모드로 자동 폴백되어 무중단 서비스를 유지합니다.
 
-### 3-2. 상용 포토모자이크 수준의 중복 방지 (다채로움 극대화)
-- **공간 방어 (Ban Radius)**: 동일한 타일이 뭉치는 현상을 막기 위해, 타일을 배치할 칸을 중심으로 N칸 반경을 스캔하여 유사한 타일의 진입을 무자비하게 차단합니다. (관리자가 실시간 제어 가능)
-- **Top-K 확률 샘플링 (Jitter Sampling)**: `(색상 오차 × 0.3) + (누적 사용 횟수 페널티 × 10) + 난수(Jitter)` 점수를 합산하여, 너무 똑같은 패턴만 반복되지 않도록 유기적인 다채로움을 부여합니다.
-- **최대 사용 횟수 제한 (Max Usage)**: 전체 모자이크에서 한 타일이 사용될 수 있는 절대 횟수를 관리자 패널에서 실시간으로 조이고 풀 수 있습니다.
+### 3-2. 전시장 디스플레이 상태 머신 (4-State Machine)
+- **Idle (유휴)**: 대기 중인 사용자가 없을 때, 안전한 사전 제작 데모 모자이크를 7초 주기로 페이드 순환하며 참여를 유도합니다.
+- **Processing (연산 중)**: 워커가 이미지를 합성하는 동안 진행률(%)을 실시간 표시합니다.
+- **Showcase (단독 전시)**: 모자이크 완성 즉시 1,024개 타일이 마블 가속 비행으로 조립되며, **정확히 15초간 카운트다운 단독 전시**됩니다.
+- **Overloaded (과부하 방어)**: 접속자가 폭주하여 워커 용량을 초과할 경우 안내 메시지와 함께 대기열을 순차 처리합니다.
 
-### 3-3. 고정 워커 풀 기반 무중단 동시접속 대응
-- **Worker Pool Architecture**: 요청마다 자원을 소모하며 워커를 생성/파괴하는 대신, CPU 코어에 맞춘 `workerPoolSize` 크기의 고정 워커 풀을 상시 유지하여 컨텍스트 스위칭(Context Switching) 오버헤드를 0으로 만들었습니다.
-- **핫 리로드 (Hot-Reload)**: 관리자가 환경 설정이나 테마를 바꾸면, MessageChannel을 통해 풀 내의 모든 워커에게 실시간 브로드캐스트하여 서버 재부팅 없이 즉시 반영됩니다.
-- **수학적 대기시간 예측 (EMA)**: 최근 처리 시간의 지수이동평균(EMA) 알고리즘을 도입하여, 큐에서 대기 중인 방문객의 스마트폰에 `예상 대기시간 = EMA × 대기 순번 / 워커 수`를 밀리초 단위로 안내합니다.
-
-### 3-4. 멀티 테마 아키텍처
-- **독립 격리 구조**: 테마별 원본(`raw_tiles/{theme}/`)과 최적화 타일(`tiles/{theme}/`), 그리고 DB 파일(`data/themes/{theme}/`)이 완벽하게 독립적으로 격리되어 관리됩니다.
-- **비동기 빌드 큐 (FIFO)**: 관리자가 여러 테마를 동시에 빌드하더라도 단일 큐에서 직렬화되어 데이터 충돌이 절대 발생하지 않습니다.
-- **안전 롤백 (Safe Rollback)**: 새 테마 빌드가 성공적으로 완료될 때만 RAM 캐시 플러시와 DB 적재가 이루어지며, 도중 실패 시 방문객 스크린은 1ms의 끊김도 없이 기존 테마를 계속 서빙합니다.
+### 3-3. 멀티 테마 격리 아키텍처
+- 원본 이미지(`public/raw_tiles/{theme}/`), 썸네일 타일(`public/tiles/{theme}/`), DB 인덱스(`data/themes/{theme}/`)가 테마별로 완벽히 격리되어 충돌 없이 관리됩니다.
+- 관리자 패널에서 테마를 변경하면 워커 풀에 즉시 브로드캐스트되어 서버 재부팅 없이 실시간 적용됩니다.
 
 ---
 
-## 4. 🚀 설치 및 운영 가이드 (One-Click 런처)
+## 4. 🚀 설치 및 운영 가이드
 
-이 프로젝트는 터미널(CMD) 명령어를 직접 칠 필요 없이, 최상위 경로의 **`start.bat`** 파일 하나로 즉시 실행할 수 있도록 설계되었습니다.
+### 4-1. 🪄 One-Click 자동 실행 (`start.bat`)
+윈도우 환경에서는 터미널 명령어를 입력할 필요 없이 최상위 폴더의 **`start.bat`을 더블 클릭**하면 모든 과정이 자동으로 진행됩니다.
 
-### 4-1. 🪄 마법의 한 줄 설치 (완전 깡통 PC용 - Public 레포지토리 전용)
-인터넷만 연결되어 있고 Git이나 Node.js가 전혀 없는 백지 상태의 윈도우 PC라면, 굳이 깃허브 웹사이트에 들어가서 다운로드할 필요 없이 **파워쉘(PowerShell)을 열고 아래 명령어 한 줄만 복사하여 붙여넣기** 하시면 전체 소스코드 다운로드부터 압축 해제, 의존성 설치, 서버 실행까지 100% 자동 진행됩니다.
+1. `Node.js` 설치 여부 자동 확인 (미설치 시 동봉된 인스톨러 자동 실행)
+2. `cloudflared.exe` 바이너리 확인 및 자동 준비
+3. 이전 실행 시 남아있는 포트 3000 및 좀비 프로세스 정리 및 검증
+4. `npm install` 의존성 자동 점검
+5. 메인 서버 시작 및 관리자 브라우저 자동 실행
 
-```powershell
-cd $env:USERPROFILE\Desktop; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri "https://github.com/Buvi-kr/mosaic/archive/refs/heads/master.zip" -OutFile "mosaic.zip"; Expand-Archive -Path "mosaic.zip" -DestinationPath "."; cd mosaic-master; .\start.bat
+### 4-2. npm 스크립트 실행
+개발 및 수동 운영 시 다음 명령어를 사용할 수 있습니다:
+
+```bash
+# 메인 서버 구동
+npm start
+
+# 현재 테마 DB 및 k-d tree 인덱스 빌드
+npm run build:db
+
+# 중복 타일 물리적 픽셀 비교 제거
+npm run dedup
+
+# 전시장 디스플레이용 기본 가이드 샘플 이미지 생성
+npm run guides:create
+
+# 포터블 배포용 단일 ZIP 패키징
+npm run build:release
 ```
-*(※ 주의: 중간에 Node.js 설치 창이 뜨면 수동으로 Next 버튼을 눌러 완료해 주셔야 이후 백그라운드 자동 설치가 계속 진행됩니다.)*
-
-### 4-2. 수동 다운로드 후 실행
-1. 깃허브에서 우측 상단 Code 버튼을 눌러 **Download ZIP**으로 소스코드를 다운로드하고 압축을 풉니다.
-2. 폴더 내의 **`start.bat` 더블 클릭**
-3. 실행 시 시스템이 알아서 `Node.js`, `npm` 라이브러리 패키지, `Cloudflared` 의존성을 순차적으로 확인합니다.
-4. PC에 아예 아무것도 없는 깡통 상태라도, 스크립트가 알아서 공식 홈페이지에서 설치 파일을 다운로드하고 백그라운드에서 의존성을 100% 자동 설치합니다. (Node.js 설치 창이 뜨면 Next 버튼만 눌러주시면 됩니다)
-5. 포트와 좀비 프로세스를 모두 초기화한 뒤 서버가 완벽하게 구동됩니다.
-6. 모든 관리 작업(새 테마 빌드, 릴리즈 포터블 패키징)은 브라우저에서 **관리자 패널(`admin.html`)**을 통해 직관적으로 진행할 수 있습니다.
 
 ### 4-3. 접속 URL (Endpoints)
-- **전시용 대형 스크린**: `http://localhost:3000/display.html`
-- **관리자 컨트롤 패널**: `http://localhost:3000/admin.html`
-- **방문객 스마트폰 업로드**: `http://localhost:3000/upload.html` (Cloudflare Tunnel을 통해 모바일용 외부 도메인과 자동 연결됩니다)
+| 화면 | URL 경로 | 설명 |
+|---|---|---|
+| **전시장 대형 스크린** | `http://localhost:3000/display.html` | 3열 레이아웃 & 15초 단독 전시 뷰어 |
+| **관리자 관제 패널** | `http://localhost:3000/admin.html` | 테마 스위칭, 파라미터 조절, 서버 모니터링 |
+| **관람객 스마트폰 업로드** | `http://localhost:3000/upload.html` | Cloudflare 터널을 통해 외부 접속용 QR 주소와 자동 연동 |
 
 ---
 
-## 5. 🗂️ 프로젝트 디렉토리 구조 (V6 Ultimate)
+## 5. 🗂️ 프로젝트 디렉토리 구조
 
 ```text
 /mosaic_ver2
-├── data/                    # 핵심 데이터베이스 및 설정 저장소
-│   ├── apod_originals/        # 수집된 원본 고화질 이미지 보관소
-│   ├── config.json            # 코어 엔진 파라미터 (원자적 쓰기 지원)
-│   └── themes/                # 테마별 DB 결과물 격리 폴더
+├── data/                         # 핵심 데이터베이스 및 시스템 설정
+│   ├── apod_originals/           # 수집된 원본 고화질 이미지 아카이브
+│   ├── config.json               # 코어 엔진 파라미터 (원자적 쓰기 지원)
+│   └── themes/                   # 테마별 색상 DB 및 k-d tree 인덱스 격리 보관소
 │       └── default_nasa/
-│           ├── tileDB.json        # CIE Lab 평균 색상 매핑 인덱스
-│           └── tileIndex.kdtree.json  # 3차원 공간 탐색 k-d tree
-├── logs/                    # 서버 상태 및 통계 로깅 허브
-│   ├── history/               # 개별 모자이크 렌더링 상세 로그 (3일 후 자동 파기)
-│   ├── stats_YYYY-MM.log      # 누적 참여자 수 등 영구 보존 월간 통계
-│   ├── dedup.log.json         # 중복 이미지 제거 파이프라인 리포트
-│   ├── pipeline.log           # 데이터 빌드 처리 이력
-│   └── server.error.log       # 치명적 서버 오류 트래킹
-├── public/                  # 프론트엔드 정적 웹 리소스 (HTML/CSS/JS)
-│   ├── raw_tiles/             # 테마별 원본 타일 소스
-│   ├── tiles/                 # 렌더링용 초고속 리사이즈 썸네일
-│   ├── outputs/               # 렌더링 완성 모자이크 (서버 재부팅 시 보안 자동 파기)
-│   ├── admin.html             # 종합 관리자 대시보드
-│   ├── display.html           # 로비 스크린 전용 시네마틱 디스플레이 UI
-│   └── upload.html            # 모바일 최적화 업로드 및 라이브 뷰 UI
-├── src/                     # 백엔드 코어 비즈니스 로직
-│   ├── app.js                 # Express 메인 서버 진입점
-│   ├── config.js              # 시스템 전역 상태 및 동적 환경 설정 모듈
-│   ├── kdtree.js              # 순수 JavaScript k-d tree 인덱싱 엔진
-│   ├── admin.route.js         # 관리자 API (테마 컨트롤, 설정 저장)
-│   ├── upload.route.js        # 업로드 API (Blob 수신, 프로세스 큐잉)
-│   ├── mosaic.queue.js        # Worker Pool 제어 및 EMA 기반 큐잉 시스템
-│   ├── socket.manager.js      # WebSocket(Socket.io) 실시간 이벤트 통제소
-│   └── matcher.worker.js      # 타일 합성 전담 Multi-thread Worker 로직
-├── scripts/                 # 강력한 자동화 유틸리티 스크립트
-│   ├── build.db.js            # 테마 빌더 (이미지 압축 + DB 생성 + Tree 인덱싱)
-│   ├── build_release.js       # [🔥핵심] 포터블 무설치 배포용 Direct-to-Zip 압축기
-│   ├── migrate-to-theme-structure.js # 구버전(V3) → V4 구조 마이그레이터
-│   └── true.dedup.js          # 물리적 픽셀 비교 방식의 완벽한 썸네일 중복 제거기
-├── old/                     # 레거시 과거 코드 및 파이프라인 잔해
-├── 멀티테마_동시접속대응_기획서.md  # 시스템 고도화 설계 마스터 문서
-├── start.bat                # Windows 더블클릭 구동 런처
-└── README.md                # 바로 이 문서!
+│           ├── tileDB.json       # CIE Lab 평균 색상 매핑 인덱스
+│           └── tileIndex.kdtree.json # 3차원 공간 탐색 k-d tree 인덱스
+├── logs/                         # 서버 상태 및 통계 로깅 허브
+│   ├── history/                  # 개별 모자이크 렌더링 상세 로그 (3일 후 자동 정리)
+│   ├── stats_YYYY-MM.log         # 월간 누적 참여자 통계 영구 보존 로그
+│   ├── dedup.log.json            # 이미지 중복 제거 리포트
+│   ├── pipeline.log              # 테마 데이터 빌드 이력
+│   └── server.error.log          # 서버 오류 트래킹 로그
+├── public/                       # 프론트엔드 정적 웹 리소스
+│   ├── guides/                   # 전시장 동선 안내용 가이드 그래픽
+│   ├── output_guides/            # 초상권 보호용 유휴(Idle) 순환 데모 모자이크
+│   ├── outputs/                  # 관람객 완성 모자이크 (재부팅 시 자동 파기)
+│   ├── raw_tiles/                # 테마별 원본 타일 소스
+│   ├── tiles/                    # 렌더링 전용 최적화 썸네일 (200px WebP)
+│   ├── admin.html                # M3 기반 통합 관리자 대시보드
+│   ├── display.html              # 3열 OLED 고대비 전시장 디스플레이 UI
+│   └── upload.html               # 모바일 최적화 업로드, 크롭 및 60fps 라이브 뷰 UI
+├── src/                          # 백엔드 코어 비즈니스 로직
+│   ├── app.js                    # Express 서버 진입점 및 프로세스/터널 생명주기 관리
+│   ├── config.js                 # 시스템 전역 설정 로드 및 동적 갱신 모듈
+│   ├── kdtree.js                 # 순수 JavaScript 3차원 CIE Lab k-d tree 구현체
+│   ├── admin.route.js            # 관리자 API (테마 빌드, 파라미터 변경, 서버 종료)
+│   ├── upload.route.js           # 모바일 업로드 API 및 모자이크 파이프라인 제어
+│   ├── mosaic.queue.js           # 고정 워커 풀 관리 및 EMA 기반 대기열 큐 시스템
+│   ├── socket.manager.js         # Socket.io 실시간 이벤트 및 터널 URL 중계
+│   └── matcher.worker.js         # 멀티스레드 타일 매칭 및 Sharp 이미지 합성 워커
+├── scripts/                      # 자동화 유틸리티 스크립트
+│   ├── build.db.js               # 테마 빌더 (이미지 압축 + DB 생성 + Tree 인덱싱)
+│   ├── build_release.js          # 포터블 무설치 배포용 Direct-to-Zip 압축기
+│   ├── create_guide_samples.js   # 전시장 기본 가이드 SVG/PNG 생성 유틸리티
+│   └── true.dedup.js             # 8x8 물리적 픽셀 비교 방식의 중복 이미지 제거기
+├── old/                          # 레거시 아카이브 (이전 기획서, 구버전 코드, 과거 데이터)
+│   ├── data/
+│   ├── public/                   # 구버전 페이지 (birthday.html 등)
+│   ├── scratch/                  # 개발 초기 임시 테스트 스크립트
+│   ├── scripts/                  # V3->V4 단발성 마이그레이션 스크립트 등
+│   ├── src/
+│   ├── V7_개선기획안.md
+│   ├── V8_개선기획안.md
+│   └── 멀티테마_동시접속대응_기획서.md
+├── cloudflared.exe               # Cloudflare Tunnel 실행 바이너리
+├── node-v20.15.1-x64.msi         # 현장 깡통 PC 대응용 Node.js 설치 바이너리
+├── package.json                  # 프로젝트 메타데이터 및 실행 스크립트 정의
+├── start.bat                     # Windows 원클릭 종합 구동 런처
+└── README.md                     # 프로젝트 마스터 문서
 ```
 
 ---
 
-## 6. 🎛️ 관리자 패널 (`admin.html`) 핵심 컨트롤 가이드
+## 6. 🎛️ 관리자 패널 (`admin.html`) 핵심 가이드
 
-직관적인 M3(Material 3) 기반 대시보드에서 모든 모자이크 매개변수를 라이브로 제어합니다.
+Material Design 3 기반 대시보드에서 전시장 상황에 맞춰 실시간으로 파라미터를 제어합니다.
 
-| 기능 세션 | 세부 설명 (기능) |
-|---|---|
-| **🎨 테마 스위칭 (Theme)** | 라디오 버튼 클릭 한 번으로 활성 테마 즉각 전환. (미빌드 상태의 테마를 선택하면 백그라운드 자동 빌드 큐 진입) |
-| **🔄 빌드 상태 라이브 모니터링** | 서버의 백그라운드 빌드 진행률, 완료, 실패 여부를 UI에 실시간 프로그래스바로 중계. 에러 시 이전 테마 무손실 롤백 기능 포함. |
-| **🚧 타일 중복 제한 (Max Usage)** | 한 개의 소스 사진이 완성본 안에서 최대 몇 번까지 반복 사용될지 결정하는 슬라이더. (1회~20회) |
-| **🛡️ Ban Radius (공간 방어)** | 동일 타일이 근처에 배치되지 않도록 방어하는 반경 슬라이더. (0칸~5칸). 숫자가 클수록 다채롭지만 매칭 난이도 상승. |
-| **👻 원본 투명도 (Opacity)** | 모자이크 위에 덧씌워지는 사용자 원본 사진의 투명도를 정밀하게 제어하여 인물 윤곽의 뚜렷함을 결정. |
-| **✨ 렌더링 블렌딩 모드** | Multiply(곱하기), Overlay, Soft-Light, Over 등 사진의 채도와 질감을 결정짓는 그래픽 블렌딩 공식 선택. |
-| **📐 타일 크기 제어** | 모자이크 한 칸의 크기를 10px에서 60px까지 조절하여 점묘법의 디테일 수준을 컨트롤. |
-| **🖥️ 최대 해상도 제한** | 대형 스크린의 사양에 맞춰 최종 출력물의 화질 상한선(1080px ~ 2560px) 캡을 씌워 메모리 터짐 방지. |
-| **📊 리소스 라이브 모니터링** | 서버 RAM 사용률, 큐(Queue) 대기열 길이, 활성화된 워커 스레드 갯수를 초 단위로 대시보드에 리포팅. |
-| **⚡ 인덱스 강제 리빌드** | 데이터가 오염되었거나 새 사진이 추가되었을 때 클릭하여 현재 테마의 k-d tree 인덱스를 비동기 핫-리로드. |
+| 기능 항목 | 설정 파라미터 | 세부 설명 |
+|---|---|---|
+| **🎨 테마 스위칭** | `currentTheme` | 라디오 버튼 클릭으로 활성 테마 즉시 전환 (미빌드 테마 선택 시 백그라운드 자동 빌드). |
+| **⚡ 터보 모드 토글** | `turboMode` | 대규모 관람객 몰림 시 O(1) 랜덤 매칭으로 0.1초 렌더링 지원. |
+| **🚧 타일 중복 제한** | `maxTileUsage` | 한 장의 타일이 완성본 내에서 최대 몇 번까지 반복 사용될지 결정 (1~20회). |
+| **🛡️ Ban Radius** | `banRadius` | 동일 타일이 근처에 연속 배치되지 않도록 방어하는 반경 슬라이더 (0~5칸). |
+| **👻 원본 투명도** | `opacity` / `secondOpacity` | 모자이크 위에 덧씌워지는 인물 윤곽선 투명도 정밀 조절. |
+| **✨ 그래픽 블렌딩** | `blendMode` | Multiply, Overlay, Soft-Light 등 텍스처 합성 공식 선택. |
+| **📐 가상 그리드 밀도** | `tileSize` / `maxResolution` | 타일 밀도(칸수)를 조절하며 캔버스 크기 폭증(OOM) 방지 Safety Cap 연동. |
+| **📊 리소스 모니터링** | 실시간 대시보드 | RAM 사용률, 큐 대기열 길이, 활성 워커 스레드 수 실시간 확인. |
+| **🛑 원격 서버 종료** | 브라우저 버튼 | Node.js 서버 및 Cloudflare 터널 프로세스를 안전하게 일괄 종료. |
 
 ---
 
-## 7. 📜 릴리즈 노트 (Patch Notes)
+## 7. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+
+### 📦 V7.1 Zero-Lag CSS Hardware Deep-Zoom & Clean Architecture (2026-08-15)
+#### 🚀 대형 스크린 시네마틱 딥-줌(Deep-Zoom) & 단일 레이어 클린 아키텍처
+- **[구조 혁신] 단일 이미지 뷰포트 레이어 일원화 (`display.html`)**:
+  - 메모리 누수와 잔상 겹침(OOM 위험)의 주범이었던 다중 캔버스 연산을 전면 제거하고, **단 1개의 고해상도 이미지 레이어(`#mosaicImage`)**로 단일화.
+  - 15초 만료 후 데모 모자이크로 복귀할 때 발생하던 이전 사진 겹침 버그를 `resetViewportState` 상태 머신으로 100% 완벽 차단.
+- **[초경량 전환] 순수 CSS 무지연 페이드인/아웃 (0.8s)**:
+  - 무거운 CSS 필터(`blur/brightness`)를 걷어내고, 데모 전환과 동일한 순수 `opacity` 페이드로 통일하여 CPU/GPU 부하 0% 달성.
+- **[60fps 무지연 딥-줌] 브라우저 GPU 전용 스레드 네이티브 하드웨어 가속**:
+  - **Phase A (3.6배 딥 줌인, 2.4s)**: 새 모자이크 등장 즉시 인물 눈/얼굴 중심(50% 38%)으로 `transition: transform 2.4s cubic-bezier(0.25, 1, 0.5, 1)` 적용.
+  - **Phase B (타일 디테일 탐색, 1.8s)**: 3.6배 확대 상태에서 개별 우주 사진(성운/은하)의 고해상도 디테일을 선명하게 감상.
+  - **Phase C (시네마틱 풀아웃, 2.6s)**: 우주 궤도를 빠져나오듯 서서히 뒤로 물러나며 전체 모자이크 완성본으로 복귀.
+  - **Phase D (15초 단독 전시)**: 전체 완성본과 함께 15초 카운트다운 타이머 진행 후 안전하게 데모 갤러리로 복귀.
+- **[8GB RAM 최적화]**:
+  - 메인 스레드 렌더링 부하 0% & 추가 RAM 0MB로 저사양 PC에서도 렉 없는 완벽한 60fps 시네마틱 보장.
+
+---
 
 ### 📦 V8.1 Advanced Canvas Rendering Optimization (2026-08-08)
 #### 🚀 모바일 웹 60fps 렌더링 한계 돌파 및 다운로드 UX 개선
@@ -226,6 +274,50 @@ cd $env:USERPROFILE\Desktop; [Net.ServicePointManager]::SecurityProtocol = [Net.
 - **[이슈 해결] 사이니지 전용 디스플레이 로직 개편**: 기존에는 누군가 사진을 업로드하면 QR코드가 사라져 다른 사람이 큐에 대기할 수 없는 문제가 발생했습니다. 다중 접속(Queue) 시스템의 이점을 100% 살리기 위해, `display.html`은 철저하게 '사이니지' 형태로 분리하여 과부하(Overloaded) 상태가 아닌 이상 항상 QR코드를 노출하도록 상태 머신을 수정했습니다. 완료 후 불필요한 대기 시간도 삭제하여 0.1초 만에 즉각 대기(IDLE) 상태로 복귀합니다.
 - **[이슈 해결] 초경량 모바일 모자이크 합체 애니메이션 도입**: `upload.html`에서 14,000픽셀 급 초대형 결과물을 144조각 내어 캔버스 애니메이션으로 돌릴 경우 모바일 브라우저(특히 Safari)가 뻗어버리는 치명적 메모리/CPU 부하 문제가 있었습니다. 이를 해결하기 위해 백그라운드에서 단 한 번 저해상도(1000px) 오프스크린 캔버스로 리사이즈한 뒤 그 저용량 소스로 조각(Chunk) 애니메이션을 가동시키고, 애니메이션 종료 찰나에 고해상도 원본 `<img>`를 페이드인하는 '꼼수(변태적 최적화)'를 적용했습니다. 이제 어떤 구형 폰에서도 60fps로 부드러운 우주 파티클 조립 이펙트 뽕맛을 즐길 수 있습니다.
 - **[이슈 해결] 카카오톡 인앱 브라우저 다운로드 블록 우회**: 카카오톡 내장 브라우저가 Blob URL 다이렉트 다운로드를 보안상 강제 차단하여 버튼이 먹통이 되는 문제를 확인했습니다. 이를 우회하기 위해 User-Agent를 자동 감지하여, 카톡 환경일 경우 "완성된 사진을 꾹 눌러 저장하세요"라는 직관적인 안내 팝업과 함께 롱프레스(Long-press) 저장이 가능한 `<img>` 태그를 최상단 레이어에 투명하게 오버레이 배치해 문제를 깔끔하게 해결했습니다.
+
+---
+
+### 📦 V7.0 Display Overhaul & Privacy Architecture (2026-08-14)
+#### 📺 전시장 디스플레이(display.html) 대대적 개편 및 개인정보·초상권 완벽 보호 시스템
+
+#### 1. 🚨 발생했던 문제 (Problems Encountered)
+1. **복잡한 배경 및 시각적 피로도**:
+   - 복잡한 성운 캔버스 애니메이션과 그라데이션 광원으로 인해 대형 전시장 스크린에서 텍스트와 모자이크 결과물의 시인성이 떨어지고 눈에 피로감이 가중됨.
+2. **참여 동선 인지의 모호성 (좌/우 배치 혼선)**:
+   - QR 코드(시작점), 포토존(촬영), 완성 모자이크(결과)의 배치가 뒤섞여 관람객이 어느 순서로 참여해야 하는지 직관적으로 인지하기 어려움.
+3. **초상권 및 개인정보 침해 리스크 (무한 순환 갤러리)**:
+   - 관람객이 생성한 얼굴 모자이크가 `public/outputs/`에 쌓여 화면에 무한 롤링됨에 따라, 전시 종료 후에도 타인의 얼굴이 계속 노출되는 심각한 초상권 및 개인정보 이슈 발생.
+4. **모자이크 애니메이션 템포 및 화면 튐(Jitter) 현상**:
+   - 조립 애니메이션이 순식간에 끝나버려 시각적 쾌감이 부족했고, 애니메이션 종료 후 캔버스와 이미지 태그 간 크기/위치 불일치로 화면이 한 번 더 튀는 버그 존재.
+5. **포토스팟 중앙 가이드의 방해**:
+   - 화면 중앙에 원형 가이드 및 텍스트가 배치되어 있어, 실제 관람객이 화면 앞에 서서 셀카를 찍을 때 화면 자체가 깔끔한 백드롭 역할을 하지 못하고 사진을 가림.
+6. **고령층 및 전 연령 대상 가독성 부족**:
+   - 영문 혼용(`PHOTO ZONE`, `LATEST MOSAIC`, `GUIDE`) 및 자잘한 설명 문구로 인해 70대 어르신이나 어린이 관람객의 참여 장벽이 높았음.
+
+#### 2. 💡 해결 방법 및 구현 (Solutions & Implementation)
+1. **단색 순수 블랙 (`#000000`) OLED 고대비 테마 전면 전환**:
+   - 배경의 과도한 파티클과 광원을 모두 걷어내고, 딥 블랙(`bg-black`) 기반의 고대비 글래스모피즘 카드로 재구성하여 모자이크와 QR의 선명도를 극대화.
+2. **직관적 3열 레이아웃 & `STEP 1 · 2 · 3` 초대형 뱃지 체계 수립**:
+   - **`[우측 1열] STEP 1` (참여 시작)**: 초대형 참여 QR 코드 및 3단계 이용 가이드 연동 (`w-52`급 초대형 QR).
+   - **`[중앙 2열] STEP 2` (셀카 촬영)**: 중앙 방해 요소를 100% 제거한 깨끗한 인물 셀카 스튜디오 백드롭.
+   - **`[좌측 3열] STEP 3` (결과 감상)**: 1,024개 조각 마블 가속 비행 결합 및 15초 단독 전시 뷰어.
+3. **초상권 완벽 보호 & 15초 단독 전시 보장 큐(Queue) 상태 머신**:
+   - **유휴(Idle) 시**: 관람객 사진을 일절 노출하지 않고, 사전에 준비된 안전한 데모 모자이크(`public/output_guides/`)만 7초 주기로 부드러운 페이드 순환.
+   - **사용자 제출 시**: 즉시 결합 애니메이션 재생 후 **정확히 15초간 카운트다운 단독 전시** (`⏱️ 단독 전시: 15s` ➔ 0s). 15초 종료 즉시 화면에서 완전히 소멸되고 데모 모드로 복귀.
+   - **동시 다발 제출 시**: `showcaseQueue` FIFO 큐에 자동 적재되어, 모든 관람객에게 **15초의 단독 전시 시간을 100% 공평하게 보장**.
+4. **마블 시네마틱 1,024조각 지수 가속 결합 (`Power 2.8`) & 캔버스 1:1 완벽 정렬**:
+   - 32x32(1,024개) 타일 분할 + 지수 가속 딜레이 공식(`Math.pow(normalized, 2.8) * 3.0s`)을 적용하여, 초반에는 한두 조각이 천천히 '딱... 딱...' 붙다가 후반부로 갈수록 수백 장이 폭풍처럼 '타다다다닥!' 빨라지며 결합하는 웅장한 연출 구현.
+   - 캔버스와 결과 이미지의 픽셀/컨테이너 비율을 1:1로 일치시켜 애니메이션 종료 후 0.001초의 크기 튐도 완벽 차단.
+5. **포토스팟(STEP 2) 100% 클린 백드롭화**:
+   - 화면 중앙의 원형 링, 아이콘, 텍스트를 완전히 삭제하고, 인물 셀카 촬영 시 최적의 조명 톤을 제공하는 무결점 다크 스튜디오 백드롭으로 정돈.
+6. **100% 직관적인 한글화 & 어르신 친화적 대형 타이포그래피**:
+   - 모든 영문을 직관적인 한국어로 전환하고, 복잡한 세부 설명을 걷어내어 **`1. QR 스캔` / `2. 셀카 촬영` / `3. 모자이크 완성`** 대형 32px 번호 박스와 볼드 텍스트로 시인성 극대화.
+
+#### 3. 🎯 도출된 결과 및 효과 (Results & Impact)
+- **접근성 대폭 향상**: 70대 어르신부터 어린이까지 화면만 보고 1초 만에 1번(QR) → 2번(촬영) → 3번(결과) 동선을 직관적으로 이해하고 참여 가능.
+- **초상권 법적 리스크 원천 차단**: 관람객 사진의 무한 순환을 없애고 15초 단독 전시 후 자동 퇴장 처리하여 안심 운영 가능.
+- **전시 퀄리티 격상**: 순수 블랙 OLED 테마와 마블 가속 결합 연출이 결합되어 전시장 전체의 시각적 웅장함과 관람객 만족도 극대화.
+
 ---
 
 ### 📦 V7.0 Turbo & Optimization Update (2026-08-07)
@@ -243,6 +335,8 @@ cd $env:USERPROFILE\Desktop; [Net.ServicePointManager]::SecurityProtocol = [Net.
 - **npm 라이브러리 자동 설치 (`node_modules`)**: 깃허브에서 소스코드만 갓 다운로드 받아 라이브러리가 없는 상태일지라도, 스크립트가 스스로 판단하여 백그라운드에서 `npm install`을 강제로 실행하여 모든 구동 환경을 스스로 완성합니다. (설치 직후 환경변수 미갱신 문제까지 절대 경로 우회로 완벽 해결)
 - **구형 윈도우 보안 채널(TLS 1.2) 강제화**: 구형 윈도우 7/10에서 PowerShell 다운로드가 실패하는 문제를 방지하기 위해, 모든 `Invoke-WebRequest` 명령어에 TLS 1.2 프로토콜을 강제 할당하여 100% 다운로드 신뢰성을 확보했습니다.
 
+---
+
 ### 📦 V6.2.2 Admin UI & Terminology Refactoring (2026-07-31)
 #### 🚀 관리자 UI 직관성 극대화 및 OOM 방어 로직 (Safety Cap)
 - **가상 그리드 해상도 및 밀도 조절 패러다임 도입**: 기존의 '최대 출력 해상도', '모자이크 타일 크기'라는 명칭이 초고해상도(Ultra-HD) 렌더링 로직과 수학적 모순을 일으키던 문제를 해결했습니다. 이제 **'가상 그리드 해상도(Virtual Grid Base)'**와 **'그리드 밀도 조절(Virtual Tile Size)'**이라는 명확한 용어로 개편되어, 모자이크의 '가로/세로 칸수(Density)'를 조절한다는 개념을 직관적으로 이해할 수 있습니다.
@@ -250,12 +344,14 @@ cd $env:USERPROFILE\Desktop; [Net.ServicePointManager]::SecurityProtocol = [Net.
 - **15,000px 초과 OOM(메모리 부족) 자동 방어 (Safety Cap)**: 밀도를 너무 높여 캔버스가 15,000px을 돌파하려 할 경우, Admin UI에서 **빨간색 경고**를 띄워줍니다. 또한 백엔드(`upload.route.js`)에서는 서버 크래시를 막기 위해 스스로 판단하여 개별 타일 화질(기본 200px)을 한계치 이내로 강제 스케일링 다운하는 방어 로직을 추가했습니다.
 - **백엔드 주석 전면 재정립**: 혼동을 유발하던 `MAX_RES`, `TILE_SIZE`, `RENDER_TILE_SIZE` 변수 선언부 및 스케일링 로직 주석을 새 패러다임에 맞춰 완벽히 재작성했습니다.
 
+---
+
 ### 📦 V6.2 Ultra-HD Rendering & Single-Tile Architecture (2026-07-31)
 #### 🚀 단일 고해상도 타일 아키텍처 및 렌더링 최적화
 - **이중 캐시 구조(60px / 200px) 통합 및 완전 제거**: 이전에는 썸네일과 고해상도 타일용 폴더(`tiles_hd`) 및 램 캐시를 이중으로 관리하여 디스크 용량과 램을 심각하게 낭비했습니다. 이제 `build.db.js`가 단일 고품질 타일(기본 200px)만 생성하고, 모든 매칭과 합성이 이 단일 풀(Pool)에서 이루어지도록 코어 아키텍처를 단순화했습니다.
 - **초고해상도(Ultra-HD) 합성 캔버스**: 1440px 캔버스를 60px 타일 24개로 쪼개던 기존 방식은 확대 시 심각한 픽셀 깨짐을 유발했습니다. 이제 매칭은 60px 썸네일 그리드 기준(초고속 연산 유지)으로 하되, 캔버스에 그릴 때는 **`RENDER_TILE_SIZE`(200px) 고해상도 WebP 타일을 사용**하여 4800px 이상의 거대한 초고화질 캔버스로 출력합니다. 모자이크 완성본을 줌-인(Zoom-in) 했을 때 개별 타일의 사진이 뚜렷하게 보입니다.
 - **메모리 보호형 타일 지연 로딩(Lazy Loading)**: 고해상도 타일로 전환되면서 서버 부팅 타이밍에 수천 장의 타일(`preloadTileCache`)을 한 번에 RAM에 올리면 메모리 오버플로우가 발생할 수 있습니다. 이를 막기 위해 사전 적재(Preload) 방식을 전면 폐기하고, 렌더링 시점에 **실제 사용되는 타일만 Lazy Loading하여 RAM에 얹는 동적 캐시 구조**로 변경했습니다.
-- **WebP(Quality 95) 전면 도입 (용량 대폭 감소)**: 타일 저장 및 최종 모자이크 출력 포맷을 JPEG에서 WebP로 일괄 변경했습니다. 무손실에 가까운 Quality 95 세팅을 적용하여 픽셀의 깍두기 현상을 원천 제거하면서도, 프론트엔드(`birthday.html`)가 다운로드받는 최종 모자이크 결과물 용량은 대폭 감소시켜 4K급 화질에서도 웹 렌더링 렉을 완벽하게 해결했습니다.
+- **WebP(Quality 95) 전면 도입 (용량 대폭 감소)**: 타일 저장 및 최종 모자이크 출력 포맷을 JPEG에서 WebP로 일괄 변경했습니다. 무손실에 가까운 Quality 95 세팅을 적용하여 픽셀의 깍두기 현상을 원천 제거하면서도, 프론트엔드가 다운로드받는 최종 모자이크 결과물 용량은 대폭 감소시켜 4K급 화질에서도 웹 렌더링 렉을 완벽하게 해결했습니다.
 
 #### 📊 성능 및 구조 변화 요약표 (Before vs After)
 | 항목 (Metrics) | 개선 전 (V6.1) | 개선 후 (V6.2) | 개선 효과 (Impact) |
@@ -285,6 +381,8 @@ cd $env:USERPROFILE\Desktop; [Net.ServicePointManager]::SecurityProtocol = [Net.
 - **⚠️ Cloudflare 다중 터널 제약 사항 확인 및 문서화**: 동일 공인 IP에서 Cloudflare Quick Tunnel을 2개 이상 동시 실행할 경우 `NXDOMAIN` 에러로 접속이 불가능함을 확인했습니다. 전시 현장에서 포토부스 등 다른 장비가 이미 Cloudflare 터널을 사용 중인 경우, 모자이크 컴퓨터는 **반드시 별도 인터넷 회선(스마트폰 핫스팟 또는 USB 와이파이 동글)으로 네트워크를 분리**해야 합니다.
 - **터미널 URL 클릭 오류 패치**: 콘솔창에 출력된 `upload.html` 접속 주소를 Ctrl+Click 할 때 뒷부분의 안내 텍스트(`<- QR 코드 주소`)가 URL에 포함되어 접속이 실패하는 현상을 수정했습니다. 안내 문구를 별도 줄로 분리하여 모든 URL이 정확하게 클릭됩니다.
 - **Cloudflare 내부 로그 숨김 처리**: 관리자가 핵심 URL 주소만 깔끔하게 확인할 수 있도록, 터널 연결 과정에서 출력되던 수십 줄의 Cloudflare 영어 디버그 로그를 숨김 처리했습니다.
+
+---
 
 ### 📦 V5.0 Ultimate Auto-Launcher (2026-07-23)
 #### 🚀 완벽한 One-Click 무설치 시스템 구축

@@ -19,6 +19,10 @@ const defaultConfig = {
   gridDownscaleThreshold: 10,
   candidatePoolSize: 150,
   renderTileSize: 200,       // 실제 타일 렌더링 물리적 화질 (px). 이 크기와 가로/세로 칸수가 곱해져 최종 캔버스 크기가 폭증함.
+  displayShowcaseDuration: 20, // 모자이크 결과물 전시 보장 시간 (초)
+  displayGuideInterval: 5,     // 촬영 예시 슬라이드 주기 (초)
+  displayPhotozoneTheme: 'nebula', // 포토존 테마 ('nebula', 'galaxy', 'aurora', 'minimal')
+  displayShowTimer: true       // 결과물 잔여 전시 시간 타이머 표시 여부
 };
 
 let config = { ...defaultConfig };

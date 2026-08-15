@@ -483,6 +483,18 @@
         }
       }
 
+      // 🎬 마블 시네마틱 스타일 지수 가속 커브 (딱... 딱... 딱딱딱딱... 타다다다다닥!)
+      const shuffledIndices = Array.from({ length: chunks.length }, (_, i) => i).sort(() => Math.random() - 0.5);
+      const totalLaunchWindow = 3.0; // 전체 조각 출발 윈도우 (3초)
+
+      shuffledIndices.forEach((chunkIdx, order) => {
+        const normalized = order / (chunks.length - 1); // 0.0 ~ 1.0
+        // Power 2.8 지수 가속: 초반엔 1~2개씩 천천히, 후반엔 수백 개가 폭풍처럼 쏟아짐
+        chunks[chunkIdx].customDelay = Math.pow(normalized, 2.8) * totalLaunchWindow;
+        // 초반 조각은 더 우아하게, 후반 조각은 날렵하게 안착
+        chunks[chunkIdx].flyDuration = 1.6 + (1 - normalized) * 0.7;
+      });
+
       // 3. 초고속 렌더 루프 (Canvas state 변경 최소화 + 정수 좌표 렌더링)
       const halfW = chunkW / 2;
       const halfH = chunkH / 2;
@@ -534,14 +546,9 @@
         scale: 1,
         opacity: 1,
         rotation: 0,
-        // 우주 느낌을 극대화하기 위해 개별 조각의 비행 시간을 2.5초로 늘림
-        duration: 2.5,
+        duration: (i, ch) => ch.flyDuration,
+        delay: (i, ch) => ch.customDelay,
         ease: 'power3.out',
-        stagger: {
-          // 전체 조각이 출발하는 간격을 2.0초로 늘려 총 4.5초에 걸쳐 완성되도록 연출
-          amount: 2.0,
-          from: 'random'
-        },
         onComplete: () => {
           gsap.ticker.remove(render);
           // 최종본 깔끔하게 마무리 렌더링

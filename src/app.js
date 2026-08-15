@@ -38,6 +38,64 @@ app.use(express.json());
 app.use('/api/upload', uploadRouter);
 app.use('/api/admin', adminRouter);
 
+// 최근 완성된 모자이크 결과물 목록 (디스플레이 유휴 갤러리용)
+app.get('/api/outputs/recent', (req, res) => {
+  const outputsDir = path.join(__dirname, '../public/outputs');
+  if (!fs.existsSync(outputsDir)) return res.json({ outputs: [] });
+  try {
+    const files = fs.readdirSync(outputsDir)
+      .filter(f => f.startsWith('mosaic_') && (f.endsWith('.jpg') || f.endsWith('.png')))
+      .map(f => {
+        const filePath = path.join(outputsDir, f);
+        const stat = fs.statSync(filePath);
+        return {
+          imageUrl: `/outputs/${f}`,
+          filename: f,
+          timestamp: stat.mtimeMs
+        };
+      })
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 10);
+    res.json({ outputs: files });
+  } catch (e) {
+    res.json({ outputs: [] });
+  }
+});
+
+// 안전한 데모 모자이크 목록 (유휴 시 순환용 - 개인정보/초상권 보호)
+app.get('/api/outputs/guides', (req, res) => {
+  const demoDir = path.join(__dirname, '../public/output_guides');
+  if (!fs.existsSync(demoDir)) {
+    fs.mkdirSync(demoDir, { recursive: true });
+    return res.json({ guides: [] });
+  }
+  try {
+    const files = fs.readdirSync(demoDir)
+      .filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f))
+      .map(f => `/output_guides/${f}`);
+    res.json({ guides: files });
+  } catch (e) {
+    res.json({ guides: [] });
+  }
+});
+
+// 촬영 가이드 예시 사진 목록 (public/guides/ 폴더 순환용)
+app.get('/api/guides', (req, res) => {
+  const guidesDir = path.join(__dirname, '../public/guides');
+  if (!fs.existsSync(guidesDir)) {
+    fs.mkdirSync(guidesDir, { recursive: true });
+    return res.json({ guides: [] });
+  }
+  try {
+    const files = fs.readdirSync(guidesDir)
+      .filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f))
+      .map(f => `/guides/${f}`);
+    res.json({ guides: files });
+  } catch (e) {
+    res.json({ guides: [] });
+  }
+});
+
 // Express 전역 에러 핸들러
 app.use((err, req, res, next) => {
   logGlobalError(err, 'Express Global Error');
@@ -112,7 +170,7 @@ server.on('error', (err) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================`);
-  console.log(`🚀 Reverse Cosmos Mosaic (V6 Ultimate) Server Started`);
+  console.log(`🚀 Reverse Cosmos Mosaic (V7.0 Ultimate) Server Started`);
   console.log(`======================================================`);
   console.log(`- 대형 디스플레이: http://localhost:${PORT}/display.html`);
   console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);

@@ -2,219 +2,375 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>코즈믹 모자이크 | 전시 디스플레이</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>코즈믹 모자이크 | 인터랙티브 전시 디스플레이</title>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&family=Pretendard:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
   <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
     body {
       margin: 0;
-      background-color: #050505;
-      overflow: hidden;
-      font-family: 'Pretendard', sans-serif;
-      display: flex;
+      padding: 16px;
       width: 100vw;
       height: 100vh;
-      color: white;
+      background-color: #000000;
+      color: #ffffff;
+      font-family: 'Pretendard', sans-serif;
+      overflow: hidden;
     }
-    
-    /* 좌측 비디오 영역 (70%) */
-    #video-container {
-      width: 70%;
-      height: 100%;
+
+    .font-outfit {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* OLED Pure Black Solid Glass Card */
+    .glass-card {
+      background: #0a0a0d;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 26px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.95);
       position: relative;
-      background: #000;
+      overflow: hidden;
     }
-    
-    #promo-video {
+
+    .glass-card-glow {
+      box-shadow: 0 0 50px -10px rgba(99, 102, 241, 0.2), inset 0 0 20px rgba(255, 255, 255, 0.03);
+    }
+
+    /* Text Gradients */
+    .text-gradient-cosmic {
+      background: linear-gradient(135deg, #c084fc 0%, #818cf8 50%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* 3-Column Display Grid (좌: STEP3 결과 1.1 : 중: STEP2 포토존 1.15 : 우: STEP1 QR+가이드 1) */
+    .display-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1.15fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 16px;
       width: 100%;
       height: 100%;
-      object-fit: cover;
     }
 
-    /* 모자이크 결과 풀스크린 (SHOWCASE 상태) */
-    #showcase-container {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      display: none;
-      justify-content: center;
+    /* Grid Explicit Placements (좌 ➔ 중 ➔ 우) */
+    .panel-mosaic {
+      grid-column: 1 / 2;
+      grid-row: 1 / 3;
+    }
+    .panel-photozone {
+      grid-column: 2 / 3;
+      grid-row: 1 / 3;
+    }
+    .panel-qr {
+      grid-column: 3 / 4;
+      grid-row: 1 / 2;
+    }
+    .panel-guide {
+      grid-column: 3 / 4;
+      grid-row: 2 / 3;
+    }
+
+    /* STEP Neon Badges (초대형 & 고시인성) */
+    .step-badge {
+      display: inline-flex;
       align-items: center;
-      background: #000;
-      z-index: 10;
+      gap: 8px;
+      padding: 8px 22px;
+      border-radius: 9999px;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+    }
+    .step-badge-1 {
+      background: rgba(99, 102, 241, 0.28);
+      border: 2.5px solid #818cf8;
+      color: #ffffff;
+      box-shadow: 0 0 25px rgba(99, 102, 241, 0.55);
+    }
+    .step-badge-2 {
+      background: rgba(244, 63, 94, 0.28);
+      border: 2.5px solid #f43f5e;
+      color: #ffffff;
+      box-shadow: 0 0 25px rgba(244, 63, 94, 0.55);
+    }
+    .step-badge-3 {
+      background: rgba(16, 185, 129, 0.28);
+      border: 2.5px solid #34d399;
+      color: #ffffff;
+      box-shadow: 0 0 25px rgba(16, 185, 129, 0.55);
     }
 
-    #showcase-container img {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      animation: showcaseZoomIn 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    /* Countdown Bar */
+    .countdown-bar {
+      height: 8px;
+      background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc);
+      border-radius: 999px;
+      box-shadow: 0 0 16px rgba(129, 140, 248, 0.85);
+      transition: width 0.1s linear;
     }
 
-    @keyframes showcaseZoomIn {
-      0% { transform: scale(0.7); opacity: 0; filter: blur(10px); }
-      100% { transform: scale(1); opacity: 1; filter: blur(0); }
+    /* Floating Badge Animation */
+    @keyframes badgeBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .badge-float {
+      animation: badgeBounce 2.5s ease-in-out infinite;
     }
 
-    /* 우측 QR 안내 영역 (30%) */
-    #qr-container {
-      width: 30%;
-      height: 100%;
+    /* Guide Step Sync List Items (초대형 고시인성) */
+    .guide-step-item {
       display: flex;
-      flex-direction: column;
-      justify-content: center;
       align-items: center;
-      background: linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%);
-      border-left: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 40px;
-      box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
-      transition: all 0.6s ease;
-      position: relative;
-      overflow: hidden;
+      gap: 12px;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1.5px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.35s ease;
     }
-
-    /* QR 영역 상태별 전환 */
-    #qr-container.processing {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    .guide-step-item.active {
+      background: rgba(99, 102, 241, 0.28);
+      border-color: #818cf8;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.45);
+      transform: translateX(6px);
     }
-
-    #qr-container.overloaded {
-      background: linear-gradient(135deg, #2d1b1b 0%, #1a0f0f 100%);
-    }
-
-    #qrcode-box {
-      background: white;
-      padding: 24px;
-      border-radius: 24px;
-      margin-bottom: 40px;
-      box-shadow: 0 0 40px rgba(139, 92, 246, 0.3);
-      transition: all 0.6s ease;
-    }
-
-    #qrcode-box:hover {
-      transform: scale(1.05);
-    }
-
-    .title-gradient {
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-      background-image: linear-gradient(90deg, #c084fc, #818cf8);
-    }
-
-    /* 프로세싱 오버레이 */
-    #processing-overlay {
-      display: none;
-      flex-direction: column;
+    .guide-step-item .step-num {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: #1e1b4b;
+      color: #a5b4fc;
+      display: flex;
       align-items: center;
       justify-content: center;
-      text-align: center;
+      font-weight: 900;
+      font-size: 16px;
+      flex-shrink: 0;
     }
-
-    /* 진행률 바 */
-    .display-progress-bg {
-      width: 80%;
-      height: 6px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 100px;
-      overflow: hidden;
-      margin-top: 24px;
+    .guide-step-item.active .step-num {
+      background: #6366f1;
+      color: #ffffff;
     }
-    .display-progress-fill {
-      height: 100%;
-      border-radius: 100px;
-      background: linear-gradient(90deg, #818cf8, #a78bfa, #c084fc);
-      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+    .guide-step-item .step-title {
+      font-size: 16px;
+      font-weight: 900;
+      color: #ffffff;
+      letter-spacing: 0.02em;
     }
-
-    /* 과부하 오버레이 */
-    #overloaded-overlay {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-
-    /* 스피너 애니메이션 */
-    .spinner {
-      width: 48px; height: 48px;
-      border: 4px solid rgba(255,255,255,0.15);
-      border-top-color: #a78bfa;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 24px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <div id="video-container">
-    <video id="promo-video" autoplay loop muted playsinline>
-      <source src="https://cdn.pixabay.com/video/2020/04/18/36551-412217614_large.mp4" type="video/mp4">
-      Your browser does not support the video tag.
-    </video>
-
-    <!-- SHOWCASE: 모자이크 결과 풀스크린 -->
-    <div id="showcase-container">
-      <img id="showcase-image" src="" alt="모자이크 결과">
-    </div>
-  </div>
-
-  <div id="qr-container">
-    <!-- IDLE 상태: QR 코드 -->
-    <div id="idle-content">
-      <h1 class="text-5xl font-extrabold mb-4 tracking-tighter title-gradient text-center">QR을 스캔하여<br>당신의 우주를<br>만들어보세요</h1>
-      <p class="text-xl font-light text-indigo-200 mb-12 text-center break-keep">
-        스마트폰에 사진을 올려<br>거대한 모자이크 아트를 완성하세요.
-      </p>
-
-      <div id="qrcode-box">
-        <div id="qrcode" class="w-80 h-80 flex items-center justify-center">
-          <span class="text-gray-400">QR 로딩 중...</span>
+  <!-- 전체 화면 그리드 컨테이너 -->
+  <div class="display-grid">
+    
+    <!-- ============================================================== -->
+    <!-- [좌측 전체: STEP 3] 나의 우주 모자이크 완성 결과 화면                -->
+    <!-- ============================================================== -->
+    <div class="glass-card panel-mosaic flex flex-col justify-between p-6 relative overflow-hidden glass-card-glow" id="mosaicCard">
+      <!-- 상단 헤더 & STEP 3 뱃지 (상단 우측 고정) -->
+      <div class="relative z-10 flex items-start justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="relative flex h-3.5 w-3.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
+          </span>
+          <div>
+            <h2 class="text-2xl lg:text-3xl font-black text-white tracking-tight">나의 우주 모자이크</h2>
+            <p id="mosaicHeaderSubtext" class="text-xs lg:text-sm text-emerald-300 font-medium mt-0.5">실시간 관람객 모자이크 아트</p>
+          </div>
+        </div>
+        
+        <!-- STEP 3 대형 뱃지 -->
+        <div class="step-badge step-badge-3 font-mono">
+          <span>🎉</span>
+          <span>STEP 3</span>
         </div>
       </div>
-      
-      <div class="flex items-center space-x-3 text-slate-400">
-        <span class="text-lg font-semibold">스마트폰 카메라로 스캔하세요</span>
+
+      <!-- 중앙 대형 모자이크 뷰어 (단일 고해상도 이미지 클린 뷰포트) -->
+      <div class="relative z-10 flex-1 my-3 flex items-center justify-center w-full overflow-hidden rounded-2xl bg-black border border-white/15 shadow-2xl">
+        <!-- 딥-줌 시네마틱 뷰포트 (GPU 3D 가속 레이어) -->
+        <div id="mosaicViewport" class="relative w-full h-full flex items-center justify-center overflow-hidden" style="will-change: transform; transform-origin: 50% 38%;">
+          <img id="mosaicImage" src="" alt="모자이크 결과" class="w-full h-full object-contain">
+        </div>
+        
+        <!-- 방금 완성된 신규 뱃지 + 우측 대형 15초 카운트다운 타이머 -->
+        <div id="newBadge" class="hidden absolute top-4 left-4 right-4 flex items-center justify-between z-30 pointer-events-none">
+          <div class="bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 text-white text-xs lg:text-sm font-black px-4 py-2 rounded-full shadow-2xl border border-white/25 badge-float pointer-events-auto">
+            🎉 방금 완성된 관람객 작품
+          </div>
+          <div class="bg-black/85 backdrop-blur-md border-2 border-yellow-400 text-yellow-300 px-4 py-1.5 rounded-full shadow-[0_0_25px_rgba(250,204,21,0.6)] flex items-center gap-2 font-mono pointer-events-auto">
+            <span class="text-xs text-yellow-100 font-extrabold uppercase">단독 전시</span>
+            <span id="showcaseSecondsText" class="text-xl lg:text-2xl font-black text-yellow-300">15s</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- PROCESSING 상태: 진행률 표시 -->
-    <div id="processing-overlay">
-      <div class="spinner"></div>
-      <h2 class="text-3xl font-extrabold mb-2 title-gradient">모자이크 생성 중</h2>
-      <p id="processing-detail" class="text-indigo-200 text-lg mb-4">타일을 매칭하는 중...</p>
-      <p id="processing-percent" class="text-5xl font-black text-white mb-2">0%</p>
-      <div class="display-progress-bg">
-        <div id="display-progress-fill" class="display-progress-fill" style="width: 0%;"></div>
+    <!-- ============================================================== -->
+    <!-- [중앙 전체: STEP 2] 포토스팟 (클린 미니멀 인물 셀카 촬영 구역)        -->
+    <!-- ============================================================== -->
+    <div class="glass-card panel-photozone flex flex-col justify-between p-6 relative overflow-hidden bg-gradient-to-b from-[#14141c] via-[#0d0d14] to-[#050508]" id="photozoneCard">
+      <!-- 상단 헤더 & STEP 2 뱃지 -->
+      <div class="relative z-10 flex items-start justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="text-3xl">📸</span>
+          <div>
+            <h2 class="text-2xl lg:text-3xl font-black text-white tracking-tight">포토스팟</h2>
+            <p class="text-xs lg:text-sm text-slate-300 font-medium mt-0.5">화면을 배경으로 셀카를 촬영하세요</p>
+          </div>
+        </div>
+        
+        <!-- STEP 2 초대형 뱃지 -->
+        <div class="step-badge step-badge-2 font-mono">
+          <span>✨</span>
+          <span>STEP 2</span>
+        </div>
+      </div>
+
+      <!-- 중앙 및 하단: 사람 셀카 배경용 100% 완전 무결 클린 백드롭 (조잡한 방해 요소 0%) -->
+      <div class="flex-1"></div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- [우측 상단: STEP 1] 참여 QR 코드 스캔                             -->
+    <!-- ============================================================== -->
+    <div class="glass-card panel-qr flex flex-col justify-between items-center p-6 text-center" id="qrCard">
+      <!-- 상단 메인 타이틀 & STEP 1 뱃지 -->
+      <div class="relative z-10 w-full flex items-start justify-between">
+        <div class="text-left">
+          <h1 class="text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight">
+            코즈믹 모자이크
+          </h1>
+          <p class="text-xs lg:text-sm text-slate-300 font-light mt-0.5">
+            스마트폰으로 <span class="text-gradient-cosmic font-bold">당신의 우주를 완성하세요</span>
+          </p>
+        </div>
+        
+        <!-- STEP 1 뱃지 -->
+        <div class="step-badge step-badge-1 font-mono flex-shrink-0">
+          <span>📱</span>
+          <span>STEP 1</span>
+        </div>
+      </div>
+
+      <!-- 중앙 초대형 QR 코드 -->
+      <div class="relative z-10 my-auto flex flex-col items-center justify-center">
+        <div id="qrcode-box" class="flex-shrink-0 cursor-pointer p-2.5 rounded-2xl bg-white shadow-[0_0_35px_rgba(99,102,241,0.45)] border-2 border-indigo-400">
+          <div id="qrcode" class="w-44 h-44 lg:w-48 lg:h-48 xl:w-52 xl:h-52 flex items-center justify-center">
+            <span class="text-xs text-slate-400">QR 로딩 중...</span>
+          </div>
+        </div>
+        <p class="text-xs lg:text-sm text-indigo-300 font-bold mt-2.5">
+          기본 카메라 앱으로 비추면 즉시 열립니다
+        </p>
+      </div>
+
+      <!-- 하단 진행률 바 (생성 중일 때만 표출) -->
+      <div class="relative z-10 w-full pt-1">
+        <div id="qrProcessingFooter" class="hidden flex flex-col gap-1.5 w-full">
+          <div class="flex justify-between text-xs lg:text-sm font-extrabold">
+            <span class="text-gradient-cosmic animate-pulse" id="qrProcessingMsg">수천 장의 우주 타일 매칭 중...</span>
+            <span class="text-cyan-300 font-mono font-black text-sm" id="qrProcessingPercent">0%</span>
+          </div>
+          <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-white/10">
+            <div id="qrProgressFill" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 transition-all duration-300" style="width: 0%;"></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- OVERLOADED 상태: 대기 안내 -->
-    <div id="overloaded-overlay">
-      <div class="text-6xl mb-6">⏳</div>
-      <h2 class="text-3xl font-extrabold mb-4 text-red-300">잠시만 기다려주세요</h2>
-      <p class="text-lg text-gray-300">현재 많은 분들이 참여 중입니다.<br>곧 다시 이용하실 수 있습니다.</p>
+    <!-- ============================================================== -->
+    <!-- [우측 하단: 이용 방법] 3단계 가이드 이미지 & 텍스트 동기화              -->
+    <!-- ============================================================== -->
+    <div class="glass-card panel-guide flex flex-col justify-between p-6 relative overflow-hidden" id="guideCard">
+      <!-- 상단 헤더 -->
+      <div class="relative z-10 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📖</span>
+          <h2 class="text-lg lg:text-xl font-black text-white tracking-tight">이용 방법 안내</h2>
+        </div>
+        <span class="text-xs font-bold text-amber-300 bg-amber-400/15 px-3 py-1 rounded-full border border-amber-400/30">
+          3단계 쉬운 참여
+        </span>
+      </div>
+
+      <!-- 중앙 스플릿 레이아웃 (좌: 가이드 이미지 3종 순환 54%, 우: 3단계 텍스트 46%) -->
+      <div class="relative z-10 my-auto py-1 flex items-center gap-4 h-full">
+        <!-- 좌측: 가이드 이미지 순환 박스 (화면 꽉 채움) -->
+        <div class="w-[54%] h-44 lg:h-48 xl:h-52 rounded-2xl bg-black/60 border border-indigo-500/40 overflow-hidden shadow-2xl relative flex items-center justify-center">
+          <img id="guideImg" src="/guides/guide_step1_qr.png" alt="이용 안내" class="w-full h-full object-cover transition-all duration-700">
+        </div>
+
+        <!-- 우측: 3단계 텍스트 실시간 동기화 리스트 (어르신도 1초 만에 이해하는 대형 타이틀) -->
+        <div class="w-[46%] flex flex-col justify-center gap-2.5">
+          <div id="guideTextStep1" class="guide-step-item active">
+            <span class="step-num">1</span>
+            <p class="step-title">1. QR 스캔</p>
+          </div>
+          <div id="guideTextStep2" class="guide-step-item">
+            <span class="step-num">2</span>
+            <p class="step-title">2. 셀카 촬영</p>
+          </div>
+          <div id="guideTextStep3" class="guide-step-item">
+            <span class="step-num">3</span>
+            <p class="step-title">3. 모자이크 완성</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 하단 안내 문구 -->
+      <div class="relative z-10 pt-2 border-t border-white/10 flex items-center justify-between text-xs text-slate-300 font-medium">
+        <span>별도 앱 설치 없이 스마트폰으로 즉시 참여</span>
+        <span class="text-cyan-400 font-bold">30초 완성</span>
+      </div>
     </div>
+
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script>
-    const socket = io();
-    
-    let uploadUrl = window.location.origin + '/upload.html';
-    let showcaseTimer = null;
-    let currentDisplayState = 'idle';
+    // ================================================================
+    // 전시 시스템 기본 설정
+    // ================================================================
+    const DISPLAY_CONFIG = {
+      SHOWCASE_DURATION_SEC: 15,    // 신규 모자이크 단독 전시 보장 시간 (15초)
+      DEMO_CYCLE_SEC: 10,           // 유휴 시 데모 모자이크 순환 주기 (10초)
+      GUIDE_CYCLE_SEC: 5,           // 이용 가이드 3단계 순환 주기 (5초)
+    };
 
-    // QR 코드 그리기
+    const socket = io();
+    let uploadUrl = window.location.origin + '/upload.html';
+
+    // ================================================================
+    // 1. STEP 1: 초대형 QR 코드 렌더링 & 터널 주소 동기화
+    // ================================================================
     function drawQR(url) {
-      QRCode.toCanvas(document.createElement('canvas'), url, { width: 320, margin: 1, color: { dark: '#0f172a', light: '#ffffff' } }, function (err, canvas) {
-        if(!err) {
-          const qrContainer = document.getElementById('qrcode');
-          qrContainer.innerHTML = '';
-          qrContainer.appendChild(canvas);
+      const qrEl = document.getElementById('qrcode');
+      QRCode.toCanvas(document.createElement('canvas'), url, {
+        width: 280,
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' },
+        errorCorrectionLevel: 'M'
+      }, function (err, canvas) {
+        if (!err && qrEl) {
+          qrEl.innerHTML = '';
+          canvas.style.width = '100%';
+          canvas.style.height = '100%';
+          canvas.style.borderRadius = '16px';
+          qrEl.appendChild(canvas);
         }
       });
     }
@@ -222,86 +378,268 @@
     drawQR(uploadUrl);
 
     socket.on('tunnel_url', (url) => {
-      console.log('클라우드플레어 터널 주소 수신:', url);
-      drawQR(url + '/upload.html');
+      console.log('📡 외부 터널 접속 주소 수신:', url);
+      uploadUrl = url + '/upload.html';
+      drawQR(uploadUrl);
     });
 
-    // ===== 디스플레이 상태 머신 =====
-    function setDisplayState(state, data) {
-      currentDisplayState = state;
-      const qrPanel = document.getElementById('qr-container');
-      const idleContent = document.getElementById('idle-content');
-      const processingOverlay = document.getElementById('processing-overlay');
-      const overloadedOverlay = document.getElementById('overloaded-overlay');
-      const showcaseContainer = document.getElementById('showcase-container');
+    const guideStepImages = [
+      '/guides/guide_step1_qr.png',
+      '/guides/guide_step2_photo.png',
+      '/guides/guide_step3_result.png'
+    ];
+    let currentGuideStep = 0;
 
-      // 모든 오버레이 숨기기
-      idleContent.style.display = 'none';
-      processingOverlay.style.display = 'none';
-      overloadedOverlay.style.display = 'none';
-      
-      // QR 패널 기본적으로 보이기
-      qrPanel.style.opacity = '1';
-      qrPanel.style.pointerEvents = 'auto';
+    function initGuideStepRotation() {
+      const imgEl = document.getElementById('guideImg');
+      const stepItems = [
+        document.getElementById('guideTextStep1'),
+        document.getElementById('guideTextStep2'),
+        document.getElementById('guideTextStep3')
+      ];
 
-      // 클래스 정리
-      qrPanel.classList.remove('processing', 'overloaded');
+      setInterval(() => {
+        currentGuideStep = (currentGuideStep + 1) % guideStepImages.length;
+        
+        if (imgEl) {
+          imgEl.style.opacity = '0';
+          imgEl.style.transform = 'scale(0.96)';
+          setTimeout(() => {
+            imgEl.src = guideStepImages[currentGuideStep];
+            imgEl.style.opacity = '1';
+            imgEl.style.transform = 'scale(1)';
+          }, 350);
+        }
 
-      switch (state) {
-        case 'idle':
-          idleContent.style.display = 'flex';
-          idleContent.style.flexDirection = 'column';
-          idleContent.style.alignItems = 'center';
-          showcaseContainer.style.display = 'none';
-          break;
-
-        case 'processing':
-          qrPanel.classList.add('processing');
-          processingOverlay.style.display = 'flex';
-          if (data && data.percent !== undefined) {
-            document.getElementById('processing-percent').textContent = data.percent + '%';
-            document.getElementById('display-progress-fill').style.width = data.percent + '%';
+        stepItems.forEach((item, idx) => {
+          if (item) {
+            if (idx === currentGuideStep) item.classList.add('active');
+            else item.classList.remove('active');
           }
-          break;
+        });
+      }, DISPLAY_CONFIG.GUIDE_CYCLE_SEC * 1000);
+    }
+    initGuideStepRotation();
 
-        case 'showcase':
-          // 사이니지(Signage) 용도이므로 완성 상태 대기 없이 즉시 IDLE(QR)로 복귀
-          setDisplayState('idle', {});
-          break;
+    // ================================================================
+    // 3. STEP 3: 초경량 무지연 페이드 & 네이티브 CSS 60fps 딥-줌
+    // ================================================================
+    const mosaicViewport = document.getElementById('mosaicViewport');
+    const mosaicImage = document.getElementById('mosaicImage');
+    const newBadge = document.getElementById('newBadge');
+    const showcaseSecondsText = document.getElementById('showcaseSecondsText');
 
-        case 'overloaded':
-          qrPanel.classList.add('overloaded');
-          overloadedOverlay.style.display = 'flex';
-          break;
+    let demoMosaics = ['/output_guides/demo_mosaic_1.jpg', '/output_guides/demo_mosaic_2.jpg'];
+    let currentDemoIndex = 0;
+    let demoIntervalTimer = null;
+    let isShowcasingUser = false;
+    let showcaseQueue = [];
+    let userShowcaseTimer = null;
+    let zoomSequenceTimers = [];
+
+    // 타이머 및 뷰포트 상태 완전 초기화 (메모리 누수 및 잔상 원천 차단)
+    function resetViewportState() {
+      zoomSequenceTimers.forEach(t => clearTimeout(t));
+      zoomSequenceTimers = [];
+
+      mosaicViewport.style.transition = 'none';
+      mosaicViewport.style.transform = 'none';
+      mosaicViewport.style.transformOrigin = '50% 38%';
+    }
+
+    // 1) 안전한 데모 모자이크 목록 로드
+    async function loadDemoMosaics() {
+      try {
+        const res = await fetch('/api/outputs/guides');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.guides && data.guides.length > 0) demoMosaics = data.guides;
+        }
+      } catch (e) {}
+    }
+
+    // 2) 데모 모자이크 순환 (가장 가볍고 깔끔한 순수 opacity 0.8s 페이드)
+    function displayDemoItem(index) {
+      if (demoMosaics.length === 0 || isShowcasingUser) return;
+      currentDemoIndex = index % demoMosaics.length;
+      const url = demoMosaics[currentDemoIndex];
+
+      resetViewportState();
+      if (newBadge) newBadge.classList.add('hidden');
+
+      mosaicImage.style.transition = 'opacity 0.8s ease-in-out';
+      mosaicImage.style.opacity = '0';
+
+      const t = setTimeout(() => {
+        if (isShowcasingUser) return;
+        mosaicImage.src = url;
+        mosaicImage.style.opacity = '1';
+      }, 800);
+      zoomSequenceTimers.push(t);
+    }
+
+    function startDemoGalleryLoop() {
+      if (demoIntervalTimer) clearInterval(demoIntervalTimer);
+      if (demoMosaics.length <= 1) return;
+
+      demoIntervalTimer = setInterval(() => {
+        if (!isShowcasingUser && demoMosaics.length > 1) {
+          currentDemoIndex = (currentDemoIndex + 1) % demoMosaics.length;
+          displayDemoItem(currentDemoIndex);
+        }
+      }, 7000);
+    }
+
+    // 3) 관람객 사진 완성 시 호출 (큐 시스템 보장)
+    function queueUserShowcase(imageUrl) {
+      showcaseQueue.push(imageUrl);
+      if (!isShowcasingUser) {
+        processNextUserInQueue();
       }
     }
 
-    // 서버에서 상태 전환 수신
-    socket.on('display_state', (data) => {
-      // showcase 중에는 processing 이벤트 무시 (10초 전시 보장)
-      if (currentDisplayState === 'showcase' && data.state === 'processing') return;
-      
-      if (data.state === 'processing' && data.percent !== undefined) {
-        // 진행률 업데이트만
-        document.getElementById('processing-percent').textContent = data.percent + '%';
-        document.getElementById('display-progress-fill').style.width = data.percent + '%';
-        if (currentDisplayState !== 'processing') {
-          setDisplayState('processing', data);
+    function processNextUserInQueue() {
+      if (showcaseQueue.length === 0) {
+        // 모든 사용자 전시 완료 -> 깨끗하게 데모 모자이크 순환으로 복귀
+        isShowcasingUser = false;
+        if (newBadge) newBadge.classList.add('hidden');
+        resetViewportState();
+        startDemoGalleryLoop();
+        displayDemoItem(currentDemoIndex);
+        return;
+      }
+
+      isShowcasingUser = true;
+      if (demoIntervalTimer) clearInterval(demoIntervalTimer);
+      if (userShowcaseTimer) clearInterval(userShowcaseTimer);
+      resetViewportState();
+
+      const nextImageUrl = showcaseQueue.shift();
+
+      // Step 1: 기존 사진 페이드아웃 (0.6s)
+      mosaicImage.style.transition = 'opacity 0.6s ease-in-out';
+      mosaicImage.style.opacity = '0';
+
+      const t1 = setTimeout(() => {
+        const img = new Image();
+        img.onload = () => {
+          mosaicImage.src = nextImageUrl;
+          
+          // Step 2: 관람객 완성 사진 페이드인 (0.8s)
+          mosaicImage.style.transition = 'opacity 0.8s ease-in-out';
+          mosaicImage.style.opacity = '1';
+
+          // Step 3: 브라우저 GPU 네이티브 부드러운 3.6배 딥-줌 (2.4s)
+          const t2 = setTimeout(() => {
+            mosaicViewport.style.transition = 'transform 2.4s cubic-bezier(0.25, 1, 0.5, 1)';
+            mosaicViewport.style.transform = 'scale(3.6)';
+
+            // Step 4: 1.8초간 타일 디테일 감상 후 전체 모자이크로 부드러운 풀아웃 (2.6s)
+            const t3 = setTimeout(() => {
+              mosaicViewport.style.transition = 'transform 2.6s cubic-bezier(0.25, 1, 0.5, 1)';
+              mosaicViewport.style.transform = 'scale(1.0)';
+
+              // Step 5: 풀아웃 완료 직후 15초 단독 전시 카운트다운 시작
+              const t4 = setTimeout(() => {
+                activateUserShowcase();
+              }, 2600);
+              zoomSequenceTimers.push(t4);
+
+            }, 4200); // 줌인 2.4s + 감상 1.8s
+            zoomSequenceTimers.push(t3);
+
+          }, 800); // 페이드인 완료 후 줌 시작
+          zoomSequenceTimers.push(t2);
+        };
+        img.src = nextImageUrl;
+      }, 600);
+      zoomSequenceTimers.push(t1);
+    }
+
+    // 4) 15초 카운트다운 단독 전시 활성화
+    function activateUserShowcase() {
+      if (newBadge) newBadge.classList.remove('hidden');
+
+      const totalSec = DISPLAY_CONFIG.SHOWCASE_DURATION_SEC;
+      let leftSec = totalSec;
+      if (showcaseSecondsText) showcaseSecondsText.textContent = leftSec + 's';
+
+      if (userShowcaseTimer) clearInterval(userShowcaseTimer);
+
+      const startTime = Date.now();
+      userShowcaseTimer = setInterval(() => {
+        const elapsedSec = (Date.now() - startTime) / 1000;
+        leftSec = Math.max(0, Math.ceil(totalSec - elapsedSec));
+
+        if (showcaseSecondsText) showcaseSecondsText.textContent = leftSec + 's';
+
+        if (leftSec <= 0) {
+          clearInterval(userShowcaseTimer);
+          
+          // 15초 만료 -> 부드럽게 페이드아웃 후 다음 사람 또는 데모로 완전 초기화 복귀
+          mosaicImage.style.transition = 'opacity 0.8s ease-in-out';
+          mosaicImage.style.opacity = '0';
+          
+          const t = setTimeout(() => {
+            processNextUserInQueue();
+          }, 800);
+          zoomSequenceTimers.push(t);
         }
-      } else {
-        setDisplayState(data.state, data);
+      }, 100);
+    }
+
+    // 5) 초기 데모 갤러리 기동
+    displayDemoItem(0);
+    startDemoGalleryLoop();
+    loadDemoMosaics();
+
+    // ================================================================
+    // 6. Socket.io 실시간 이벤트 수신
+    // ================================================================
+    const qrProcessingFooter = document.getElementById('qrProcessingFooter');
+    const qrProgressFill = document.getElementById('qrProgressFill');
+    const qrProcessingMsg = document.getElementById('qrProcessingMsg');
+    const qrProcessingPercent = document.getElementById('qrProcessingPercent');
+
+    // 모자이크 생성 완료 이벤트
+    socket.on('new_mosaic', (data) => {
+      console.log('🎉 신규 모자이크 완성 수신:', data);
+      if (data && data.imageUrl) {
+        queueUserShowcase(data.imageUrl);
       }
     });
 
-    // 새 모자이크 수신 → SHOWCASE
-    socket.on('new_mosaic', (data) => {
-      const showcaseImg = document.getElementById('showcase-image');
-      showcaseImg.src = data.imageUrl;
-      setDisplayState('showcase', data);
+    // 작업 진행률 이벤트
+    socket.on('mosaic_progress', (data) => {
+      if (qrProcessingFooter) qrProcessingFooter.classList.remove('hidden');
+      if (qrProgressFill) qrProgressFill.style.width = (data.percent || 0) + '%';
+      if (qrProcessingPercent) qrProcessingPercent.textContent = (data.percent || 0) + '%';
+      if (qrProcessingMsg) qrProcessingMsg.textContent = data.message || '우주 타일 매칭 중...';
+
+      if (data.percent >= 100) {
+        setTimeout(() => {
+          if (qrProcessingFooter) qrProcessingFooter.classList.add('hidden');
+          if (qrProgressFill) qrProgressFill.style.width = '0%';
+        }, 1500);
+      }
     });
 
-    // 접속 시 현재 상태 요청
-    socket.emit('request_display_state');
+    // 시스템 상태 이벤트
+    socket.on('display_state', (state) => {
+      if (state.isProcessing) {
+        if (qrProcessingFooter) qrProcessingFooter.classList.remove('hidden');
+        if (qrProcessingMsg) qrProcessingMsg.textContent = state.message || '모자이크 렌더링 중...';
+      } else {
+        if (qrProcessingFooter) qrProcessingFooter.classList.add('hidden');
+      }
+    });
+
+    // 백그라운드 관리자 설정 변경 수신
+    socket.on('config_updated', (newCfg) => {
+      if (newCfg.displayShowcaseDuration) {
+        DISPLAY_CONFIG.SHOWCASE_DURATION_SEC = newCfg.displayShowcaseDuration;
+      }
+    });
   </script>
 </body>
 </html>

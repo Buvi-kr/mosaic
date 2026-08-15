@@ -1,14 +1,25 @@
 {
   "name": "mosaic_ver2",
-  "version": "1.0.0",
-  "description": "Reverse Cosmos Mosaic (V4 Multi-Theme) - 로컬 기반 실시간 우주 사진 포토모자이크 렌더링 서버",
+  "version": "7.0.0",
+  "description": "Reverse Cosmos Mosaic (V7.0 Display Overhaul & Privacy Architecture) - 로컬 기반 실시간 포토모자이크 전시 렌더링 시스템",
   "main": "src/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/app.js",
+    "build:db": "node scripts/build.db.js",
+    "build:release": "node scripts/build_release.js",
+    "dedup": "node scripts/true.dedup.js",
+    "guides:create": "node scripts/create_guide_samples.js"
   },
-  "keywords": [],
+  "keywords": [
+    "mosaic",
+    "photomosaic",
+    "media-art",
+    "interactive-display",
+    "sharp",
+    "socketio"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "color-convert": "^2.0.1",
