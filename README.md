@@ -161,8 +161,7 @@ npm run build:release
 
 ```text
 /mosaic_ver2
-├── data/                         # 핵심 데이터베이스 및 시스템 설정
-│   ├── apod_originals/           # 수집된 원본 고화질 이미지 아카이브
+├── data/                         # [1.34 MB] 핵심 데이터베이스 및 시스템 설정 (초경량)
 │   ├── config.json               # 코어 엔진 파라미터 (원자적 쓰기 지원)
 │   └── themes/                   # 테마별 색상 DB 및 k-d tree 인덱스 격리 보관소
 │       └── default_nasa/
@@ -192,24 +191,20 @@ npm run build:release
 │   ├── mosaic.queue.js           # 고정 워커 풀 관리 및 EMA 기반 대기열 큐 시스템
 │   ├── socket.manager.js         # Socket.io 실시간 이벤트 및 터널 URL 중계
 │   └── matcher.worker.js         # 멀티스레드 타일 매칭 및 Sharp 이미지 합성 워커
-├── scripts/                      # 자동화 유틸리티 스크립트
-│   ├── build.db.js               # 테마 빌더 (이미지 압축 + DB 생성 + Tree 인덱싱)
-│   ├── build_release.js          # 포터블 무설치 배포용 Direct-to-Zip 압축기
-│   ├── create_guide_samples.js   # 전시장 기본 가이드 SVG/PNG 생성 유틸리티
-│   └── true.dedup.js             # 8x8 물리적 픽셀 비교 방식의 중복 이미지 제거기
-├── old/                          # 레거시 아카이브 (이전 기획서, 구버전 코드, 과거 데이터)
+├── scripts/                      # 자동화 빌더 스크립트
+│   └── build.db.js               # 테마 빌더 (이미지 압축 + DB 생성 + Tree 인덱싱)
+├── old/                          # 레거시 아카이브 (이전 기획서, 구버전 코드, 과거 실험 스크립트)
 │   ├── data/
 │   ├── public/                   # 구버전 페이지 (birthday.html 등)
 │   ├── scratch/                  # 개발 초기 임시 테스트 스크립트
-│   ├── scripts/                  # V3->V4 단발성 마이그레이션 스크립트 등
+│   ├── scripts/                  # 실험/단발성 마이그레이션 스크립트 보관
 │   ├── src/
 │   ├── V7_개선기획안.md
 │   ├── V8_개선기획안.md
 │   └── 멀티테마_동시접속대응_기획서.md
 ├── cloudflared.exe               # Cloudflare Tunnel 실행 바이너리
-├── node-v20.15.1-x64.msi         # 현장 깡통 PC 대응용 Node.js 설치 바이너리
 ├── package.json                  # 프로젝트 메타데이터 및 실행 스크립트 정의
-├── start.bat                     # Windows 원클릭 종합 구동 런처
+├── start.bat                     # Windows 원클릭 종합 구동 런처 (Node.js 무인 자동 설치 내장)
 └── README.md                     # 프로젝트 마스터 문서
 ```
 
@@ -234,6 +229,18 @@ Material Design 3 기반 대시보드에서 전시장 상황에 맞춰 실시간
 ---
 
 ## 7. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+
+### 📦 V7.2 Project Clean-up & Storage Optimization (2026-08-17)
+#### 🧹 4.9GB 저장공간 확보 및 클린 디렉토리 아키텍처 확립
+- **[4.88GB 더미 원본 아카이브 영구 제거]**:
+  - 과거 타일 제작 시 크롤링했던 1995~2024년 NASA APOD 원본 미가공 파일 더미(`data/apod_originals/`, 4.88GB)를 완전 삭제하여 디스크 용량 4.9GB 확보.
+  - 서버 런타임에 필요한 실데이터(`data/themes/`, `data/config.json`)만 남겨 `data/` 디렉토리를 **1.34 MB로 초경량화**.
+- **[클린 스크립트 아키텍처]**:
+  - 단발성 크롤링/실험 스크립트들을 `old/scripts/`로 격리 보관하고, 런타임 빌더인 `scripts/build.db.js`만 유지하여 코드베이스 복잡도 제거.
+- **[Node.js 무인 자동 설치 표준화]**:
+  - 로컬에 남아있던 무거운 설치 바이너리(`.msi`)를 정리하고, `start.bat`의 공식 웹(`nodejs.org`) 무인 다운로드/설치 파이프라인으로 완전 일원화.
+
+---
 
 ### 📦 V7.1 Zero-Lag CSS Hardware Deep-Zoom & Clean Architecture (2026-08-15)
 #### 🚀 대형 스크린 시네마틱 딥-줌(Deep-Zoom) & 단일 레이어 클린 아키텍처
