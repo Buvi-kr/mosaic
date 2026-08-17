@@ -9,25 +9,23 @@ node -v >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     if exist "%ProgramFiles%\nodejs\node.exe" (
         set NODE_CMD="%ProgramFiles%\nodejs\node.exe"
+        set "PATH=%ProgramFiles%\nodejs;%PATH%;%APPDATA%\npm"
     ) else (
         if not exist "node-v20.15.1-x64.msi" (
-            echo [INFO] Node.js is not installed on this PC and installer was not found.
-            echo [INFO] Downloading Node.js Installer...
+            echo [INFO] Node.js is not installed on this PC.
+            echo [INFO] Downloading Node.js LTS Installer...
             powershell -Command "$ProgressPreference = 'SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.15.1/node-v20.15.1-x64.msi' -OutFile 'node-v20.15.1-x64.msi'"
         )
         if exist "node-v20.15.1-x64.msi" (
-            echo [INFO] Launching Node.js Installer...
-            echo ==================================================================
-            echo [WARNING] Please complete the installation by clicking 'Next'.
-            echo [WARNING] DO NOT check the box for "Tools for Native Modules" 
-            echo           [Chocolatey/C++], as it will disrupt the auto-launch!
-            echo ==================================================================
-            start /wait node-v20.15.1-x64.msi
+            echo [INFO] Installing Node.js automatically (No clicks required)...
+            msiexec.exe /i node-v20.15.1-x64.msi /passive /norestart
+            set "PATH=%ProgramFiles%\nodejs;%PATH%;%APPDATA%\npm"
             if exist "%ProgramFiles%\nodejs\node.exe" (
                 set NODE_CMD="%ProgramFiles%\nodejs\node.exe"
-                echo [SUCCESS] Node.js installed successfully!
+                del /f /q node-v20.15.1-x64.msi >nul 2>&1
+                echo [SUCCESS] Node.js installed and configured successfully!
             ) else (
-                echo [ERROR] Node.js installation was canceled or failed.
+                echo [ERROR] Node.js installation failed. Please check permissions.
                 pause
                 exit /b 1
             )
