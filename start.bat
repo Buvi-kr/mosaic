@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
 title Reverse Cosmos Mosaic (V7) - Startup
@@ -22,11 +23,11 @@ if %ERRORLEVEL% neq 0 (
         if exist "node-v20.15.1-x64.msi" (
             echo.
             echo ==================================================================
-            echo  [안내] Node.js 공식 설치 마법사가 실행됩니다.
+            echo  [GUIDE] Node.js Official Setup Wizard will launch.
             echo.
-            echo  1. 마법사 창에서 'Next'를 눌러 설치를 완료해 주세요.
-            echo  2. [중요] 마지막 단계의 "Tools for Native Modules" (추가 도구)
-            echo     체크박스는 [체크 해제(기본값)] 상태로 넘어가셔야 합니다!
+            echo  1. Click 'Next' in the wizard to complete the installation.
+            echo  2. [IMPORTANT] DO NOT check the box for "Tools for Native Modules"
+            echo     (Chocolatey/C++), keep it unchecked (default) to stay fast!
             echo ==================================================================
             echo.
             start /wait node-v20.15.1-x64.msi
