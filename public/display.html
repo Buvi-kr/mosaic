@@ -180,7 +180,7 @@
     <!-- [좌측 전체: STEP 3] 나의 우주 모자이크 완성 결과 화면                -->
     <!-- ============================================================== -->
     <div class="glass-card panel-mosaic flex flex-col justify-between p-6 relative overflow-hidden glass-card-glow" id="mosaicCard">
-      <!-- 상단 헤더 & STEP 3 뱃지 (상단 우측 고정) -->
+      <!-- 상단 헤더 & STEP 3 뱃지 + 단독 전시 타이머 -->
       <div class="relative z-10 flex items-start justify-between">
         <div class="flex items-center gap-2.5">
           <span class="relative flex h-3.5 w-3.5">
@@ -193,29 +193,27 @@
           </div>
         </div>
         
-        <!-- STEP 3 대형 뱃지 -->
-        <div class="step-badge step-badge-3 font-mono">
-          <span>🎉</span>
-          <span>STEP 3</span>
+        <!-- 우측 뱃지 그룹 (단독 전시 타이머 + STEP 3 대형 뱃지) -->
+        <div class="flex items-center gap-3">
+          <!-- 단독 전시 카운트다운 뱃지 (STEP 3 크기/높이 규격 동기화) -->
+          <div id="newBadge" class="hidden inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/20 border-2 border-yellow-400 text-yellow-300 font-mono shadow-[0_0_20px_rgba(250,204,21,0.45)]">
+            <span class="text-xs lg:text-sm font-extrabold text-yellow-200 tracking-tight">단독 전시</span>
+            <span id="showcaseSecondsText" class="text-base lg:text-lg font-black text-yellow-300">15s</span>
+          </div>
+
+          <!-- STEP 3 대형 뱃지 -->
+          <div class="step-badge step-badge-3 font-mono">
+            <span>🎉</span>
+            <span>STEP 3</span>
+          </div>
         </div>
       </div>
 
-      <!-- 중앙 대형 모자이크 뷰어 (단일 고해상도 이미지 클린 뷰포트) -->
+      <!-- 중앙 대형 모자이크 뷰어 (단일 고해상도 이미지 클린 뷰포트 - 방해 요소 0%) -->
       <div class="relative z-10 flex-1 my-3 flex items-center justify-center w-full overflow-hidden rounded-2xl bg-black border border-white/15 shadow-2xl">
         <!-- 딥-줌 시네마틱 뷰포트 (GPU 3D 가속 레이어) -->
         <div id="mosaicViewport" class="relative w-full h-full flex items-center justify-center overflow-hidden" style="will-change: transform; transform-origin: 50% 38%;">
           <img id="mosaicImage" src="" alt="모자이크 결과" class="w-full h-full object-contain">
-        </div>
-        
-        <!-- 방금 완성된 신규 뱃지 + 우측 대형 15초 카운트다운 타이머 -->
-        <div id="newBadge" class="hidden absolute top-4 left-4 right-4 flex items-center justify-between z-30 pointer-events-none">
-          <div class="bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 text-white text-xs lg:text-sm font-black px-4 py-2 rounded-full shadow-2xl border border-white/25 badge-float pointer-events-auto">
-            🎉 방금 완성된 관람객 작품
-          </div>
-          <div class="bg-black/85 backdrop-blur-md border-2 border-yellow-400 text-yellow-300 px-4 py-1.5 rounded-full shadow-[0_0_25px_rgba(250,204,21,0.6)] flex items-center gap-2 font-mono pointer-events-auto">
-            <span class="text-xs text-yellow-100 font-extrabold uppercase">단독 전시</span>
-            <span id="showcaseSecondsText" class="text-xl lg:text-2xl font-black text-yellow-300">15s</span>
-          </div>
         </div>
       </div>
     </div>
@@ -443,7 +441,7 @@
       zoomSequenceTimers = [];
 
       mosaicViewport.style.transition = 'none';
-      mosaicViewport.style.transform = 'none';
+      mosaicViewport.style.transform = 'scale(1.0) translate(0%, 0%)';
       mosaicViewport.style.transformOrigin = '50% 38%';
     }
 
@@ -529,23 +527,39 @@
           mosaicImage.style.transition = 'opacity 0.8s ease-in-out';
           mosaicImage.style.opacity = '1';
 
-          // Step 3: 브라우저 GPU 네이티브 부드러운 3.6배 딥-줌 (2.4s)
+          // Step 3-1: 웅장한 6.0배 딥-줌인 (3.0s)
           const t2 = setTimeout(() => {
-            mosaicViewport.style.transition = 'transform 2.4s cubic-bezier(0.25, 1, 0.5, 1)';
-            mosaicViewport.style.transform = 'scale(3.6)';
+            mosaicViewport.style.transition = 'transform 3.0s cubic-bezier(0.25, 1, 0.5, 1)';
+            mosaicViewport.style.transform = 'scale(6.0) translate(0%, 0%)';
 
-            // Step 4: 1.8초간 타일 디테일 감상 후 전체 모자이크로 부드러운 풀아웃 (2.6s)
+            // Step 3-2: 좌측 우주 타일 시네마틱 패닝 (2.0s)
             const t3 = setTimeout(() => {
-              mosaicViewport.style.transition = 'transform 2.6s cubic-bezier(0.25, 1, 0.5, 1)';
-              mosaicViewport.style.transform = 'scale(1.0)';
+              mosaicViewport.style.transition = 'transform 2.0s ease-in-out';
+              mosaicViewport.style.transform = 'scale(6.0) translate(-3.5%, 1.5%)';
 
-              // Step 5: 풀아웃 완료 직후 15초 단독 전시 카운트다운 시작
+              // Step 3-3: 우측 우주 타일 글라이딩 패닝 (2.2s)
               const t4 = setTimeout(() => {
-                activateUserShowcase();
-              }, 2600);
+                mosaicViewport.style.transition = 'transform 2.2s ease-in-out';
+                mosaicViewport.style.transform = 'scale(6.0) translate(3.5%, -1%)';
+
+                // Step 3-4: 전체 모자이크로 부드러운 풀아웃 줌아웃 (2.8s)
+                const t5 = setTimeout(() => {
+                  mosaicViewport.style.transition = 'transform 2.8s cubic-bezier(0.25, 1, 0.5, 1)';
+                  mosaicViewport.style.transform = 'scale(1.0) translate(0%, 0%)';
+
+                  // Step 4: 줌아웃 완료 직후 15초 단독 전시 카운트다운 시작
+                  const t6 = setTimeout(() => {
+                    activateUserShowcase();
+                  }, 2800);
+                  zoomSequenceTimers.push(t6);
+
+                }, 2200);
+                zoomSequenceTimers.push(t5);
+
+              }, 2000);
               zoomSequenceTimers.push(t4);
 
-            }, 4200); // 줌인 2.4s + 감상 1.8s
+            }, 3000);
             zoomSequenceTimers.push(t3);
 
           }, 800); // 페이드인 완료 후 줌 시작
