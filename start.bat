@@ -9,7 +9,10 @@ node -v >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     if exist "%ProgramFiles%\nodejs\node.exe" (
         set NODE_CMD="%ProgramFiles%\nodejs\node.exe"
-        set "PATH=%ProgramFiles%\nodejs;%PATH%;%APPDATA%\npm"
+        set "PATH=%ProgramFiles%\nodejs;%ProgramFiles(x86)%\nodejs;%PATH%;%APPDATA%\npm"
+    ) else if exist "%ProgramFiles(x86)%\nodejs\node.exe" (
+        set NODE_CMD="%ProgramFiles(x86)%\nodejs\node.exe"
+        set "PATH=%ProgramFiles(x86)%\nodejs;%PATH%;%APPDATA%\npm"
     ) else (
         if not exist "node-v20.15.1-x64.msi" (
             echo [INFO] Node.js is not installed on this PC.
@@ -17,15 +20,27 @@ if %ERRORLEVEL% neq 0 (
             powershell -Command "$ProgressPreference = 'SilentlyContinue'; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.15.1/node-v20.15.1-x64.msi' -OutFile 'node-v20.15.1-x64.msi'"
         )
         if exist "node-v20.15.1-x64.msi" (
-            echo [INFO] Installing Node.js automatically (No clicks required)...
-            msiexec.exe /i node-v20.15.1-x64.msi /passive /norestart
-            set "PATH=%ProgramFiles%\nodejs;%PATH%;%APPDATA%\npm"
+            echo.
+            echo ==================================================================
+            echo  [안내] Node.js 공식 설치 마법사가 실행됩니다.
+            echo.
+            echo  1. 마법사 창에서 'Next'를 눌러 설치를 완료해 주세요.
+            echo  2. [중요] 마지막 단계의 "Tools for Native Modules" (추가 도구)
+            echo     체크박스는 [체크 해제(기본값)] 상태로 넘어가셔야 합니다!
+            echo ==================================================================
+            echo.
+            start /wait node-v20.15.1-x64.msi
+            set "PATH=%ProgramFiles%\nodejs;%ProgramFiles(x86)%\nodejs;%PATH%;%APPDATA%\npm"
             if exist "%ProgramFiles%\nodejs\node.exe" (
                 set NODE_CMD="%ProgramFiles%\nodejs\node.exe"
                 del /f /q node-v20.15.1-x64.msi >nul 2>&1
                 echo [SUCCESS] Node.js installed and configured successfully!
+            ) else if exist "%ProgramFiles(x86)%\nodejs\node.exe" (
+                set NODE_CMD="%ProgramFiles(x86)%\nodejs\node.exe"
+                del /f /q node-v20.15.1-x64.msi >nul 2>&1
+                echo [SUCCESS] Node.js installed and configured successfully!
             ) else (
-                echo [ERROR] Node.js installation failed. Please check permissions.
+                echo [ERROR] Node.js installation was canceled or failed.
                 pause
                 exit /b 1
             )
