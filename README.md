@@ -117,17 +117,18 @@ graph TD
 ## 4. 🚀 설치 및 운영 가이드 (Quick Start)
 
 ### ⚡ 3초 퀵 스타트 (Fast Track for Windows)
-아무런 사전 프로그램(Node.js 등)이 설치되어 있지 않은 **완전 깡통 윈도우 PC**에서도 명령어 복사-붙여넣기 한 번이면 모든 것이 전자동으로 세팅되고 서버가 켜집니다.
+아무런 사전 프로그램(Node.js 등)이 설치되어 있지 않은 **완전 깡통 윈도우 PC**에서도 2단계만 거치면 모든 것이 전자동으로 세팅되고 서버가 켜집니다.
 
-#### 💻 PowerShell에서 실행 시 (추천)
-PowerShell을 열고 아래 1줄을 복사하여 실행하세요:
+#### 1단계: 소스코드 다운로드 (PowerShell 또는 Git Bash)
+PowerShell을 열고 아래 명령어로 저장소를 복제합니다:
 ```powershell
-git clone https://github.com/Buvi-kr/mosaic.git ; cd mosaic ; .\start.bat
+git clone https://github.com/Buvi-kr/mosaic.git
 ```
+*(Git이 없다면 GitHub 상단 **Code ➔ Download ZIP**으로 다운받아 압축을 푸셔도 됩니다)*
 
-#### 📁 Git이 없는 일반 PC / 탐색기 환경
-1. GitHub 상단의 초록색 **`Code`** ➔ **`Download ZIP`** 클릭 후 압축 해제
-2. 압축 푼 폴더에서 **`start.bat`을 더블 클릭**
+#### 2단계: `start.bat` 더블 클릭 실행 (추천 🚀)
+생성된 `mosaic` 폴더로 들어가서 **`start.bat`을 더블 클릭**하세요!
+* 독립된 전용 명령 프롬프트(CMD) 창이 열리며 **Node.js, 의존성 라이브러리(`npm install`), Cloudflared 준비 및 메인 서버 구동**까지 알아서 100% 전자동으로 완료됩니다.
 
 ---
 
