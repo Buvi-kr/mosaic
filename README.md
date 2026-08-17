@@ -132,6 +132,9 @@ graph TD
 # 메인 서버 구동
 npm start
 
+# NASA 공식 100% 퍼블릭 도메인 대규모 고화질 아카이브 자동 수집 (7,000+ 타일)
+npm run fetch:nasa
+
 # 현재 테마 DB 및 k-d tree 인덱스 빌드
 npm run build:db
 
@@ -264,8 +267,14 @@ Material Design 3 기반 대시보드에서 전시장 상황에 맞춰 실시간
 
 ---
 
-### 📦 V8.0 Full Overhaul & Worker Pipeline (2026-08-07)
-#### 🚀 워커 파이프라인 통합 및 4상태 디스플레이 머신
+### 📦 V8.0 Full Overhaul & NASA Archive Pipeline (2026-08-15)
+#### 🚀 NASA 공식 대규모 아카이브 수집 파이프라인 & 워커 통합
+- **🌌 NASA 공식 100% 퍼블릭 도메인 대규모 아카이브 수집기 (`scripts/fetch_massive_nasa_archive.js`)**:
+  - NASA Images API를 통해 제임스 웹(JWST), 허블(Hubble), 찬드라(Chandra), 스피처(Spitzer) 등 250개 이상의 전방위 천체 딥 쿼리를 순회하여 **7,100여 장의 고화질 천체 이미지**를 자동으로 대량 수집합니다.
+  - 인물, 장비, 도표, 텍스트가 섞인 비천체 이미지를 원천 배제하고 256×256 정방형 무왜곡 WebP 타일로 정규화하여 `public/raw_tiles/nasa/`에 자동 배치합니다.
+  - 수집 완료 후 테마별 CIE Lab 3차원 KD-Tree 색상 인덱스(`data/themes/nasa/`)를 원스톱으로 자동 빌드합니다.
+- **🌌 V8.0 Pure Cosmic Mosaic Engine (`scripts/build_pure_cosmos_v8.js`)**:
+  - 엄격한 35개 이상 인물/장비/도표 블랙리스트 키워드 필터링 및 톤 밸런싱을 적용한 순수 천체 전용 모자이크 빌더 지원.
 - **완전 비동기 워커 파이프라인 (`matcher.worker.js`)**: 메인 스레드에서 수행하던 타일 이미지 로딩, 캔버스 합성, 원본 블렌딩 등 모든 무거운 작업을 Worker Thread로 완전히 분리하여 병렬 처리 구조를 완성했습니다. 이제 수십 명이 동시에 업로드해도 메인 서버(Event Loop)가 멈추지 않습니다.
 - **슬롯 대기열 및 과부하 보호 (`mosaic.queue.js`)**: 고정 워커 풀과 연동되는 슬롯(Slot) 시스템을 도입했습니다. 접속자가 워커 한계를 초과하면 'overloaded' 상태로 전환되어 시스템 다운을 방지하며, 지수이동평균(EMA) 알고리즘으로 대기시간을 계산합니다.
 - **디스플레이 4-State 머신 (`display.html`)**: 전시 화면을 Idle(대기), Processing(연산 중), Showcase(완성작 전시), Overloaded(과부하 대기) 4가지 상태로 개편했습니다. 작업 중에는 안내 화면이 뜨고, 모자이크 완성 시 QR코드가 사라지며 풀스크린으로 전시되어 관람객의 집중도를 높입니다.

@@ -5,6 +5,7 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
+    "fetch:nasa": "node scripts/fetch_massive_nasa_archive.js",
     "build:db": "node scripts/build.db.js",
     "build:release": "node scripts/build_release.js",
     "dedup": "node scripts/true.dedup.js",
