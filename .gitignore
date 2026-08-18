@@ -35,3 +35,7 @@ dist/
 *.zip
 *.msi
 
+# Blender 임시 백업 및 개인 마스터 이미지
+*.blend1
+blender_workspace/master_mosaic.jpg
+

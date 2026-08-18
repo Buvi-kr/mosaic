@@ -87,7 +87,7 @@ class MosaicQueue {
   destroyPool() {
     this.initialized = false;
     for (const worker of this.workers) {
-      try { worker.terminate(); } catch (e) {}
+      try { worker.terminate(); } catch (e) { }
     }
     this.workers = [];
     this.workerBusy = [];
@@ -338,7 +338,7 @@ class MosaicQueue {
     if (totalBusy >= maxSlots) {
       return 'overloaded';
     }
-    
+
     // 그 외에는 항상 큐가 열려있으므로 'idle' (QR 표시) 상태 유지
     // 개별 유저의 진행 상황은 각자의 모바일 폰에서 확인하므로 사이니지는 계속 접속을 받음.
     return 'idle';

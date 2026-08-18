@@ -27,7 +27,7 @@ if %ERRORLEVEL% neq 0 (
             echo.
             echo  1. Click 'Next' in the wizard to complete the installation.
             echo  2. [IMPORTANT] DO NOT check the box for "Tools for Native Modules"
-            echo     (Chocolatey/C++), keep it unchecked (default) to stay fast!
+            echo     [Chocolatey/C++], keep it unchecked [default] to stay fast!
             echo ==================================================================
             echo.
             start /wait node-v20.15.1-x64.msi
