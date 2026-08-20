@@ -3,7 +3,7 @@
   "secondOpacity": 0.2,
   "tileSize": 20,
   "blendMode": "multiply",
-  "maxResolution": 1080,
+  "maxResolution": 1920,
   "currentTheme": "default_nasa",
   "maxTileUsage": 6,
   "banRadius": 2,
@@ -12,5 +12,10 @@
   "gridDownscaleThreshold": 10,
   "candidatePoolSize": 150,
   "renderTileSize": 200,
-  "turboMode": false
+  "displayShowcaseDuration": 20,
+  "displayGuideInterval": 5,
+  "displayPhotozoneTheme": "nebula",
+  "displayShowTimer": true,
+  "turboMode": false,
+  "lowMemoryMode": false
 }

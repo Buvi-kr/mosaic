@@ -17,9 +17,11 @@
 2. [🛠️ 기술 스택 (Tech Stack)](#2-기술-스택-tech-stack)
 3. [🧠 핵심 알고리즘 및 시스템 아키텍처](#3-핵심-알고리즘-및-시스템-아키텍처)
 4. [🚀 설치 및 운영 가이드](#4-설치-및-운영-가이드)
-5. [🗂️ 프로젝트 디렉토리 구조](#5-프로젝트-디렉토리-구조)
-6. [🎛️ 관리자 패널 (Admin Dashboard) 핵심 가이드](#6-관리자-패널-admin-dashboard-핵심-가이드)
-7. [📜 릴리즈 노트 & 개발 역사 (Patch Notes)](#7-릴리즈-노트--개발-역사-patch-notes)
+5. [🎬 Blender 3D 시네마틱 렌더링 파이프라인 (외장 GPU 전용)](#5-blender-3d-시네마틱-렌더링-파이프라인-외장-gpu-전용)
+6. [🔒 개인정보 보호 및 깃허브(Git) 보안 정책](#6-개인정보-보호-및-깃허브git-보안-정책)
+7. [🗂️ 프로젝트 디렉토리 구조](#7-프로젝트-디렉토리-구조)
+8. [🎛️ 관리자 패널 (Admin Dashboard) 핵심 가이드](#8-관리자-패널-admin-dashboard-핵심-가이드)
+9. [📜 릴리즈 노트 & 개발 역사 (Patch Notes)](#9-릴리즈-노트--개발-역사-patch-notes)
 
 ---
 
@@ -73,7 +75,14 @@
 | **HTML5 Canvas 2D** | 수학적 행렬 변환(`setTransform`) 기반 60fps 파티클 조립 애니메이션 | [HTML5 Canvas](https://developer.mozilla.org) |
 | **Cropper.js** | 모바일 터치 친화적 인물 사진 자유 비율 크롭 엔진 | [Cropper.js](https://fengyuanchen.github.io/cropperjs/) |
 
-### 2-3. 모자이크 알고리즘 레퍼런스
+### 2-3. 3D 시네마틱 렌더링 & GPU 가속 (외장 GPU 전용)
+| 기술 (Tech) | 버전 / 용도 (Purpose) | 링크 (Link) |
+|---|---|---|
+| **Blender 5.2 LTS** | 18초(1,080 Frames) Hero-Chase 3D 지수 가속 결합 연출 씬 빌더 | [Blender](https://www.blender.org/) |
+| **EEVEE Next / Cycles** | NVIDIA OptiX / CUDA 외장 GPU 하드웨어 가속 렌더링 | [Blender Render](https://docs.blender.org/) |
+| **FFmpeg (H.264/MP4)** | 1920×1080 60fps 무손실 비디오 고속 자동 인코딩 파이프라인 | [FFmpeg](https://ffmpeg.org/) |
+
+### 2-4. 모자이크 알고리즘 레퍼런스
 | 프로젝트 (Repository) | 벤치마킹 사항 | 링크 |
 |---|---|---|
 | **sausheong/mosaic** | 타일 평균색 DB 구축 및 유클리드 최근접 매칭 개념 차용 | [GitHub](https://github.com/sausheong/mosaic) |
@@ -179,12 +188,58 @@ npm run build:release
 | 화면 | URL 경로 | 설명 |
 |---|---|---|
 | **전시장 대형 스크린** | `http://localhost:3000/display.html` | 3열 레이아웃, 6배 딥-줌 & 15초 단독 전시 뷰어 |
-| **관리자 관제 패널** | `http://localhost:3000/admin.html` | 테마 스위칭, 파라미터 조절, 서버 모니터링 |
+| **관리자 관제 패널** | `http://localhost:3000/admin.html` | 테마 스위칭, 파라미터 조절, 하드웨어 및 렌더 모드 모니터링 |
 | **관람객 스마트폰 업로드** | `http://localhost:3000/upload.html` | Cloudflare 터널을 통해 외부 접속용 QR 주소와 자동 연동 |
 
 ---
 
-## 5. 🗂️ 프로젝트 디렉토리 구조
+## 5. 🎬 Blender 3D 시네마틱 렌더링 파이프라인 (외장 GPU 전용)
+
+> ⚠️ **하드웨어 요구사항**: 3D 시네마틱 비디오 렌더링 파이프라인은 **외장 GPU (NVIDIA GeForce RTX 3060 / 4060급 이상, VRAM 6GB+ 권장)** 환경 전용입니다.
+
+모자이크 완성본 데이터를 기반으로 2,916개의 타일 조각이 3차원 공간에서 역동적으로 비행하여 조립되는 **18.0초 (1,080 프레임 @ 60fps) 초고화질 시네마틱 비디오**를 생성합니다.
+
+```
+[mosaic_data.json] ──► [generate_mosaic_scene.py] ──► [Blender 5.2 LTS] ──► [cinematic_output.mp4]
+(타일 좌표 및 메타데이터)   (3D 씬/카메라/가속 조립 빌드)   (NVIDIA OptiX GPU 렌더)  (바탕화면에 자동 출력)
+```
+
+### 🌟 4단계 마스터피스 연출 타임라인 (18.0초 / 1,080 Frames)
+1. **🌟 Hero Tile 초근접 추적 오프닝 (0.0 ~ 3.5초 / F1 ~ F210)**:
+   * 공중에서 날아오는 첫 번째 대표 타일(Hero Tile) 바로 옆(거리 1.2m)에 카메라가 초밀착하여 개별 사진 속 얼굴과 디테일이 화면을 꽉 채운 채 비행.
+2. **⚡ 지수 가속 360° 선회 조립 (3.5 ~ 14.6초 / F211 ~ F880)**:
+   * 1장, 3장, 10장으로 시작하여 뒤로 갈수록 경쾌하게 가속이 붙으며 2,916개 조각이 물결치듯 도킹.
+3. **✨ 샴페인 골드 플래시 피크 (14.6 ~ 15.1초 / F880 ~ F905)**:
+   * 전 조각 결합 완료 순간 눈부신 골드 글로우가 폭발하며 완성의 카타르시스 연출.
+4. **💎 1920×1080 꽉 찬 완성본 쇼케이스 (15.1 ~ 18.0초 / F906 ~ F1080)**:
+   * 최상공 수직 탑뷰에서 1920×1080 화면을 100% 꽉 채운 완성작을 흔들림 없이 감상.
+
+### 🚀 원클릭 비디오 렌더링 실행
+```cmd
+# 바탕화면에 18초 완성 비디오 자동 렌더링 (NVIDIA GPU 가속)
+render_cinematic.bat
+```
+
+---
+
+## 6. 🔒 개인정보 보호 및 깃허브(Git) 보안 정책
+
+본 프로젝트는 전시장에서 불특정 다수의 관람객이 참여하는 미디어아트 엔진이므로, **초상권 및 개인정보 유출 방지**와 **클린 깃허브 오픈소스 배포**를 위해 엄격한 보안 규칙을 준수합니다.
+
+### 🛡️ 3대 보안 원칙
+1. **관람객 사진 및 결과물 자동 파기**:
+   * 생성된 모자이크 결과물(`public/outputs/`)은 전시 종료 후 서버 재부팅(`start.bat`) 시 자동으로 완전 삭제됩니다.
+2. **Git 추적 100% 원천 차단 (`.gitignore`)**:
+   * **로그 파일 일체 (`logs/`, `*.log`, `*.log.json`)**: 참가자 IP, 시간, 통계 정보가 깃에 커밋되지 않도록 완전 무시.
+   * **업로드 사진 및 임시 캔버스 (`public/outputs/`, `public/raw_tiles/`, `public/guides/`)**: 개인 얼굴 사진 유출 차단.
+   * **개인 커스텀 테마 (`data/themes/*/`, `public/tiles/*/`)**: 기본 오픈 테마(`default_nasa`) 외 개인 사진 테마 커밋 방지.
+   * **3D 렌더링 비디오 및 백업 (`*.mp4`, `*.blend1`, `blender_workspace/scenes/`)**: 대용량 바이너리 방지.
+3. **환경변수 및 인증키 보안**:
+   * `.env`, `*.key`, `*.pem` 등 모든 민감한 인증 파일 자동 무시.
+
+---
+
+## 7. 🗂️ 프로젝트 디렉토리 구조
 
 ```text
 /mosaic_ver2
@@ -218,8 +273,14 @@ npm run build:release
 │   ├── mosaic.queue.js           # 고정 워커 풀 관리 및 EMA 기반 대기열 큐 시스템
 │   ├── socket.manager.js         # Socket.io 실시간 이벤트 및 터널 URL 중계
 │   └── matcher.worker.js         # 멀티스레드 타일 매칭 및 Sharp 이미지 합성 워커
+├── blender_workspace/          # 🎬 Blender 5.2 LTS 18초 3D 시네마틱 렌더링 파이프라인
+│   ├── generate_mosaic_scene.py  # 3D 씬/카메라/지수 가속 결합 빌더 (NVIDIA GPU 가속)
+│   ├── export_mosaic_data.js     # 모자이크 좌표/메타데이터 3D JSON 익스포터
+│   ├── mosaic_cinematic.blend    # 1,080 프레임 60fps 마스터 씬 템플릿
+│   └── mosaic_data.json          # 3D 렌더링용 타일 배치 데이터
 ├── scripts/                      # 자동화 빌더 스크립트
-│   └── build.db.js               # 테마 빌더 (이미지 압축 + DB 생성 + Tree 인덱싱)
+│   ├── build.db.js               # 테마 빌더 (이미지 압축 + DB 생성 + Tree 인덱싱)
+│   └── blender_cinematic.py      # 블렌더 파이프라인 포워더
 ├── old/                          # 레거시 아카이브 (이전 기획서, 구버전 코드, 과거 실험 스크립트)
 │   ├── data/
 │   ├── public/                   # 구버전 페이지 (birthday.html 등)
@@ -231,31 +292,57 @@ npm run build:release
 │   └── 멀티테마_동시접속대응_기획서.md
 ├── cloudflared.exe               # Cloudflare Tunnel 실행 바이너리
 ├── package.json                  # 프로젝트 메타데이터 및 실행 스크립트 정의
+├── render_cinematic.bat          # 🎬 18초 3D 시네마틱 비디오 원클릭 GPU 렌더러
 ├── start.bat                     # Windows 원클릭 종합 구동 런처 (Node.js 무인 자동 설치 내장)
 └── README.md                     # 프로젝트 마스터 문서
 ```
 
 ---
 
-## 6. 🎛️ 관리자 패널 (`admin.html`) 핵심 가이드
+## 8. 🎛️ 관리자 패널 (`admin.html`) 핵심 가이드
 
 Material Design 3 기반 대시보드에서 전시장 상황에 맞춰 실시간으로 파라미터를 제어합니다.
 
 | 기능 항목 | 설정 파라미터 | 세부 설명 |
 |---|---|---|
 | **🎨 테마 스위칭** | `currentTheme` | 라디오 버튼 클릭으로 활성 테마 즉시 전환 (미빌드 테마 선택 시 백그라운드 자동 빌드). |
+| **💎 풀 퀄리티 기본 렌더** | `renderTileSize` (200px) | 기본 상태에서 강제 하향(Safety Cap) 일체 없이 1:1 풀 퀄리티 원본 해상도 렌더링. |
+| **🛡️ 저사양 안전 모드** | `lowMemoryMode` | RAM 8GB 이하 저사양 PC에서 캔버스 과대 확장 시 서버 OOM 크래시 방지 다운스케일 지원 (토글 ON/OFF). |
 | **⚡ 터보 모드 토글** | `turboMode` | 대규모 관람객 몰림 시 O(1) 랜덤 매칭으로 0.1초 렌더링 지원. |
 | **🚧 타일 중복 제한** | `maxTileUsage` | 한 장의 타일이 완성본 내에서 최대 몇 번까지 반복 사용될지 결정 (1~20회). |
 | **🛡️ Ban Radius** | `banRadius` | 동일 타일이 근처에 연속 배치되지 않도록 방어하는 반경 슬라이더 (0~5칸). |
 | **👻 원본 투명도** | `opacity` / `secondOpacity` | 모자이크 위에 덧씌워지는 인물 윤곽선 투명도 정밀 조절. |
 | **✨ 그래픽 블렌딩** | `blendMode` | Multiply, Overlay, Soft-Light 등 텍스처 합성 공식 선택. |
-| **📐 가상 그리드 밀도** | `tileSize` / `maxResolution` | 타일 밀도(칸수)를 조절하며 캔버스 크기 폭증(OOM) 방지 Safety Cap 연동. |
-| **📊 리소스 모니터링** | 실시간 대시보드 | RAM 사용률, 큐 대기열 길이, 활성 워커 스레드 수 실시간 확인. |
+| **📐 가상 그리드 밀도** | `tileSize` / `maxResolution` | 타일 밀도(칸수)를 조절하며 실시간 캔버스 해상도 및 메모리 부하 계산기 연동. |
+| **📊 리소스 & 하드웨어 진단** | 실시간 대시보드 | CPU 코어 수, RAM 용량(가용량), 8GB 이하 저사양 감지 배너, 큐 대기열 실시간 확인. |
 | **🛑 원격 서버 종료** | 브라우저 버튼 | Node.js 서버 및 Cloudflare 터널 프로세스를 안전하게 일괄 종료. |
 
 ---
 
-## 7. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+## 9. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+
+### 📦 V7.4 Full-Quality Native Render & 3D GPU Cinematic Engine (2026-08-20)
+#### 💎 100% 원본 풀 퀄리티 렌더링 & 스마트 하드웨어 감지
+- **[기본 풀 퀄리티 보장 (강제 하향 제거)]**:
+  - 기존 캔버스 15,000px 초과 시 일괄 강제 적용되던 타일 다운스케일을 해제하여, 기본 설정(`lowMemoryMode: false`)에서 **100% 원본 해상도로 고화질 렌더링** 수행.
+- **[저사양 안전 모드 (Low-Memory Safe Mode) 역발상 옵션화]**:
+  - 시스템 RAM 8GB 이하 환경 또는 저사양 서버를 위해 Admin 패널에 `[저사양 안전 모드]` 토글 추가. 필요 시에만 선택적으로 OOM 방지 다운스케일 적용.
+  - 시스템 총 메모리(`os.totalmem()`) 자동 감지: 8GB 이하 환경 감지 시 상단에 친절한 노란색 안내 배너 자동 노출.
+- **[CMD 콘솔 하드웨어 상태 리포트]**:
+  - `start.bat` 기동 시 콘솔에 CPU 코어, 총 RAM, 가용 RAM, 현재 모자이크 렌더 모드(💎 FULL-QUALITY vs 🛡️ SAFE-MODE)를 명확하게 컬러풀 출력.
+
+#### 🎬 Blender 5.2 LTS 외장 GPU 3D 시네마틱 파이프라인 (`render_cinematic.bat`)
+- **[18.0초 (1,080 Frames @ 60fps) 마스터피스 3D 렌더러 탑재]**:
+  - **Phase 1 (Hero Chase)**: 공중에서 날아오는 첫 대표 타일(Hero Tile) 초밀착(1.2m) 추적 오프닝.
+  - **Phase 2 (지수 가속 결합)**: 1장, 3장, 10장에서 시작해 2,916개 타일이 물결치듯 360° 선회 도킹.
+  - **Phase 3 (골드 플래시 피크)**: 전 조각 결합 순간 샴페인 골드 글로우 폭발 연출.
+  - **Phase 4 (풀스크린 쇼케이스)**: 1920×1080 화면을 100% 꽉 채운 수직 탑뷰 감상.
+- **[외장 GPU 하드웨어 가속 자동 감지]**:
+  - NVIDIA OptiX / CUDA 장치를 자동 스캔하여 외장 GPU 가속 활성화 (외장 GPU 미감지 시 CPU 멀티스레드 안전 폴백).
+- **[초상권 & 로그 보안 대폭 강화 (`.gitignore`)]**:
+  - 사용자 업로드 사진, 렌더링된 결과물, 비디오 파일, 런타임 로그(`logs/*.log`)가 깃허브에 일절 커밋되지 않도록 철저히 차단.
+
+---
 
 ### 📦 V7.3 Display Cinematic Deep-Zoom & Header Refinement (2026-08-17)
 #### 🎬 6.0배 초고화질 딥-줌, 좌우 시네마틱 패닝 & 100% 클린 뷰포트

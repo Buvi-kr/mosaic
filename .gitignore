@@ -1,41 +1,61 @@
 node_modules/
 .env
+*.env.*
+*.key
+*.pem
 
-# 로그
+# 1. 로그 및 런타임 추적 파일 완전 차단 (개인정보 및 IP 유출 방지)
 logs/
 *.log
+*.log.*
+*.log.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# 대용량 원본 이미지 및 임시 출력물 제외
-data/apod_originals/
-public/raw_tiles/
-public/outputs/
+# 2. 사용자 업로드 사진 & 실시간 생성 모자이크 & 가이드 예시 사진 (초상권/개인정보 100% 보호)
+public/outputs/*
+!public/outputs/.gitkeep
+public/output_guides/*
+!public/output_guides/.gitkeep
+public/raw_tiles/*
+!public/raw_tiles/.gitkeep
+public/guides/*
+!public/guides/.gitkeep
 
-# 개인 사진 테마 제외 (유출 방지)
-public/tiles/family/
-data/themes/family/
+# 3. 개인 사진 테마 제외 (유출 방지)
+public/tiles/*/
+!public/tiles/default_nasa/
+data/themes/*/
+!data/themes/default_nasa/
 
-# 과거 레거시 데이터 및 스크립트 제외 (NASA API키, 개인 사진 유출 방지)
+# 4. Blender 작업물 & 렌더링된 비디오 파일 (대용량/개인정보)
+__pycache__/
+*.pyc
+*.pyo
+*.blend1
+*.blend@
+blender_workspace/__pycache__/
+blender_workspace/scenes/
+blender_workspace/master_mosaic.jpg
+blender_workspace/*.mp4
+blender_workspace/*.blend1
+*.mp4
+*.mov
+*.avi
+*.webm
+
+# 5. 과거 레거시 데이터 및 스크립트 제외 (NASA API키, 개인 사진 유출 방지)
 old/
-
-# 레거시 단일 DB (마이그레이션 이전 잔재)
+data/apod_originals/
 data/tileDB.json
 
-# 대용량 바이너리
+# 6. 대용량 바이너리 및 OS 임시 파일
 cloudflared.exe
-
-# 기타
-.DS_Store
-Thumbs.db
-
-# 배포 빌드 결과물
+node-*.msi
 dist/
 *.zip
 *.msi
-
-# Blender 임시 백업 및 개인 마스터 이미지
-*.blend1
-blender_workspace/master_mosaic.jpg
-
+*.tar.gz
+.DS_Store
+Thumbs.db

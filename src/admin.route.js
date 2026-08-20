@@ -98,12 +98,19 @@ router.get('/stats', (req, res) => {
   const qStats = mosaicQueue.getStats();
   const config = configModule.getConfig();
 
+  const totalMemGB = (totalMem / (1024 ** 3)).toFixed(1);
+  const freeMemGB = (freeMem / (1024 ** 3)).toFixed(1);
+  const isLowMemoryEnv = (totalMem / (1024 ** 3)) <= 8.5; // 8GB 이하 저사양 환경 판별
+
   res.json({
     tileCount,
     config,
     currentTheme: config.currentTheme || 'default_nasa',
     system: {
       cpuCores: os.cpus().length,
+      totalMemGB,
+      freeMemGB,
+      isLowMemoryEnv,
       memoryUsage: `${usedMemPercent}%`,
       queueLength: qStats.queueLength,
       activeWorkers: qStats.activeWorkers,

@@ -134,12 +134,15 @@ router.post('/', upload.single('photo'), async (req, res) => {
     const cols = Math.floor(targetWidth / TILE_SIZE);
     const rows = Math.floor(targetHeight / TILE_SIZE);
     
-    // Safety Cap: 캔버스 가로가 15000px을 초과하면 서버 메모리가 터질 수 있으므로 타일 크기를 강제로 낮춤
+    // 타일 렌더링 물리적 화질 결정
     let safeRenderTileSize = RENDER_TILE_SIZE;
-    if (cols * safeRenderTileSize > 15000) {
+    if (config.lowMemoryMode && cols * safeRenderTileSize > 15000) {
+      // 저사양 안전 모드 (Low-Memory Mode) 활성화 시에만 8GB 이하 저사양 OOM 방지 캡 적용
       safeRenderTileSize = Math.floor(15000 / cols);
       if (safeRenderTileSize < TILE_SIZE) safeRenderTileSize = TILE_SIZE;
-      console.warn(`[OOM 보호] 최종 캔버스가 너무 거대합니다! RENDER_TILE_SIZE 강제 하향 조정: ${RENDER_TILE_SIZE}px -> ${safeRenderTileSize}px`);
+      console.warn(`[저사양 안전모드] RENDER_TILE_SIZE 다운스케일: ${RENDER_TILE_SIZE}px -> ${safeRenderTileSize}px`);
+    } else {
+      console.log(`[렌더링] 💎 Full-Quality 모드: 타일 화질 ${safeRenderTileSize}px (최종 캔버스: ${cols * safeRenderTileSize}×${rows * safeRenderTileSize}px)`);
     }
 
     const CANVAS_W = cols * TILE_SIZE;
@@ -278,7 +281,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
       const statsFile = path.join(__dirname, `../logs/stats_${dateString}.log`);
 
       const kstTime = now.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
-      const logLine = `[${kstTime}] 새로운 모자이크 완성 (소요시간: ${elapsed}s, 해상도: ${canvasWidth}x${canvasHeight}, 고유 타일: ${sortedUsage.length}종, 테마: ${currentTheme})\n`;
+      const logLine = `[${kstTime}] 새로운 모자이크 완성 (소요시간: ${elapsed}s, 해상도: ${canvasWidth}x${canvasHeight}, 타일 수: ${totalCells.toLocaleString()}개 (${cols}x${rows}), 고유 타일: ${sortedUsage.length}종, 테마: ${currentTheme})\n`;
       fs.appendFileSync(statsFile, logLine);
     } catch (e) {
       console.error('월간 통계 로깅 실패:', e);

@@ -1,6 +1,9 @@
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const os = require('os');
+const { spawn, exec } = require('child_process');
+const configModule = require('./config');
 
 const socketManager = require('./socket.manager');
 const uploadRouter = require('./upload.route');
@@ -104,8 +107,6 @@ app.use((err, req, res, next) => {
   }
 });
 
-const { spawn, exec } = require('child_process');
-
 // 시작 시 각종 찌꺼기 파일 및 오래된 로그 정리 (개인정보 보호 및 용량 확보)
 function performStartupCleanup() {
   // 1. 개인정보 보호: 이전 결과물(이미지) 삭제
@@ -169,8 +170,21 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
+  const currentConfig = configModule.getConfig();
+  const totalMemGB = (os.totalmem() / (1024 ** 3)).toFixed(1);
+  const freeMemGB = (os.freemem() / (1024 ** 3)).toFixed(1);
+  const isLowMemory = (os.totalmem() / (1024 ** 3)) <= 8.5;
+  const renderModeText = currentConfig.lowMemoryMode
+    ? '🛡️ SAFE-MODE (8GB 이하 다운스케일 활성화)'
+    : '💎 FULL-QUALITY (100% 원본 해상도 보장, 강제 하향 없음)';
+
   console.log(`\n======================================================`);
   console.log(`🚀 Reverse Cosmos Mosaic (V7.0 Ultimate) Server Started`);
+  console.log(`======================================================`);
+  console.log(`🖥️  [하드웨어 환경 감지]`);
+  console.log(`   - CPU 코어: ${os.cpus().length} 스레드`);
+  console.log(`   - 시스템 RAM: ${totalMemGB} GB (가용: ${freeMemGB} GB) ${isLowMemory ? '⚠️ [저사양 감지]' : '✅ [충분함]'}`);
+  console.log(`   - 모자이크 렌더 모드: ${renderModeText}`);
   console.log(`======================================================`);
   console.log(`- 대형 디스플레이: http://localhost:${PORT}/display.html`);
   console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);

@@ -1,15 +1,18 @@
 """
 ================================================================================
-🎬 21-SECOND MASTERPIECE CINEMATIC MOSAIC GENERATOR for Blender 5.2 LTS
+🎬 18-SECOND HERO-CHASE & EXPONENTIAL 360° MOSAIC GENERATOR for Blender 5.2 LTS
 ================================================================================
-[총 21.0초 (1,260 Frames @ 60fps) 대작 영화급 시네마틱 파이프라인]
- 1. 하이앵글(High-Angle Top-Down) 시점 개편:
-    - Phase 1 (0.0~5.0s / F1~300): 상공 65도 하이앵글에서 12x12 코어의 사방 역동적 비행과 평면 조립 조망
-    - Phase 2 (5.0~7.0s / F300~420): 공중 부유 후 바닥(Z=0)으로 묵직하게 '쿵-!' 수직 낙하
-    - Phase 3 (7.0~16.5s / F420~990): 2,772개 대군단 9.5초 동안 여유롭고 우아하게 동심원 도킹
-    - Phase 4 (16.5~21.0s / F990~1260): 골든 플래시 & 상공 48m 초고해상도 완성작 4.5초 넉넉한 풀샷 쇼케이스!
- 2. 역동적인 3D 파편 회전 & 마그네틱 스냅 (Magnetic Snap) 도킹
- 3. Geometry Nodes 실시간 60fps GPU 가속 & master_mosaic.jpg (10,800x10,800) 100% 정밀 UV
+[18.0초 (1,080 Frames @ 60fps) 사용자 맞춤형 파이프라인]
+ 1. 🌟 Hero Tile 추적 오프닝 (Hero Chase Close-Up):
+    - Frame 1 시작 시 공중에서 날아오는 '첫 번째 대표 조각(Hero Tile)' 바로 옆(거리 1.2m)에 초밀착
+    - 개별 사진 속 얼굴과 디테일이 화면 1920x1080에 거대하게 꽉 찬 상태로 중앙으로 비행 ➔ 바닥에 착지!
+ 2. ⚡ 점진적 가속 조립 (Exponential Center-Out Acceleration):
+    - 시작(0~5초)은 느리고 여유롭게 1장, 3장, 10장이 내 주위에서 날아와 중앙부터 착착 결합
+    - 뒤로 갈수록 경쾌하게 가속이 붙으며 2,916개 전체 모자이크가 물결치듯 웅장하게 도킹
+ 3. 🎥 360° 선회 & 풀백 ➔ 1920x1080 꽉 찬 완성 샷 (총 18.0초):
+    - 가속 조립에 맞춰 총 길이를 18.0초(1,080 프레임)로 슬림화
+    - 피날레 3.0초(F900~1080) 동안 최상공 수직 탑뷰에서 1920x1080 화면을 100% 꽉 채운 완성작 감상!
+ 4. 💎 초선명 True-Color 사진 자체 발광 (Emission 0.45) & 다크 스튜디오 배경
 ================================================================================
 """
 
@@ -22,29 +25,22 @@ import traceback
 from mathutils import Vector, Euler
 
 # ==============================================================================
-# ⚙️ 21초 시네마틱 마스터 타임라인 파라미터 (60fps 기준)
+# ⚙️ 18초 시네마틱 마스터 타임라인 파라미터 (60fps 기준)
 # ==============================================================================
-TOTAL_FRAMES = 1260         # 총 21.0초 (피날레 전신샷 넉넉하게 4.5초 확보!)
+TOTAL_FRAMES = 1080         # 총 18.0초 (1,080 Frames @ 60fps)
 FPS = 60
-# ⚡ [라이트닝 초고속 렌더 모드] 1080p FHD (4K 대비 10배 이상 빠름! 약 30~40초 완성)
 RESOLUTION_X = 1920
 RESOLUTION_Y = 1080
 
-# 4단계 타임라인
-CORE_FLY_START = 1          # Phase 1: 12x12 코어 발사 시작
-CORE_ASSEMBLY_FRAME = 300   # Phase 1: 공중 결합 완료 (5.0초)
-CORE_DROP_START = 330       # Phase 2: 바닥 낙하 시작
-CORE_DOCK_FRAME = 410       # Phase 2: 바닥 착지 완료 (6.8초)
-
-OUTER_FLY_START = 420       # Phase 3: 외곽 대군단 나선 파동 출발 (7.0초)
-ALL_TILES_DOCKED = 990      # Phase 3: 2,772개 타일 9.5초 동안 여유롭게 도킹 완료 (16.5초)
-
-FLASH_PEAK_FRAME = 1010     # Phase 4: 골든 플래시 발광 피크 (16.8초)
-CAMERA_FINALE_FRAME = 1260  # Phase 4: 21초 최종 풀백 완료 (21.0초)
+# 점진적 가속 타임라인
+FLY_START_FRAME = 1         # Frame 1: Hero Tile 공중 추적 발사
+ALL_DOCKED_FRAME = 880      # Frame 880 (14.6초): 가속 도킹 완료
+FLASH_PEAK_FRAME = 905      # Frame 905 (15.1초): 피날레 샴페인 골드 글로우 피크
+FINALE_END_FRAME = 1080     # Frame 1080 (18.0초): 1920x1080 완성작 쇼케이스 완료
 
 def main():
     print("\n" + "="*75)
-    print("🎬 [21s MASTERPIECE CINEMATIC MOSAIC] 씬 빌드 시작 (1,260 Frames)")
+    print("🎬 [18s HERO-CHASE & EXPONENTIAL 360° MOSAIC] 씬 빌드 시작 (1,080 Frames)")
     print("="*75)
 
     # --------------------------------------------------------------------------
@@ -72,9 +68,9 @@ def main():
     scene.render.resolution_x = RESOLUTION_X
     scene.render.resolution_y = RESOLUTION_Y
 
-    # 🎬 [비디오 자동 렌더링 세팅: 바탕화면으로 MP4 저장]
+    # 🎬 비디오 자동 렌더링 세팅 (바탕화면 MP4)
     desktop_dir = os.path.join(os.path.expanduser("~"), "Desktop")
-    scene.render.filepath = os.path.join(desktop_dir, "mosaic_cinematic_v1.mp4")
+    scene.render.filepath = os.path.join(desktop_dir, "mosaic_cinematic_18s.mp4")
 
     try:
         if hasattr(scene.render.image_settings, 'media_type'):
@@ -92,7 +88,7 @@ def main():
         print(f"   ⚠️ FFmpeg 세팅 알림: {e}")
 
     # --------------------------------------------------------------------------
-    # [02/06] 작업 폴더 및 완성본 텍스처 로드
+    # [02/06] 데이터 및 마스터 텍스처 로드
     # --------------------------------------------------------------------------
     print("[02/06] 데이터 및 완성본 마스터 텍스처 로드 중...")
     search_dirs = [
@@ -121,17 +117,22 @@ def main():
         mosaic_data = json.load(f)
 
     metadata = mosaic_data["metadata"]
+    scene_name = metadata.get("sceneName", "mosaic_latest")
     tiles = mosaic_data["tiles"]
     cols = metadata["cols"]
     rows = metadata["rows"]
     num_tiles = len(tiles)
 
+    # 🎬 비디오 자동 렌더링 파일명에 고유 씬 이름 적용
+    desktop_dir = os.path.join(os.path.expanduser("~"), "Desktop")
+    scene.render.filepath = os.path.join(desktop_dir, f"cinematic_{scene_name}.mp4")
+
     project_root = os.path.abspath(os.path.join(base_dir, ".."))
     master_candidates = [
         os.path.join(base_dir, "master_mosaic.jpg"),
-        os.path.join(project_root, "public", "outputs", "mosaic_1787015400541.jpg"),
-        r"c:\Users\Buvi\Desktop\project\mosaic_ver2\blender_workspace\master_mosaic.jpg",
-        r"c:\Users\Buvi\Desktop\project\mosaic_ver2\public\outputs\mosaic_1787015400541.jpg"
+        os.path.join(base_dir, "scenes", scene_name, "master_mosaic.jpg"),
+        os.path.join(project_root, "public", "outputs", f"{scene_name}.jpg"),
+        r"c:\Users\Buvi\Desktop\project\mosaic_ver2\blender_workspace\master_mosaic.jpg"
     ]
 
     master_img_path = None
@@ -143,14 +144,15 @@ def main():
     if not master_img_path:
         raise FileNotFoundError("❌ 'master_mosaic.jpg'를 찾을 수 없습니다.")
 
+    print(f"   🎬 씬 이름: [{scene_name}]")
     print(f"   ↳ 데이터 로드 완료: {num_tiles:,}개 타일 ({cols}x{rows})")
     print(f"   🖼 마스터 텍스처: {master_img_path}")
 
     # --------------------------------------------------------------------------
-    # [03/06] 정밀 UV 슬라이싱 셰이더 머티리얼 구성
+    # [03/06] 초선명(True-Color Self-Illuminated) UV 인스턴스 셰이더 머티리얼 구성
     # --------------------------------------------------------------------------
-    print("[03/06] True-Fidelity UV 인스턴스 셰이더 머티리얼 구성 중...")
-    mat = bpy.data.materials.new(name="Mat_GeoNodes_Mosaic")
+    print("[03/06] 초선명 True-Color 자체 발광 셰이더 머티리얼 구성 중...")
+    mat = bpy.data.materials.new(name="Mat_GeoNodes_Mosaic_18s")
     mat.use_nodes = True
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
@@ -162,10 +164,10 @@ def main():
     bsdf = nodes.new('ShaderNodeBsdfPrincipled')
     bsdf.location = (500, 0)
     links.new(bsdf.outputs['BSDF'], out_node.inputs['Surface'])
-    # 밝은 화이트 배경에서 사진이 왜곡 없이 가장 선명하고 또렷하게 보이도록 세팅
-    if "Roughness" in bsdf.inputs: bsdf.inputs["Roughness"].default_value = 0.35
+
+    if "Roughness" in bsdf.inputs: bsdf.inputs["Roughness"].default_value = 0.25
     if "Metallic" in bsdf.inputs: bsdf.inputs["Metallic"].default_value = 0.0
-    if "Specular IOR Level" in bsdf.inputs: bsdf.inputs["Specular IOR Level"].default_value = 0.2
+    if "Specular IOR Level" in bsdf.inputs: bsdf.inputs["Specular IOR Level"].default_value = 0.3
 
     tex_coord = nodes.new('ShaderNodeTexCoord')
     tex_coord.location = (-600, 200)
@@ -200,7 +202,7 @@ def main():
     links.new(v_add.outputs['Vector'], tex_node.inputs['Vector'])
     links.new(tex_node.outputs['Color'], bsdf.inputs['Base Color'])
 
-    # 피날레 골든/화이트 글로우 플래시 (Frame 1010 피크)
+    # ✨ [사진 자체 발광(Emission: 0.45)으로 어두운 곳 없이 항상 쨍하고 선명한 화질]
     if "Emission Color" in bsdf.inputs:
         links.new(tex_node.outputs['Color'], bsdf.inputs['Emission Color'])
     elif "Emission" in bsdf.inputs:
@@ -208,24 +210,28 @@ def main():
 
     if "Emission Strength" in bsdf.inputs:
         em = bsdf.inputs["Emission Strength"]
-        em.default_value = 0.0
+        em.default_value = 0.45
         em.keyframe_insert(data_path="default_value", frame=1)
         em.keyframe_insert(data_path="default_value", frame=FLASH_PEAK_FRAME - 30)
-        em.default_value = 0.6
+        em.default_value = 1.15
         em.keyframe_insert(data_path="default_value", frame=FLASH_PEAK_FRAME)
-        em.default_value = 0.0
-        em.keyframe_insert(data_path="default_value", frame=FLASH_PEAK_FRAME + 50)
+        em.default_value = 0.45
+        em.keyframe_insert(data_path="default_value", frame=FLASH_PEAK_FRAME + 40)
 
     # --------------------------------------------------------------------------
-    # [04/06] 단일 포인트 클라우드 및 21초 역동적 시차 어트리뷰트 베이킹
+    # [04/06] Hero Tile 지정 & 점진적 가속 궤적 속성 베이킹
     # --------------------------------------------------------------------------
-    print("[04/06] 21초 역동적 시차 및 360도 공간 속성 베이킹 중...")
+    print("[04/06] Hero Tile 지정 및 점진적 가속 3D 궤적 속성 베이킹 중...")
 
-    tile_w = 20.0 / cols * 0.96
-    tile_h = 20.0 / rows * 0.96
+    # 종횡비에 따른 타일 크기 계산 (개별 타일은 정사각형 유지)
+    total_w = 20.0
+    total_h = 20.0 * (rows / cols)
+    tile_unit = (total_w / cols) * 0.990
+    tile_w = tile_unit
+    tile_h = tile_unit
     hw, hh, hd = tile_w / 2.0, tile_h / 2.0, 0.035
 
-    tile_mesh = bpy.data.meshes.new("SingleTileMesh")
+    tile_mesh = bpy.data.meshes.new("SingleTileMesh_18s")
     t_verts = [
         (-hw, -hh, -hd), (hw, -hh, -hd), (hw, hh, -hd), (-hw, hh, -hd),
         (-hw, -hh,  hd), (hw, -hh,  hd), (hw, hh,  hd), (-hw, hh,  hd)
@@ -243,12 +249,12 @@ def main():
         uv_layer.data[loop.index].uv = uv_dict.get(loop.vertex_index, (0.0, 0.0))
     tile_mesh.materials.append(mat)
 
-    tile_template_obj = bpy.data.objects.new("TileTemplate", tile_mesh)
+    tile_template_obj = bpy.data.objects.new("TileTemplate_18s", tile_mesh)
     bpy.context.scene.collection.objects.link(tile_template_obj)
     tile_template_obj.hide_viewport = True
     tile_template_obj.hide_render = True
 
-    point_mesh = bpy.data.meshes.new("MosaicPointsMesh")
+    point_mesh = bpy.data.meshes.new("MosaicPointsMesh_18s")
     point_coords = [(t['gridX'], t['gridY'], 0.0) for t in tiles]
     point_mesh.from_pydata(point_coords, [], [])
     point_mesh.update()
@@ -259,9 +265,18 @@ def main():
     attr_uv_span = point_mesh.attributes.new(name="uv_span", type='FLOAT_VECTOR', domain='POINT')
     attr_params = point_mesh.attributes.new(name="anim_params", type='FLOAT_VECTOR', domain='POINT')
 
-    core_min_r, core_max_r = (rows // 2) - 6, (rows // 2) + 5
-    core_min_c, core_max_c = (cols // 2) - 6, (cols // 2) + 5
     max_dist = math.sqrt(10.0**2 + 10.0**2)
+
+    # 🌟 [오프닝 추적용 Hero Tile 선정]: 중앙 코어 바로 옆 타일 (0, 0 근처)
+    hero_index = 0
+    min_center_d = 999.0
+    for idx, t in enumerate(tiles):
+        d = math.hypot(t['gridX'], t['gridY'])
+        if d < min_center_d:
+            min_center_d = d
+            hero_index = idx
+
+    hero_start_pos = (2.2, -3.5, 4.8) # 카메라가 초밀착해서 따라붙을 출발 위치
 
     for i, t in enumerate(tiles):
         r, c = t['row'], t['col']
@@ -273,52 +288,52 @@ def main():
         attr_uv_min.data[i].vector = (u_min, v_min, 0.0)
         attr_uv_span.data[i].vector = (span_u, span_v, 0.0)
 
-        is_core = (core_min_r <= r <= core_max_r) and (core_min_c <= c <= core_max_c)
-        dist_center = math.hypot(t['gridX'], t['gridY'])
+        gx, gy = t['gridX'], t['gridY']
+        dist_center = math.hypot(gx, gy)
+        norm_dist = dist_center / max_dist  # 0.0 (중앙) ~ 1.0 (최외곽)
 
-        if is_core:
-            # 12x12 코어: 사방 전방위에서 역동적인 나선 비행
-            phi = random.uniform(-math.pi * 0.45, math.pi * 0.45)
-            theta = random.uniform(0, math.pi * 2)
-            rad = random.uniform(22.0, 36.0)
-            sp = (
-                math.cos(phi) * math.cos(theta) * rad,
-                math.cos(phi) * math.sin(theta) * rad,
-                math.sin(phi) * rad + 7.5
-            )
-            core_dist_norm = dist_center / 3.5
-            launch_f = 1.0 + core_dist_norm * 140.0 + random.uniform(-8, 8)
-            attr_params.data[i].vector = (1.0, launch_f, dist_center)
+        if i == hero_index:
+            # 🌟 Hero Tile: 카메라가 바로 옆에서 따라붙으며 중앙으로 멋지게 비행
+            sp_x, sp_y, sp_z = hero_start_pos
+            launch_f = 1.0
+            flight_duration = 140.0 # 2.3초 동안 중앙으로 비행
         else:
-            # 외곽 대군단: F420부터 F800까지 무려 9.5초(570프레임)에 걸쳐 은하수 나선 파동으로 여유롭게 순차 도킹!
-            angle = math.atan2(t['gridY'], t['gridX']) + random.uniform(-0.6, 0.6)
-            rad = random.uniform(26.0, 42.0)
-            sp = (
-                math.cos(angle) * rad,
-                math.sin(angle) * rad,
-                random.uniform(14.0, 34.0)
-            )
-            norm_dist = dist_center / max_dist
-            launch_f = OUTER_FLY_START + norm_dist * (ALL_TILES_DOCKED - OUTER_FLY_START - 190) + random.uniform(-15, 15)
-            attr_params.data[i].vector = (0.0, launch_f, dist_center)
+            # 사방 3D 공간에서 쏟아져 들어오는 조각들
+            phi = random.uniform(-math.pi * 0.38, math.pi * 0.38)
+            theta = math.atan2(gy, gx) + random.uniform(-0.8, 0.8)
+            rad = random.uniform(18.0, 34.0) + norm_dist * 8.0
+            sp_x = math.cos(phi) * math.cos(theta) * rad
+            sp_y = math.cos(phi) * math.sin(theta) * rad
+            sp_z = math.sin(phi) * rad + random.uniform(5.0, 15.0)
 
-        attr_start_pos.data[i].vector = sp
-        # 더욱 역동적인 3D 덤블링 회전각 부여
+            # 🚀 [점진적 가속 곡선 (Exponential Flow)]:
+            # 시작(중앙)은 1장, 3장, 10장이 여유롭게 도킹 ➔ 외곽으로 갈수록 빠르게 연속 결합
+            accel_curve = (norm_dist ** 0.72) # 지수 가속 곡선
+            launch_f = 12.0 + accel_curve * 680.0 + random.uniform(-12, 12)
+            launch_f = max(1.0, min(launch_f, ALL_DOCKED_FRAME - 140))
+            flight_duration = 160.0 - norm_dist * 40.0 # 외곽으로 갈수록 도킹 속도도 경쾌하게 가속!
+
+        attr_start_pos.data[i].vector = (sp_x, sp_y, sp_z)
+
+        # anim_params: (flight_duration, launch_frame, dist_center)
+        attr_params.data[i].vector = (flight_duration, launch_f, dist_center)
+
+        # 3D 덤블링 회전각
         attr_start_rot.data[i].vector = (
-            random.uniform(-math.pi * 6, math.pi * 6),
-            random.uniform(-math.pi * 6, math.pi * 6),
-            random.uniform(-math.pi * 6, math.pi * 6)
+            random.uniform(-math.pi * 5, math.pi * 5),
+            random.uniform(-math.pi * 5, math.pi * 5),
+            random.uniform(-math.pi * 5, math.pi * 5)
         )
 
-    mosaic_obj = bpy.data.objects.new("Mosaic_Master_System", point_mesh)
+    mosaic_obj = bpy.data.objects.new("Mosaic_Master_System_18s", point_mesh)
     bpy.context.scene.collection.objects.link(mosaic_obj)
 
     # --------------------------------------------------------------------------
-    # [05/06] Geometry Nodes 21초 슬로우 모션 & 마그네틱 스냅 궤적 시스템 구축
+    # [05/06] Geometry Nodes 가속 마그네틱 결합 & 스무스 어셈블리 시스템
     # --------------------------------------------------------------------------
-    print("[05/06] Geometry Nodes 21초 슬로우 모션 시스템 구축 중...")
+    print("[05/06] Geometry Nodes 가속 결합 시스템 구축 중...")
     geo_mod = mosaic_obj.modifiers.new(name="MosaicGeometryNodes", type='NODES')
-    node_group = bpy.data.node_groups.new(name="GN_Mosaic_Director", type='GeometryNodeTree')
+    node_group = bpy.data.node_groups.new(name="GN_Mosaic_18sDirector", type='GeometryNodeTree')
     geo_mod.node_group = node_group
 
     gn_nodes = node_group.nodes
@@ -358,22 +373,6 @@ def main():
     sep_params.location = (-550, 600)
     gn_links.new(get_params.outputs['Attribute'], sep_params.inputs['Vector'])
 
-    sep_floor = gn_nodes.new('ShaderNodeSeparateXYZ')
-    sep_floor.location = (-550, 200)
-    gn_links.new(get_floor_pos.outputs['Position'], sep_floor.inputs['Vector'])
-
-    mul_air_height = gn_nodes.new('ShaderNodeMath')
-    mul_air_height.location = (-350, 300)
-    mul_air_height.operation = 'MULTIPLY'
-    mul_air_height.inputs[1].default_value = 7.5
-    gn_links.new(sep_params.outputs['X'], mul_air_height.inputs[0])
-
-    comb_air_target = gn_nodes.new('ShaderNodeCombineXYZ')
-    comb_air_target.location = (-180, 200)
-    gn_links.new(sep_floor.outputs['X'], comb_air_target.inputs['X'])
-    gn_links.new(sep_floor.outputs['Y'], comb_air_target.inputs['Y'])
-    gn_links.new(mul_air_height.outputs['Value'], comb_air_target.inputs['Z'])
-
     get_start_pos = gn_nodes.new('GeometryNodeInputNamedAttribute')
     get_start_pos.location = (-800, 0)
     get_start_pos.data_type = 'FLOAT_VECTOR'
@@ -384,29 +383,29 @@ def main():
     get_start_rot.data_type = 'FLOAT_VECTOR'
     get_start_rot.inputs['Name'].default_value = "start_rot"
 
-    # ── [1단계 진행률 T1: 190프레임 여유로운 비행] ──
-    sub_t1 = gn_nodes.new('ShaderNodeMath')
-    sub_t1.location = (-350, 600)
-    sub_t1.operation = 'SUBTRACT'
-    gn_links.new(scene_time.outputs['Frame'], sub_t1.inputs[0])
-    gn_links.new(sep_params.outputs['Y'], sub_t1.inputs[1])
+    # ── [진행률 T: 타일별 flight_duration 적용] ──
+    sub_t = gn_nodes.new('ShaderNodeMath')
+    sub_t.location = (-350, 600)
+    sub_t.operation = 'SUBTRACT'
+    gn_links.new(scene_time.outputs['Frame'], sub_t.inputs[0])
+    gn_links.new(sep_params.outputs['Y'], sub_t.inputs[1]) # launch_frame
 
-    div_dur1 = gn_nodes.new('ShaderNodeMath')
-    div_dur1.location = (-180, 600)
-    div_dur1.operation = 'DIVIDE'
-    div_dur1.inputs[1].default_value = 190.0
-    gn_links.new(sub_t1.outputs['Value'], div_dur1.inputs[0])
+    div_dur = gn_nodes.new('ShaderNodeMath')
+    div_dur.location = (-180, 600)
+    div_dur.operation = 'DIVIDE'
+    gn_links.new(sub_t.outputs['Value'], div_dur.inputs[0])
+    gn_links.new(sep_params.outputs['X'], div_dur.inputs[1]) # flight_duration
 
-    clamp_t1 = gn_nodes.new('ShaderNodeClamp')
-    clamp_t1.location = (0, 600)
-    gn_links.new(div_dur1.outputs['Value'], clamp_t1.inputs['Value'])
+    clamp_t = gn_nodes.new('ShaderNodeClamp')
+    clamp_t.location = (0, 600)
+    gn_links.new(div_dur.outputs['Value'], clamp_t.inputs['Value'])
 
-    # ── [마그네틱 스냅 보간 (Slow Magnetic Ease-Out)] ──
+    # 마그네틱 스냅 감속 (Ease-Out)
     inv_t = gn_nodes.new('ShaderNodeMath')
     inv_t.location = (160, 600)
     inv_t.operation = 'SUBTRACT'
     inv_t.inputs[0].default_value = 1.0
-    gn_links.new(clamp_t1.outputs['Result'], inv_t.inputs[1])
+    gn_links.new(clamp_t.outputs['Result'], inv_t.inputs[1])
 
     pow_t = gn_nodes.new('ShaderNodeMath')
     pow_t.location = (320, 600)
@@ -414,64 +413,33 @@ def main():
     pow_t.inputs[1].default_value = 2.6
     gn_links.new(inv_t.outputs['Value'], pow_t.inputs[0])
 
-    ease_t1 = gn_nodes.new('ShaderNodeMath')
-    ease_t1.location = (480, 600)
-    ease_t1.operation = 'SUBTRACT'
-    ease_t1.inputs[0].default_value = 1.0
-    gn_links.new(pow_t.outputs['Value'], ease_t1.inputs[1])
+    ease_t = gn_nodes.new('ShaderNodeMath')
+    ease_t.location = (480, 600)
+    ease_t.operation = 'SUBTRACT'
+    ease_t.inputs[0].default_value = 1.0
+    gn_links.new(pow_t.outputs['Value'], ease_t.inputs[1])
 
-    # ── [1단계 비행 위치 믹스: start_pos -> air_target] ──
-    mix_stage1_pos = gn_nodes.new('ShaderNodeMix')
-    mix_stage1_pos.location = (180, 200)
-    mix_stage1_pos.data_type = 'VECTOR'
-    gn_links.new(ease_t1.outputs['Value'], mix_stage1_pos.inputs['Factor'])
-    gn_links.new(get_start_pos.outputs['Attribute'], mix_stage1_pos.inputs[4])
-    gn_links.new(comb_air_target.outputs['Vector'], mix_stage1_pos.inputs[5])
-
-    # ── [2단계 진행률 T2: 코어 바닥 쿵! 낙하 (Frame 330~410)] ──
-    sub_t2 = gn_nodes.new('ShaderNodeMath')
-    sub_t2.location = (-350, 450)
-    sub_t2.operation = 'SUBTRACT'
-    sub_t2.inputs[1].default_value = CORE_DROP_START
-    gn_links.new(scene_time.outputs['Frame'], sub_t2.inputs[0])
-
-    div_dur2 = gn_nodes.new('ShaderNodeMath')
-    div_dur2.location = (-180, 450)
-    div_dur2.operation = 'DIVIDE'
-    div_dur2.inputs[1].default_value = 80.0
-    gn_links.new(sub_t2.outputs['Value'], div_dur2.inputs[0])
-
-    clamp_t2 = gn_nodes.new('ShaderNodeClamp')
-    clamp_t2.location = (0, 450)
-    gn_links.new(div_dur2.outputs['Value'], clamp_t2.inputs['Value'])
-
-    mul_drop_factor = gn_nodes.new('ShaderNodeMath')
-    mul_drop_factor.location = (180, 400)
-    mul_drop_factor.operation = 'MULTIPLY'
-    gn_links.new(clamp_t2.outputs['Result'], mul_drop_factor.inputs[0])
-    gn_links.new(sep_params.outputs['X'], mul_drop_factor.inputs[1])
-
-    mix_final_pos = gn_nodes.new('ShaderNodeMix')
-    mix_final_pos.location = (400, 200)
-    mix_final_pos.data_type = 'VECTOR'
-    gn_links.new(mul_drop_factor.outputs['Value'], mix_final_pos.inputs['Factor'])
-    gn_links.new(mix_stage1_pos.outputs[1], mix_final_pos.inputs[4])
-    gn_links.new(get_floor_pos.outputs['Position'], mix_final_pos.inputs[5])
+    mix_pos = gn_nodes.new('ShaderNodeMix')
+    mix_pos.location = (350, 200)
+    mix_pos.data_type = 'VECTOR'
+    gn_links.new(ease_t.outputs['Value'], mix_pos.inputs['Factor'])
+    gn_links.new(get_start_pos.outputs['Attribute'], mix_pos.inputs[4])
+    gn_links.new(get_floor_pos.outputs['Position'], mix_pos.inputs[5])
 
     mix_rot = gn_nodes.new('ShaderNodeMix')
-    mix_rot.location = (400, 0)
+    mix_rot.location = (350, 0)
     mix_rot.data_type = 'VECTOR'
-    gn_links.new(ease_t1.outputs['Value'], mix_rot.inputs['Factor'])
+    gn_links.new(ease_t.outputs['Value'], mix_rot.inputs['Factor'])
     gn_links.new(get_start_rot.outputs['Attribute'], mix_rot.inputs[4])
     mix_rot.inputs[5].default_value = (0.0, 0.0, 0.0)
 
     set_pos = gn_nodes.new('GeometryNodeSetPosition')
-    set_pos.location = (650, 200)
+    set_pos.location = (600, 200)
     gn_links.new(inst_node.outputs['Instances'], set_pos.inputs['Geometry'])
-    gn_links.new(mix_final_pos.outputs[1], set_pos.inputs['Position'])
+    gn_links.new(mix_pos.outputs[1], set_pos.inputs['Position'])
 
     rot_inst = gn_nodes.new('GeometryNodeRotateInstances')
-    rot_inst.location = (850, 200)
+    rot_inst.location = (800, 200)
     gn_links.new(set_pos.outputs['Geometry'], rot_inst.inputs['Instances'])
     gn_links.new(mix_rot.outputs[1], rot_inst.inputs['Rotation'])
 
@@ -505,25 +473,22 @@ def main():
     print("   ↳ Geometry Nodes 인스턴서 컴파일 완료")
 
     # --------------------------------------------------------------------------
-    # [06/06] 21초 완벽 밀착 [상단 하이앵글 65도] 카메라 & 스튜디오 라이팅
+    # [06/06] Hero 추적 오프닝 ➔ 360° 가속 선회 ➔ 18초 완성 풀샷 카메라
     # --------------------------------------------------------------------------
-    print("[06/06] 21초 상단 하이앵글 뷰티 카메라 궤적 구성 중...")
+    print("[06/06] 18초 Hero 추적 & 가속 선회 풀프레임 카메라 궤적 구성 중...")
 
-    cam_target = bpy.data.objects.new("Camera_Target", None)
+    cam_target = bpy.data.objects.new("Camera_Target_18s", None)
     scene.collection.objects.link(cam_target)
 
-    # Frame 1 ~ 320: 공중 12x12 코어(Z=7.5m) 정면 응시
-    cam_target.location = Vector((0.0, 0.0, 7.5))
+    # 🌟 카메라 타겟: 초반에는 공중에서 날아오는 Hero Tile(Z=3.0)을 응시 ➔ 점진적으로 중앙(0,0,0) 정렬
+    cam_target.location = Vector((1.0, -1.5, 2.5))
     cam_target.keyframe_insert(data_path="location", frame=1)
-    cam_target.keyframe_insert(data_path="location", frame=320)
-
-    # Frame 410 ~ 1260: 코어 낙하 완료 후 바닥(Z=0.0m) 완벽 추적
     cam_target.location = Vector((0.0, 0.0, 0.0))
-    cam_target.keyframe_insert(data_path="location", frame=410)
+    cam_target.keyframe_insert(data_path="location", frame=140)
     cam_target.keyframe_insert(data_path="location", frame=TOTAL_FRAMES)
 
-    cam_data = bpy.data.cameras.new("CinematicCamera")
-    cam_obj = bpy.data.objects.new("CinematicCamera", cam_data)
+    cam_data = bpy.data.cameras.new("CinematicCamera_18s")
+    cam_obj = bpy.data.objects.new("CinematicCamera_18s", cam_data)
     scene.collection.objects.link(cam_obj)
     scene.camera = cam_obj
 
@@ -534,7 +499,7 @@ def main():
 
     cam_data.dof.use_dof = True
     cam_data.dof.focus_object = cam_target
-    cam_data.dof.aperture_fstop = 5.0 # 높은 심도로 전체 선명
+    cam_data.dof.aperture_fstop = 4.8
 
     def add_cam_kf(frame, pos, focal):
         cam_obj.location = Vector(pos)
@@ -542,85 +507,132 @@ def main():
         cam_obj.keyframe_insert(data_path="location", frame=frame)
         cam_data.keyframe_insert(data_path="lens", frame=frame)
 
-    # 🎬 [Phase 1: 0~5.0초] 12x12 코어 집결 ➔ 상공 밀착 하이앵글 (역동적 근접 조망!)
-    add_cam_kf(1, (1.0, -4.5, 13.0), 35.0)
-    add_cam_kf(150, (0.5, -4.0, 12.0), 35.0)
-    add_cam_kf(300, (0.0, -3.5, 11.0), 35.0)
+    # 화면 1920x1080(16:9) 세로/가로 꽉 채우기 위한 동적 피날레 높이 계산 (f=28mm)
+    fit_h_z = (total_h / 2.0) * (28.0 / 12.0) * 1.02
+    fit_w_z = (total_w / 2.0) * (28.0 / 18.0) * 1.02
+    final_cam_z = max(fit_h_z, fit_w_z, 16.0)
 
-    # 🎬 [Phase 2: 5.0~7.0초] 코어 바닥 쿵! 낙하 밀착 추적 (F300 ~ 420)
-    add_cam_kf(420, (0.0, -3.5, 9.5), 35.0)
+    # 🎬 [18초 맞춤형 카메라 궤적]
+    camera_keyframes_18s = [
+        # Frame, Radius, Height(Z), Angle(deg), Focal
+        (1,     1.6,   3.2,   -35.0,  45.0), # 시작: Hero Tile 바로 옆 초근접 (사진 1장이 화면 가득!)
+        (140,   3.2,   1.8,    10.0,  35.0), # 2.3초: Hero Tile 중앙 착지 밀착
+        (300,   5.5,   3.8,    60.0,  35.0), # 5.0초: 1장, 3장, 10장 천천히 뭉침
+        (550,   9.5,   7.0,   140.0,  32.0), # 9.1초: 가속이 붙으며 중간 영역 완성
+        (750,  14.5,  12.0,   260.0,  28.0), # 12.5초: 외곽까지 웅장하게 가속 완성
+        (880,   4.0,  final_cam_z * 0.88, 340.0, 28.0), # 14.6초: 전체 도킹 완료 ➔ 상공 직하강
+        (950,   0.2,  final_cam_z * 0.99, 360.0, 28.0), # 15.8초: 360° 완주 후 수직 탑뷰 안착
+        (1080,  0.0,  final_cam_z,        360.0, 28.0), # 18.0초: 1920x1080 화면 100% 꽉 찬 피날레 쇼케이스!
+    ]
 
-    # 🎬 [Phase 3: 7.0~16.5초] 2,772개 대군단 은하수 도킹 & 부드러운 풀샷 확장 (F420 ~ 990)
-    add_cam_kf(700, (0.0, -2.5, 15.0), 30.0)
-    add_cam_kf(990, (0.0, -1.5, 20.0), 28.0)
+    for f, rad, h, deg, focal in camera_keyframes_18s:
+        rad_angle = math.radians(deg)
+        x = math.sin(rad_angle) * rad
+        y = -math.cos(rad_angle) * rad
+        add_cam_kf(f, (x, y, h), focal)
 
-    # 🎬 [Phase 4: 16.5~21.0초] 1920x1080 화면 상하에 빈틈없이 꽉 들어차는 거대한 완성작 쇼케이스! (F990 ~ 1260)
-    cam_data.dof.aperture_fstop = 32.0 # 전체 타일 완벽한 팬포커스 선명도
-    add_cam_kf(1010, (0.0, -1.0, 20.8), 28.0)
-    add_cam_kf(1260, (0.0, -0.2, 21.0), 28.0) # 1920x1080 뷰포트 세로 100% 꽉 채움!
+    # 피날레 전체 팬포커스 (f/32.0)
+    cam_data.keyframe_insert(data_path="dof.aperture_fstop", frame=1)
+    cam_data.dof.aperture_fstop = 32.0
+    cam_data.keyframe_insert(data_path="dof.aperture_fstop", frame=880)
 
-    # ☀️ [화사하고 선명한 4점 뷰티 스튜디오 조명]
-    def create_light(name, ltype, energy, color, pos):
+    # ☀️ [360° 무사각 스튜디오 조명 리그 + 카메라 동행 조명]
+    def create_light(name, ltype, energy, color, pos, parent=None):
         ldata = bpy.data.lights.new(name=name, type=ltype)
         ldata.energy = energy
         ldata.color = color
-        if ltype == 'AREA': ldata.size = 36.0
+        if ltype == 'AREA': ldata.size = 38.0
         lobj = bpy.data.objects.new(name=name, object_data=ldata)
         lobj.location = pos
         scene.collection.objects.link(lobj)
+        if parent:
+            lobj.parent = parent
         return lobj
 
-    create_light("Studio_Top_Key", 'AREA', 6500.0, (1.0, 1.0, 1.0), Vector((0.0, 0.0, 30.0)))
-    create_light("Studio_Front_Fill", 'AREA', 4200.0, (1.0, 0.99, 0.97), Vector((0.0, -16.0, 22.0)))
-    create_light("Studio_Left_Fill", 'AREA', 3200.0, (0.97, 0.98, 1.0), Vector((-18.0, 0.0, 22.0)))
-    create_light("Studio_Right_Fill", 'AREA', 3200.0, (0.98, 0.98, 1.0), Vector((18.0, 0.0, 22.0)))
+    create_light("Studio_Top_MegaKey", 'AREA', 8500.0, (1.0, 1.0, 1.0), Vector((0.0, 0.0, 32.0)))
+    create_light("Studio_Front_Fill", 'AREA', 4500.0, (1.0, 0.99, 0.98), Vector((0.0, -18.0, 18.0)))
+    create_light("Studio_Back_Fill", 'AREA', 4500.0, (0.98, 0.99, 1.0), Vector((0.0, 18.0, 18.0)))
+    create_light("Studio_Left_Fill", 'AREA', 4200.0, (0.99, 0.98, 1.0), Vector((-18.0, 0.0, 18.0)))
+    create_light("Studio_Right_Fill", 'AREA', 4200.0, (0.98, 0.99, 1.0), Vector((18.0, 0.0, 18.0)))
 
-    # 🤍 [깔끔하고 화사한 단색 퓨어 화이트 배경]
-    world = scene.world or bpy.data.worlds.new("CinematicWorld")
+    # 카메라 동행 조명: 카메라 초근접 시 화사함 극대화
+    create_light("Cam_Follow_BeautyLight", 'POINT', 2500.0, (1.0, 0.99, 0.98), Vector((0.0, 0.0, 0.5)), parent=cam_obj)
+
+    # 🖤 [프리미엄 차콜 스튜디오 월드 배경]
+    world = scene.world or bpy.data.worlds.new("CinematicWorld_18s")
     scene.world = world
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
     if bg:
-        bg.inputs[0].default_value = (0.98, 0.98, 0.99, 1.0) # 화사한 퓨어 화이트 톤
-        bg.inputs[1].default_value = 1.15                     # 배경 광량 화사하게
+        bg.inputs[0].default_value = (0.045, 0.048, 0.055, 1.0)
+        bg.inputs[1].default_value = 1.0
 
-    # 🚀 [GPU 초고속 렌더링 최적화 엔진 설정]
+    # 🚀 [하드웨어 자동 감지: GPU 가속 & CPU 스마트 폴백]
     scene.render.engine = 'BLENDER_EEVEE_NEXT' if hasattr(bpy.types, 'RenderSettings') and 'BLENDER_EEVEE_NEXT' in [e.identifier for e in bpy.types.RenderSettings.bl_rna.properties['engine'].enum_items] else 'BLENDER_EEVEE'
     if hasattr(scene, 'eevee'):
-        try: scene.eevee.taa_render_samples = 4   # 초고속 렌더 (4샘플로 충분히 선명하고 5배 빠름)
+        try: scene.eevee.taa_render_samples = 4
         except Exception: pass
-        try: scene.eevee.use_raytracing = False    # 무거운 스크린스페이스 레이트레이싱 비활성화로 10배 가속
+        try: scene.eevee.use_raytracing = False
         except Exception: pass
         try: scene.eevee.use_shadows = True
         except Exception: pass
 
-    # Cycles 엔진으로 전환 시 GPU(OptiX/CUDA) 자동 활성화
+    # GPU(OptiX, CUDA, Metal, HIP, OneAPI) 자동 스캔 및 CPU 폴백
+    gpu_found = False
+    detected_devices = []
     try:
-        if hasattr(scene, 'cycles'):
-            scene.cycles.device = 'GPU'
-            scene.cycles.samples = 32
-            prefs = bpy.context.preferences.addons.get('cycles')
-            if prefs and hasattr(prefs, 'preferences'):
-                cprefs = prefs.preferences
-                cprefs.compute_device_type = 'OPTIX' if 'OPTIX' in [t[0] for t in cprefs.get_device_types(bpy.context)] else 'CUDA'
+        prefs = bpy.context.preferences.addons.get('cycles')
+        if prefs and hasattr(prefs, 'preferences'):
+            cprefs = prefs.preferences
+            device_types = [t[0] for t in cprefs.get_device_types(bpy.context)]
+            
+            # 우선순위: OPTIX > CUDA > METAL > HIP > ONEAPI
+            selected_type = None
+            for dev_type in ['OPTIX', 'CUDA', 'METAL', 'HIP', 'ONEAPI']:
+                if dev_type in device_types:
+                    selected_type = dev_type
+                    break
+            
+            if selected_type:
+                cprefs.compute_device_type = selected_type
                 cprefs.get_devices()
                 for dev in cprefs.devices:
-                    dev.use = True
+                    if dev.type == selected_type:
+                        dev.use = True
+                        gpu_found = True
+                        detected_devices.append(f"{dev.name} ({selected_type})")
+                    else:
+                        dev.use = False
+            
+            if gpu_found:
+                if hasattr(scene, 'cycles'):
+                    scene.cycles.device = 'GPU'
+                    scene.cycles.samples = 32
+                print(f"   🟢 [GPU 가속 활성화] {', '.join(detected_devices)}")
+            else:
+                if hasattr(scene, 'cycles'):
+                    scene.cycles.device = 'CPU'
+                    scene.cycles.samples = 16
+                print("   🟡 [하드웨어 감지] 외장 GPU 미감지 -> CPU 멀티스레드 모드로 안전하게 자동 폴백")
     except Exception as e:
-        print(f"   ⚠️ Cycles GPU 세팅 알림: {e}")
+        print(f"   ⚠️ 하드웨어 감지 안내: {e}")
 
-    scene.render.use_motion_blur = False # 초고속 렌더를 위해 모션블러 해제 (속도 3배 가속!)
+    scene.render.use_motion_blur = False
 
     blend_save_path = os.path.join(base_dir, "mosaic_cinematic.blend")
+    scene_blend_path = os.path.join(base_dir, "scenes", scene_name, f"{scene_name}.blend")
     try:
         bpy.ops.wm.save_as_mainfile(filepath=blend_save_path)
         print(f"   💾 .blend 프로젝트 자동 저장 완료: {blend_save_path}")
+        if os.path.exists(os.path.dirname(scene_blend_path)):
+            bpy.ops.wm.save_as_mainfile(filepath=scene_blend_path)
+            print(f"   📁 전용 씬 백업 저장 완료: {scene_blend_path}")
     except Exception as e:
         print(f"   ⚠️ 저장 스킵: {e}")
 
     print("\n" + "="*75)
-    print("🎉 [SUCCESS] 21.0초(1,260 Frames) 대작 마스터피스 씬 빌드 완료!")
-    print("👉 Numpad 0(카메라) ➔ Spacebar(재생)로 21초 완성작을 감상하세요!")
+    print("🎉 [SUCCESS] 18초 Hero 추적 & 가속 360° 마스터피스 씬 빌드 완료!")
+    print("👉 Numpad 0(카메라) ➔ Spacebar(재생)로 1920x1080 꽉 찬 화면 감상!")
     print("="*75 + "\n")
 
 if __name__ == "__main__":
