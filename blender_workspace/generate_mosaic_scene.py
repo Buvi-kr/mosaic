@@ -19,10 +19,17 @@
 import bpy
 import json
 import os
+import shutil
 import math
 import random
 import traceback
 from mathutils import Vector, Euler
+
+# ==============================================================================
+# ⚙️ 씬 고유 타겟 디렉토리 (None이면 자동 감지, 특정 씬 스크립트에서는 고정 경로 지정)
+# ==============================================================================
+if 'SCENE_DIR' not in globals() or not globals().get('SCENE_DIR'):
+    SCENE_DIR = None
 
 # ==============================================================================
 # ⚙️ 18초 시네마틱 마스터 타임라인 파라미터 (60fps 기준)
@@ -91,7 +98,27 @@ def main():
     # [02/06] 데이터 및 마스터 텍스처 로드
     # --------------------------------------------------------------------------
     print("[02/06] 데이터 및 완성본 마스터 텍스처 로드 중...")
+    
+    text_dir = ""
+    try:
+        if hasattr(bpy.context, 'space_data') and hasattr(bpy.context.space_data, 'text') and bpy.context.space_data.text and bpy.context.space_data.text.filepath:
+            text_dir = os.path.dirname(os.path.abspath(bpy.context.space_data.text.filepath))
+        elif hasattr(bpy.context, 'edit_text') and bpy.context.edit_text and bpy.context.edit_text.filepath:
+            text_dir = os.path.dirname(os.path.abspath(bpy.context.edit_text.filepath))
+        else:
+            for t in bpy.data.texts:
+                if t.filepath and os.path.exists(t.filepath) and "generate_mosaic_scene.py" in t.filepath:
+                    text_dir = os.path.dirname(os.path.abspath(t.filepath))
+                    break
+    except Exception:
+        pass
+
+    script_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else ""
+    
     search_dirs = [
+        SCENE_DIR,
+        text_dir,
+        script_dir,
         os.path.dirname(bpy.data.filepath) if bpy.data.filepath else "",
         os.path.join(os.getcwd(), "blender_workspace"),
         os.getcwd(),
@@ -165,9 +192,10 @@ def main():
     bsdf.location = (500, 0)
     links.new(bsdf.outputs['BSDF'], out_node.inputs['Surface'])
 
-    if "Roughness" in bsdf.inputs: bsdf.inputs["Roughness"].default_value = 0.25
+    if "Roughness" in bsdf.inputs: bsdf.inputs["Roughness"].default_value = 1.0
     if "Metallic" in bsdf.inputs: bsdf.inputs["Metallic"].default_value = 0.0
-    if "Specular IOR Level" in bsdf.inputs: bsdf.inputs["Specular IOR Level"].default_value = 0.3
+    if "Specular IOR Level" in bsdf.inputs: bsdf.inputs["Specular IOR Level"].default_value = 0.0
+    if "Specular" in bsdf.inputs: bsdf.inputs["Specular"].default_value = 0.0
 
     tex_coord = nodes.new('ShaderNodeTexCoord')
     tex_coord.location = (-600, 200)
@@ -196,13 +224,20 @@ def main():
 
     tex_node = nodes.new('ShaderNodeTexImage')
     tex_node.location = (150, 150)
-    loaded_img = bpy.data.images.load(master_img_path, check_existing=True)
+    for img in list(bpy.data.images):
+        bpy.data.images.remove(img, do_unlink=True)
+    loaded_img = bpy.data.images.load(master_img_path, check_existing=False)
+    loaded_img.name = f"MasterMosaic_{scene_name}"
+    try:
+        loaded_img.reload()
+    except Exception:
+        pass
     tex_node.image = loaded_img
 
     links.new(v_add.outputs['Vector'], tex_node.inputs['Vector'])
     links.new(tex_node.outputs['Color'], bsdf.inputs['Base Color'])
 
-    # ✨ [사진 자체 발광(Emission: 0.45)으로 어두운 곳 없이 항상 쨍하고 선명한 화질]
+    # ✨ [사진 자체 발광(Emission: 1.0)으로 빛 번짐/핫스팟 없이 5,280개 사진 전체가 100% 균일하고 선명한 True-Color 표현]
     if "Emission Color" in bsdf.inputs:
         links.new(tex_node.outputs['Color'], bsdf.inputs['Emission Color'])
     elif "Emission" in bsdf.inputs:
@@ -210,13 +245,7 @@ def main():
 
     if "Emission Strength" in bsdf.inputs:
         em = bsdf.inputs["Emission Strength"]
-        em.default_value = 0.45
-        em.keyframe_insert(data_path="default_value", frame=1)
-        em.keyframe_insert(data_path="default_value", frame=FLASH_PEAK_FRAME - 30)
-        em.default_value = 1.15
-        em.keyframe_insert(data_path="default_value", frame=FLASH_PEAK_FRAME)
-        em.default_value = 0.45
-        em.keyframe_insert(data_path="default_value", frame=FLASH_PEAK_FRAME + 40)
+        em.default_value = 1.0
 
     # --------------------------------------------------------------------------
     # [04/06] Hero Tile 지정 & 점진적 가속 궤적 속성 베이킹
@@ -536,7 +565,7 @@ def main():
     cam_data.dof.aperture_fstop = 32.0
     cam_data.keyframe_insert(data_path="dof.aperture_fstop", frame=880)
 
-    # ☀️ [360° 무사각 스튜디오 조명 리그 + 카메라 동행 조명]
+    # ☀️ [주변부 부드러운 은은한 필 라이트 - 비행 시 3D 입체감 표현, 중앙 직사광/빛번짐 완전 제거]
     def create_light(name, ltype, energy, color, pos, parent=None):
         ldata = bpy.data.lights.new(name=name, type=ltype)
         ldata.energy = energy
@@ -549,14 +578,10 @@ def main():
             lobj.parent = parent
         return lobj
 
-    create_light("Studio_Top_MegaKey", 'AREA', 8500.0, (1.0, 1.0, 1.0), Vector((0.0, 0.0, 32.0)))
-    create_light("Studio_Front_Fill", 'AREA', 4500.0, (1.0, 0.99, 0.98), Vector((0.0, -18.0, 18.0)))
-    create_light("Studio_Back_Fill", 'AREA', 4500.0, (0.98, 0.99, 1.0), Vector((0.0, 18.0, 18.0)))
-    create_light("Studio_Left_Fill", 'AREA', 4200.0, (0.99, 0.98, 1.0), Vector((-18.0, 0.0, 18.0)))
-    create_light("Studio_Right_Fill", 'AREA', 4200.0, (0.98, 0.99, 1.0), Vector((18.0, 0.0, 18.0)))
-
-    # 카메라 동행 조명: 카메라 초근접 시 화사함 극대화
-    create_light("Cam_Follow_BeautyLight", 'POINT', 2500.0, (1.0, 0.99, 0.98), Vector((0.0, 0.0, 0.5)), parent=cam_obj)
+    create_light("Studio_Front_Fill", 'AREA', 2000.0, (1.0, 0.99, 0.98), Vector((0.0, -22.0, 15.0)))
+    create_light("Studio_Back_Fill", 'AREA', 2000.0, (0.98, 0.99, 1.0), Vector((0.0, 22.0, 15.0)))
+    create_light("Studio_Left_Fill", 'AREA', 1800.0, (0.99, 0.98, 1.0), Vector((-22.0, 0.0, 15.0)))
+    create_light("Studio_Right_Fill", 'AREA', 1800.0, (0.98, 0.99, 1.0), Vector((22.0, 0.0, 15.0)))
 
     # 🖤 [프리미엄 차콜 스튜디오 월드 배경]
     world = scene.world or bpy.data.worlds.new("CinematicWorld_18s")
@@ -619,12 +644,15 @@ def main():
 
     scene.render.use_motion_blur = False
 
-    blend_save_path = os.path.join(base_dir, "mosaic_cinematic.blend")
-    scene_blend_path = os.path.join(base_dir, "scenes", scene_name, f"{scene_name}.blend")
+    workspace_root = r"c:\Users\Buvi\Desktop\project\mosaic_ver2\blender_workspace"
+    root_blend_path = os.path.join(workspace_root, "mosaic_cinematic.blend")
+    scene_dir = base_dir if os.path.basename(os.path.dirname(base_dir)) == "scenes" else os.path.join(workspace_root, "scenes", scene_name)
+    scene_blend_path = os.path.join(scene_dir, f"{scene_name}.blend")
+
     try:
-        bpy.ops.wm.save_as_mainfile(filepath=blend_save_path)
-        print(f"   💾 .blend 프로젝트 자동 저장 완료: {blend_save_path}")
-        if os.path.exists(os.path.dirname(scene_blend_path)):
+        bpy.ops.wm.save_as_mainfile(filepath=root_blend_path)
+        print(f"   💾 .blend 프로젝트 자동 저장 완료: {root_blend_path}")
+        if os.path.exists(scene_dir):
             bpy.ops.wm.save_as_mainfile(filepath=scene_blend_path)
             print(f"   📁 전용 씬 백업 저장 완료: {scene_blend_path}")
     except Exception as e:

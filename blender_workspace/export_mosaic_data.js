@@ -6,9 +6,9 @@ const sharp = require('sharp');
 const projectRoot = path.join(__dirname, '..');
 const configModule = require(path.join(projectRoot, 'src', 'config'));
 
-async function exportBlenderData(targetFile = null) {
+async function exportBlenderData(targetFile = null, customSceneName = null) {
   console.log('====================================================');
-  console.log('🚀 [Blender Workspace] 모자이크 3D 데이터 개별 씬 추출');
+  console.log('🚀 [Blender Workspace] 모자이크 3D 데이터 씬 추출');
   console.log('====================================================');
 
   const config = configModule.getConfig();
@@ -22,7 +22,7 @@ async function exportBlenderData(targetFile = null) {
     fs.mkdirSync(scenesBaseDir, { recursive: true });
   }
 
-  // 입력 소스 이미지 찾기
+  // 1. 소스 이미지 찾기
   let sourceImagePath = targetFile ? path.resolve(targetFile) : (process.argv[2] ? path.resolve(process.argv[2]) : null);
 
   if (!sourceImagePath || !fs.existsSync(sourceImagePath)) {
@@ -41,28 +41,78 @@ async function exportBlenderData(targetFile = null) {
   }
 
   const baseImageName = path.basename(sourceImagePath);
-  const sceneName = path.parse(baseImageName).name; // e.g. mosaic_1787128738607
-  const sceneDir = path.join(scenesBaseDir, sceneName);
+  const rawSceneId = path.parse(baseImageName).name; // e.g. mosaic_1787208242539
 
+  // 2. 씬 이름 결정 (사용자 지정 또는 1번사진, 2번사진 형태의 직관적 이름)
+  let sceneName = customSceneName || process.argv[3];
+  if (!sceneName) {
+    // 기존 scenes 디렉토리에서 번호 매기기
+    const existing = fs.readdirSync(scenesBaseDir).filter(d => fs.statSync(path.join(scenesBaseDir, d)).isDirectory());
+    // 만약 이미 매핑된 폴더가 있다면 찾기
+    let found = false;
+    for (const d of existing) {
+      const dReadme = path.join(scenesBaseDir, d, 'README.md');
+      if (fs.existsSync(dReadme)) {
+        const text = fs.readFileSync(dReadme, 'utf8');
+        if (text.includes(baseImageName)) {
+          sceneName = d;
+          found = true;
+          break;
+        }
+      }
+    }
+    if (!found) {
+      const nextNum = existing.length + 1;
+      sceneName = `${nextNum}번사진`;
+    }
+  }
+
+  const sceneDir = path.join(scenesBaseDir, sceneName);
   if (!fs.existsSync(sceneDir)) {
     fs.mkdirSync(sceneDir, { recursive: true });
   }
 
-  console.log(`📸 대상 모자이크: ${baseImageName}`);
-  console.log(`📁 전용 씬 폴더: blender_workspace/scenes/${sceneName}/`);
+  console.log(`📸 대상 이미지: ${baseImageName}`);
+  console.log(`📁 씬 디렉토리: blender_workspace/scenes/${sceneName}/`);
 
-  // 1. master_mosaic.jpg 복사 (전용 씬 폴더 + 루트 동기화)
+  // 3. master_mosaic.jpg 복사
   const sceneMasterPath = path.join(sceneDir, 'master_mosaic.jpg');
   const rootMasterPath = path.join(__dirname, 'master_mosaic.jpg');
   fs.copyFileSync(sourceImagePath, sceneMasterPath);
   fs.copyFileSync(sourceImagePath, rootMasterPath);
   console.log(`📋 사진 복사 완료 -> scenes/${sceneName}/master_mosaic.jpg`);
 
-  // 2. 히스토리 로그 JSON 확인
+  // 4. 간결한 전용 씬 실행 파이썬 러너 생성 ({sceneName}.py)
+  const runnerScriptPath = path.join(sceneDir, `${sceneName}.py`);
+  const safeSceneDir = sceneDir.replace(/\\/g, '\\\\');
+  const runnerCode = `"""
+🎬 [${sceneName}] Blender 3D Scene Runner
+- 마스터 빌더(generate_mosaic_scene.py)를 ${sceneName} 데이터로 실행합니다.
+"""
+import os, sys
+
+SCENE_DIR = r"${sceneDir}"
+MASTER_SCRIPT = os.path.abspath(os.path.join(SCENE_DIR, "..", "..", "generate_mosaic_scene.py"))
+
+if os.path.exists(MASTER_SCRIPT):
+    with open(MASTER_SCRIPT, 'r', encoding='utf-8') as f:
+        code = f.read()
+    exec(compile(code, MASTER_SCRIPT, 'exec'), {
+        'SCENE_DIR': SCENE_DIR,
+        '__file__': MASTER_SCRIPT,
+        '__name__': '__main__'
+    })
+else:
+    print(f"❌ 마스터 스크립트가 없습니다: {MASTER_SCRIPT}")
+`;
+  fs.writeFileSync(runnerScriptPath, runnerCode, 'utf8');
+  console.log(`📜 간결한 실행 스크립트 생성 -> scenes/${sceneName}/${sceneName}.py`);
+
+  // 5. 히스토리 로그 JSON 확인
   const logCandidateNames = [
     `log_${baseImageName}.json`,
     `log_${baseImageName}`,
-    `log_${sceneName}.json`
+    `log_${rawSceneId}.json`
   ];
 
   let logFilePath = null;
@@ -149,6 +199,7 @@ async function exportBlenderData(targetFile = null) {
   const exportData = {
     metadata: {
       sceneName,
+      rawSceneId,
       exportedAt: new Date().toISOString(),
       theme: usedTheme,
       cols,
@@ -164,22 +215,20 @@ async function exportBlenderData(targetFile = null) {
     tiles: tilePlacements
   };
 
-  // 전용 씬 폴더에 mosaic_data.json 저장 + 루트에도 최신 활성 씬 동기화 저장
+  // 6. JSON 데이터 저장 (씬 폴더 + 루트 동기화)
   const sceneOutputPath = path.join(sceneDir, 'mosaic_data.json');
   const rootOutputPath = path.join(__dirname, 'mosaic_data.json');
 
   fs.writeFileSync(sceneOutputPath, JSON.stringify(exportData, null, 2), 'utf8');
   fs.writeFileSync(rootOutputPath, JSON.stringify(exportData, null, 2), 'utf8');
 
-  // 씬 요약 README 생성
-  const summaryText = `# 🎬 Scene: ${sceneName}\n\n- **원본 이미지**: \`${baseImageName}\`\n- **그리드**: ${cols} × ${rows}\n- **총 타일 수**: ${tilePlacements.length.toLocaleString()}개\n- **테마**: ${usedTheme}\n- **추출 일시**: ${new Date().toLocaleString('ko-KR')}\n`;
-  fs.writeFileSync(path.join(sceneDir, 'README.md'), summaryText, 'utf8');
-
   console.log(`💾 JSON 데이터 저장 완료 -> scenes/${sceneName}/mosaic_data.json`);
   console.log('====================================================');
-  console.log(`✨ [성공] scenes/${sceneName}/ 에 전용 폴더가 생성되었습니다!`);
-  console.log('👉 Blender에서 generate_mosaic_scene.py를 실행하세요.');
+  console.log(`✨ [성공] scenes/${sceneName}/ 폴더가 준비되었습니다!`);
+  console.log(`👉 Blender에서 scenes/${sceneName}/${sceneName}.py 를 실행하세요.`);
   console.log('====================================================\n');
+
+  return { sceneName, sceneDir };
 }
 
 module.exports = exportBlenderData;
