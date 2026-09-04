@@ -29,17 +29,25 @@ public/tiles/*/
 data/themes/*/
 !data/themes/default_nasa/
 
-# 4. Blender 작업물 & 렌더링된 비디오 파일 (대용량/개인정보)
+# 4. Blender 작업물 & 렌더링된 비디오 파일 (대용량 미디어 정밀 제외, 파이썬 코드 및 씬 세팅 보존)
 __pycache__/
 *.pyc
 *.pyo
 *.blend1
 *.blend@
 blender_workspace/__pycache__/
-blender_workspace/scenes/
+blender_workspace/renders/
+blender_workspace/old/
 blender_workspace/master_mosaic.jpg
+blender_workspace/test_master.blend
 blender_workspace/*.mp4
 blender_workspace/*.blend1
+blender_workspace/scenes/**/__pycache__/
+blender_workspace/scenes/**/mosaic_atlas.jpg
+blender_workspace/scenes/**/master_mosaic.jpg
+blender_workspace/scenes/**/*.png
+blender_workspace/scenes/**/*.blend1
+blender_workspace/scenes/**/*.blend@
 *.mp4
 *.mov
 *.avi
