@@ -1,32 +1,94 @@
 const { Server } = require('socket.io');
 
 let io;
-
 let cachedTunnelUrl = null;
-
-// 슬롯 대기열 참조 (mosaicQueue를 지연 로딩)
 let mosaicQueue = null;
+let sessionManager = null;
 
 function init(server) {
   io = new Server(server, {
     cors: { origin: '*' }
   });
 
-  // mosaicQueue 지연 로딩 (순환 참조 방지)
   mosaicQueue = require('./mosaic.queue');
+  sessionManager = require('./session.manager');
+  sessionManager.setIo(io);
 
   io.on('connection', (socket) => {
-    console.log('🖥️ 클라이언트 접속:', socket.id);
+    // 터널 URL 전송
     if (cachedTunnelUrl) {
       socket.emit('tunnel_url', cachedTunnelUrl);
     }
-    
-    // 업로드 세션 room 참가 (업로드 페이지에서 진행 상황을 받기 위함)
-    socket.on('join_session', (sessionId) => {
-      socket.join(sessionId);
+
+    // 게이트 상태 초기 전송
+    socket.emit('gate_state', sessionManager.getGateState());
+
+    // 디스플레이 새로고침 복구 요청
+    socket.on('request_gate_state', () => {
+      socket.emit('gate_state', sessionManager.getGateState());
     });
 
-    // 슬롯 확인 요청 (업로드 페이지에서 "나 올려도 돼?" 물어볼 때)
+    // 업로드 세션 room 참가
+    socket.on('join_session', (sessionId) => {
+      if (sessionId) {
+        socket.join(sessionId);
+      }
+    });
+
+    // 슬롯 claim 요청 (모바일 소켓 직통)
+    socket.on('claim_slot', (data, callback) => {
+      const gateToken = typeof data === 'string' ? data : data?.gateToken;
+      const result = sessionManager.claimSlot(gateToken, socket.id);
+      if (result.success && result.sessionId) {
+        socket.join(result.sessionId);
+      }
+      if (typeof callback === 'function') {
+        callback(result);
+      } else {
+        socket.emit('slot_claimed', result);
+      }
+    });
+
+    // 촬영 시작 신호 (진입 30초 타이머 정지)
+    socket.on('start_capture', (data, callback) => {
+      const sessionToken = data?.sessionToken || data;
+      const result = sessionManager.startCapture(sessionToken);
+      if (typeof callback === 'function') callback(result);
+    });
+
+    // 1회차 완료 후 결정: [네, 한 번 더] vs [아니요, 완료할게요]
+    socket.on('decision_choice', (data, callback) => {
+      const sessionToken = data?.sessionToken;
+      const choice = data?.choice; // 'retry' | 'finish'
+
+      let result;
+      if (choice === 'retry') {
+        result = sessionManager.startSecondShot(sessionToken);
+      } else {
+        result = sessionManager.finishExperience(sessionToken);
+      }
+      if (typeof callback === 'function') callback(result);
+    });
+
+    // 체험 종료 신호 (포토존 반환)
+    socket.on('finish_experience', (data, callback) => {
+      const sessionToken = data?.sessionToken || data;
+      const result = sessionManager.finishExperience(sessionToken);
+      if (typeof callback === 'function') callback(result);
+    });
+
+    // 재연결 및 세션 복구 요청
+    socket.on('reconnect_session', (data, callback) => {
+      const sessionToken = data?.sessionToken || data;
+      const result = sessionManager.handleReconnect(socket.id, sessionToken);
+      const session = sessionManager.getSession(sessionToken);
+      if (session && session.sessionId) {
+        socket.join(session.sessionId);
+      }
+      if (typeof callback === 'function') callback(result);
+    });
+
+    // 슬롯 확인 요청 (하위 호환)
     socket.on('check_slot', () => {
       if (mosaicQueue) {
         const slotInfo = mosaicQueue.canAcceptUpload();
@@ -46,6 +108,11 @@ function init(server) {
           maxWorkers: stats.maxWorkers,
         });
       }
+    });
+
+    // 소켓 단절 처리 (20초 유예)
+    socket.on('disconnect', () => {
+      sessionManager.handleDisconnect(socket.id);
     });
   });
 }

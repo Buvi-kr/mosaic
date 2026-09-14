@@ -20,7 +20,8 @@ const defaultConfig = {
   candidatePoolSize: 150,
   renderTileSize: 200,       // 실제 타일 렌더링 물리적 화질 (px). 이 크기와 가로/세로 칸수가 곱해져 최종 캔버스 크기가 폭증함.
   lowMemoryMode: false,      // 저사양 안전 모드 (기본 false: 100% 풀 퀄리티 원본 해상도 보장, true: 8GB 이하 저사양 OOM 방지 다운스케일)
-  displayShowcaseDuration: 20, // 모자이크 결과물 전시 보장 시간 (초)
+  displayShowcaseDuration: 20, // 1회차 모자이크 결과물 전시 보장 시간 (초)
+  displayRetryDuration: 8,     // 2회차 보너스 모자이크 전시 시간 (초)
   displayGuideInterval: 5,     // 촬영 예시 슬라이드 주기 (초)
   displayPhotozoneTheme: 'nebula', // 포토존 테마 ('nebula', 'galaxy', 'aurora', 'minimal')
   displayShowTimer: true       // 결과물 잔여 전시 시간 타이머 표시 여부
@@ -33,6 +34,9 @@ function loadConfig() {
     try {
       const saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
       config = { ...defaultConfig, ...saved };
+      // 전시 시간 범위 안전 클램핑
+      config.displayShowcaseDuration = Math.max(10, Math.min(60, config.displayShowcaseDuration || 20));
+      config.displayRetryDuration = Math.max(5, Math.min(20, config.displayRetryDuration || 8));
     } catch(e) {
       console.error('Config parsing error:', e);
     }
@@ -59,7 +63,14 @@ function getConfig() {
 }
 
 function updateConfig(newConfig) {
-  config = { ...config, ...newConfig };
+  const sanitized = { ...newConfig };
+  if (sanitized.displayShowcaseDuration !== undefined) {
+    sanitized.displayShowcaseDuration = Math.max(10, Math.min(60, Number(sanitized.displayShowcaseDuration) || 20));
+  }
+  if (sanitized.displayRetryDuration !== undefined) {
+    sanitized.displayRetryDuration = Math.max(5, Math.min(20, Number(sanitized.displayRetryDuration) || 8));
+  }
+  config = { ...config, ...sanitized };
   saveConfig();
   return config;
 }

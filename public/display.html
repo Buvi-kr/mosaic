@@ -205,8 +205,8 @@
             <span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500"></span>
           </span>
           <div>
-            <h2 class="text-2xl lg:text-3xl font-black text-white tracking-tight">나의 우주 모자이크</h2>
-            <p id="mosaicHeaderSubtext" class="text-xs lg:text-sm text-emerald-300 font-medium mt-0.5">실시간 관람객 모자이크 아트</p>
+            <h2 class="text-2xl lg:text-3xl font-black text-white tracking-tight" style="font-size: clamp(20px, 2.4vw, 34px);">3. 결과 감상</h2>
+            <p id="mosaicHeaderSubtext" class="text-xs lg:text-sm text-emerald-300 font-medium mt-0.5">내 얼굴 모자이크를 감상하세요</p>
           </div>
         </div>
         
@@ -214,14 +214,14 @@
         <div class="flex items-center gap-3">
           <!-- 단독 전시 카운트다운 뱃지 (STEP 3 크기/높이 규격 동기화) -->
           <div id="newBadge" class="hidden inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/20 border-2 border-yellow-400 text-yellow-300 font-mono shadow-[0_0_20px_rgba(250,204,21,0.45)]">
-            <span class="text-xs lg:text-sm font-extrabold text-yellow-200 tracking-tight">단독 전시</span>
-            <span id="showcaseSecondsText" class="text-base lg:text-lg font-black text-yellow-300">15s</span>
+            <span class="text-xs lg:text-sm font-extrabold text-yellow-200 tracking-tight">전시 중</span>
+            <span id="showcaseSecondsText" class="text-base lg:text-lg font-black text-yellow-300">20s</span>
           </div>
 
           <!-- STEP 3 대형 뱃지 -->
           <div class="step-badge step-badge-3 font-mono">
             <span>🎉</span>
-            <span>STEP 3</span>
+            <span>3단계</span>
           </div>
         </div>
       </div>
@@ -236,7 +236,7 @@
     </div>
 
     <!-- ============================================================== -->
-    <!-- [중앙 전체: STEP 2] 트루 블랙 포토존 (그림자/눈부심 0% 빔 마스킹 구역) -->
+    <!-- [중앙 전체: 2단계] 트루 블랙 포토존 배경 스크린                       -->
     <!-- ============================================================== -->
     <div class="glass-card panel-photozone flex flex-col justify-between p-6 relative overflow-hidden" id="photozoneCard">
       <!-- SF 뷰파인더 코너 브래킷 (스크린 프레이밍 강조) -->
@@ -251,58 +251,78 @@
           <span class="text-3xl">📸</span>
           <div>
             <div class="flex items-center gap-2">
-              <h2 class="text-2xl lg:text-3xl font-black text-white tracking-tight">코즈믹 포토스팟</h2>
+              <h2 class="text-2xl lg:text-3xl font-black text-white tracking-tight" style="font-size: clamp(20px, 2.4vw, 34px);">2. 여기에 서서 셀카</h2>
               <span class="text-[10px] lg:text-xs font-bold text-rose-300 bg-rose-500/20 border border-rose-500/40 px-2 py-0.5 rounded-full">
-                SHADOW-FREE
+                PHOTO SPOT
               </span>
             </div>
-            <p class="text-xs lg:text-sm text-rose-200/80 font-medium mt-0.5">화면 속 우주와 함께 특별한 인증샷을 남겨보세요</p>
+            <p class="text-xs lg:text-sm text-rose-200/80 font-medium mt-0.5">화면에 얼굴을 비추고 폰으로 셀카를 찍으세요</p>
           </div>
         </div>
         
         <!-- STEP 2 초대형 뱃지 -->
         <div class="step-badge step-badge-2 font-mono">
           <span>✨</span>
-          <span>STEP 2</span>
+          <span>2단계</span>
         </div>
       </div>
 
       <!-- 중앙 및 하단: 사람 셀카/인증샷 전용 100% 완전 무결 트루 블랙 빔 차단 구역 (그림자 및 눈부심 제로) -->
-      <div class="flex-1"></div>
+      <div class="flex-1 flex items-center justify-center pointer-events-none">
+        <div class="text-center opacity-40">
+          <p class="text-xs lg:text-sm text-rose-300 font-mono tracking-widest">[ STAND HERE ]</p>
+        </div>
+      </div>
     </div>
 
     <!-- ============================================================== -->
-    <!-- [우측 상단: STEP 1] 참여 QR 코드 스캔                             -->
+    <!-- [우측 상단: 1단계] 스마트 게이트 도어 & QR 코드 스캔                 -->
     <!-- ============================================================== -->
     <div class="glass-card panel-qr flex flex-col justify-between items-center p-6 text-center" id="qrCard">
       <!-- 상단 메인 타이틀 & STEP 1 뱃지 -->
       <div class="relative z-10 w-full flex items-start justify-between">
         <div class="text-left">
-          <h1 class="text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight">
-            코즈믹 모자이크
+          <h1 class="text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight" style="font-size: clamp(20px, 2.4vw, 34px);">
+            1. QR 찍기
           </h1>
           <p class="text-xs lg:text-sm text-slate-300 font-light mt-0.5">
-            스마트폰으로 <span class="text-gradient-cosmic font-bold">당신의 우주를 완성하세요</span>
+            휴대폰 카메라로 <span class="text-gradient-cosmic font-bold">화면의 QR을 비추세요</span>
           </p>
         </div>
         
         <!-- STEP 1 뱃지 -->
         <div class="step-badge step-badge-1 font-mono flex-shrink-0">
           <span>📱</span>
-          <span>STEP 1</span>
+          <span>1단계</span>
         </div>
       </div>
 
-      <!-- 중앙 초대형 QR 코드 -->
-      <div class="relative z-10 my-auto flex flex-col items-center justify-center">
-        <div id="qrcode-box" class="flex-shrink-0 cursor-pointer p-2.5 rounded-2xl bg-white shadow-[0_0_35px_rgba(99,102,241,0.45)] border-2 border-indigo-400">
-          <div id="qrcode" class="w-44 h-44 lg:w-48 lg:h-48 xl:w-52 xl:h-52 flex items-center justify-center">
-            <span class="text-xs text-slate-400">QR 로딩 중...</span>
+      <!-- 중앙: OPEN 시 QR 코드, BUSY 시 대기 안내 -->
+      <div class="relative z-10 my-auto flex flex-col items-center justify-center w-full">
+        <!-- QR 코드 박스 (OPEN 상태) -->
+        <div id="qrcode-box" class="flex flex-col items-center justify-center">
+          <div class="cursor-pointer p-2.5 rounded-2xl bg-white shadow-[0_0_35px_rgba(99,102,241,0.45)] border-2 border-indigo-400">
+            <div id="qrcode" class="w-44 h-44 lg:w-48 lg:h-48 xl:w-52 xl:h-52 flex items-center justify-center">
+              <span class="text-xs text-slate-400">QR 로딩 중...</span>
+            </div>
           </div>
+          <p id="qrSubtext" class="text-xs lg:text-sm text-indigo-300 font-bold mt-2.5">
+            기본 카메라 앱으로 비추면 즉시 열립니다
+          </p>
         </div>
-        <p class="text-xs lg:text-sm text-indigo-300 font-bold mt-2.5">
-          기본 카메라 앱으로 비추면 즉시 열립니다
-        </p>
+
+        <!-- 게이트 점유 대기 박스 (BUSY 상태 - 거짓 30초 카운트다운 없이 펄스 안내) -->
+        <div id="gateBusyBox" class="hidden flex flex-col items-center justify-center p-6 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 w-full max-w-xs shadow-2xl">
+          <div class="relative flex items-center justify-center w-16 h-16 rounded-full bg-rose-500/20 border-2 border-rose-400 mb-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-50"></span>
+            <span class="text-3xl">📸</span>
+          </div>
+          <h3 class="text-lg lg:text-xl font-black text-white tracking-tight">체험 진행 중</h3>
+          <p class="text-xs lg:text-sm text-rose-200/90 font-medium mt-1.5 leading-relaxed text-center">
+            현재 관람객이 멋진 셀카를<br>촬영하고 있습니다.<br>
+            <span class="text-amber-300 font-bold">잠시만 기다려주세요!</span>
+          </p>
+        </div>
       </div>
 
       <!-- 하단 진행률 바 (생성 중일 때만 표출) -->
@@ -379,9 +399,11 @@
 
     const socket = io();
     let uploadUrl = window.location.origin + '/upload.html';
+    let currentGateToken = '';
+    let isGateOpen = true;
 
     // ================================================================
-    // 1. STEP 1: 초대형 QR 코드 렌더링 & 터널 주소 동기화
+    // 1. STEP 1: 초대형 QR 코드 렌더링 & 스마트 게이트 도어 동기화
     // ================================================================
     function drawQR(url) {
       const qrEl = document.getElementById('qrcode');
@@ -401,12 +423,37 @@
       });
     }
 
-    drawQR(uploadUrl);
+    function renderGateState(state) {
+      if (!state) return;
+      isGateOpen = state.isOpen;
+      currentGateToken = state.gateToken || '';
+
+      const qrBox = document.getElementById('qrcode-box');
+      const busyBox = document.getElementById('gateBusyBox');
+
+      if (isGateOpen) {
+        if (busyBox) busyBox.classList.add('hidden');
+        if (qrBox) qrBox.classList.remove('hidden');
+        const targetUrl = uploadUrl + (currentGateToken ? `?gateToken=${currentGateToken}` : '');
+        drawQR(targetUrl);
+      } else {
+        if (qrBox) qrBox.classList.add('hidden');
+        if (busyBox) busyBox.classList.remove('hidden');
+      }
+    }
+
+    // 게이트 상태 실시간 수신 및 새로고침 복구 요청
+    socket.on('gate_state', (state) => {
+      console.log('🚪 게이트 상태 수신:', state);
+      renderGateState(state);
+    });
+    socket.emit('request_gate_state');
 
     socket.on('tunnel_url', (url) => {
       console.log('📡 외부 터널 접속 주소 수신:', url);
       uploadUrl = url + '/upload.html';
-      drawQR(uploadUrl);
+      const targetUrl = uploadUrl + (currentGateToken ? `?gateToken=${currentGateToken}` : '');
+      if (isGateOpen) drawQR(targetUrl);
     });
 
     const guideStepImages = [
@@ -516,9 +563,16 @@
       }, 7000);
     }
 
-    // 3) 관람객 사진 완성 시 호출 (큐 시스템 보장)
-    function queueUserShowcase(imageUrl) {
-      showcaseQueue.push(imageUrl);
+    // 3) 관람객 사진 완성 시 호출 (큐 시스템 보장 & 동적 전시 시간 지원)
+    function queueUserShowcase(data) {
+      const item = (typeof data === 'string')
+        ? { imageUrl: data, displayDuration: DISPLAY_CONFIG.SHOWCASE_DURATION_SEC }
+        : {
+            imageUrl: data.imageUrl,
+            displayDuration: data.displayDuration || DISPLAY_CONFIG.SHOWCASE_DURATION_SEC,
+            shotNumber: data.shotNumber || 1
+          };
+      showcaseQueue.push(item);
       if (!isShowcasingUser) {
         processNextUserInQueue();
       }
@@ -540,7 +594,9 @@
       if (userShowcaseTimer) clearInterval(userShowcaseTimer);
       resetViewportState();
 
-      const nextImageUrl = showcaseQueue.shift();
+      const nextItem = showcaseQueue.shift();
+      const nextImageUrl = nextItem.imageUrl;
+      const nextDuration = nextItem.displayDuration || DISPLAY_CONFIG.SHOWCASE_DURATION_SEC;
 
       // Step 1: 기존 사진 페이드아웃 (0.6s)
       mosaicImage.style.transition = 'opacity 0.6s ease-in-out';
@@ -575,9 +631,9 @@
                   mosaicViewport.style.transition = 'transform 2.8s cubic-bezier(0.25, 1, 0.5, 1)';
                   mosaicViewport.style.transform = 'scale(1.0) translate(0%, 0%)';
 
-                  // Step 4: 줌아웃 완료 직후 15초 단독 전시 카운트다운 시작
+                  // Step 4: 줌아웃 완료 직후 전달받은 시간(1회차 동적 / 2회차 8초) 단독 전시 카운트다운 시작
                   const t6 = setTimeout(() => {
-                    activateUserShowcase();
+                    activateUserShowcase(nextDuration);
                   }, 2800);
                   zoomSequenceTimers.push(t6);
 
@@ -598,11 +654,11 @@
       zoomSequenceTimers.push(t1);
     }
 
-    // 4) 15초 카운트다운 단독 전시 활성화
-    function activateUserShowcase() {
+    // 4) 단독 전시 활성화 (1회차 동적 / 2회차 8초 고정)
+    function activateUserShowcase(durationSec) {
       if (newBadge) newBadge.classList.remove('hidden');
 
-      const totalSec = DISPLAY_CONFIG.SHOWCASE_DURATION_SEC;
+      const totalSec = durationSec || DISPLAY_CONFIG.SHOWCASE_DURATION_SEC;
       let leftSec = totalSec;
       if (showcaseSecondsText) showcaseSecondsText.textContent = leftSec + 's';
 
@@ -618,7 +674,7 @@
         if (leftSec <= 0) {
           clearInterval(userShowcaseTimer);
           
-          // 15초 만료 -> 부드럽게 페이드아웃 후 다음 사람 또는 데모로 완전 초기화 복귀
+          // 전시 만료 -> 부드럽게 페이드아웃 후 다음 사람 또는 데모로 완전 초기화 복귀
           mosaicImage.style.transition = 'opacity 0.8s ease-in-out';
           mosaicImage.style.opacity = '0';
           
@@ -643,11 +699,15 @@
     const qrProcessingMsg = document.getElementById('qrProcessingMsg');
     const qrProcessingPercent = document.getElementById('qrProcessingPercent');
 
-    // 모자이크 생성 완료 이벤트
+    // 모자이크 생성 완료 이벤트 (1회차 동적 / 2회차 8초 전시 시간 반영)
     socket.on('new_mosaic', (data) => {
       console.log('🎉 신규 모자이크 완성 수신:', data);
       if (data && data.imageUrl) {
-        queueUserShowcase(data.imageUrl);
+        queueUserShowcase({
+          imageUrl: data.imageUrl,
+          displayDuration: data.displayDuration || DISPLAY_CONFIG.SHOWCASE_DURATION_SEC,
+          shotNumber: data.shotNumber || 1
+        });
       }
     });
 

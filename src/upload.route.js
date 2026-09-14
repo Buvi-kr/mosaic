@@ -7,6 +7,8 @@ const fs = require('fs');
 const configModule = require('./config');
 const mosaicQueue = require('./mosaic.queue');
 const socketManager = require('./socket.manager');
+const sessionManager = require('./session.manager');
+const sessionLogger = require('./session.logger');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -92,7 +94,67 @@ mosaicQueue.onStateChange = (state, stats) => {
   }
 };
 
-// ===== 슬롯 확인 API =====
+// ===== 게이트 & 세션 REST API =====
+router.get('/gate-state', (req, res) => {
+  res.json(sessionManager.getGateState());
+});
+
+router.post('/claim-slot', (req, res) => {
+  const { gateToken, socketId } = req.body || {};
+  const clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  const result = sessionManager.claimSlot(gateToken, socketId || null, { ip: clientIp, userAgent });
+  res.json(result);
+});
+
+router.post('/record-download', (req, res) => {
+  const { sessionToken, shotNumber, filename } = req.body || {};
+  const session = sessionManager.getSession(sessionToken);
+  if (!session) {
+    return res.status(404).json({ success: false, error: '세션을 찾을 수 없습니다.' });
+  }
+  const recorded = sessionLogger.recordDownload(
+    session.sessionId,
+    parseInt(shotNumber) || 1,
+    filename || `mosaic_${shotNumber || 1}.jpg`
+  );
+  res.json({ success: recorded });
+});
+
+router.post('/start-capture', (req, res) => {
+  const { sessionToken } = req.body || {};
+  const result = sessionManager.startCapture(sessionToken);
+  res.json(result);
+});
+
+router.post('/decision-choice', (req, res) => {
+  const { sessionToken, choice } = req.body || {};
+  if (choice === 'retry') {
+    res.json(sessionManager.startSecondShot(sessionToken));
+  } else {
+    res.json(sessionManager.finishExperience(sessionToken));
+  }
+});
+
+router.post('/finish', (req, res) => {
+  const { sessionToken } = req.body || {};
+  res.json(sessionManager.finishExperience(sessionToken));
+});
+
+router.get('/session-status', (req, res) => {
+  const token = req.query.token || req.headers['x-session-token'];
+  const session = sessionManager.getSession(token);
+  if (!session) return res.status(404).json({ error: '세션을 찾을 수 없습니다.' });
+  res.json({
+    sessionId: session.sessionId,
+    state: session.state,
+    shotCount: session.shotCount,
+    currentShot: session.currentShot,
+    records: sessionManager.getAllRecords(session)
+  });
+});
+
+// ===== 슬롯 확인 API (하위 호환) =====
 router.get('/slot-check', (req, res) => {
   const slotInfo = mosaicQueue.canAcceptUpload();
   res.json(slotInfo);
@@ -103,6 +165,46 @@ router.post('/', upload.single('photo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '사진 누락' });
   if (globalTileDB.length === 0) return res.status(500).json({ error: '타일 데이터(DB)가 존재하지 않습니다.' });
 
+  const sessionToken = req.query.sessionToken || req.body.sessionToken || req.headers['x-session-token'] || null;
+  const requestId = req.body?.requestId || req.query?.requestId || null;
+
+  let session = null;
+  if (sessionToken) {
+    session = sessionManager.getSession(sessionToken);
+    if (!session) {
+      return res.status(401).json({ error: '유효하지 않은 세션입니다. 키오스크의 QR을 다시 스캔해주세요.' });
+    }
+    if (sessionManager.activePhotozoneToken !== sessionToken) {
+      return res.status(403).json({ error: '현재 포토존 촬영 권한이 없습니다. 순서를 기다려주세요.' });
+    }
+    if (session.shotCount >= 2) {
+      return res.status(403).json({ error: '체험 횟수(2회)를 모두 사용했습니다. 감사합니다.' });
+    }
+
+    // 멱등성 검사 (Idempotency)
+    const currentShot = session.currentShot;
+    const existingRecord = session.shotRecords.get(currentShot);
+    if (existingRecord && existingRecord.status === 'COMPLETED' && existingRecord.resultUrl) {
+      console.log(`[Upload] 멱등성 캐시 반환: ${session.sessionId} (회차: ${currentShot})`);
+      return res.json({
+        success: true,
+        imageUrl: existingRecord.resultUrl,
+        cached: true,
+        shotCount: session.shotCount,
+        currentShot: session.currentShot,
+        allRecords: sessionManager.getAllRecords(session)
+      });
+    }
+    if (existingRecord && existingRecord.status === 'PROCESSING') {
+      return res.status(429).json({ error: '이미 처리 중입니다. 잠시만 기다려주세요.' });
+    }
+
+    sessionManager.beginProcessing(sessionToken, requestId);
+    sessionLogger.recordUploadReceived(session.sessionId, session.currentShot, {
+      size: req.file.size
+    });
+  }
+
   const config = configModule.getConfig();
   // 그리드 밀도 (가상 단위). 작을수록 모자이크 칸수(가로/세로 장수)가 폭증함
   const TILE_SIZE = config.tileSize || 20; 
@@ -111,7 +213,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
   // 가상 그리드 해상도 기준. (실제 출력물 크기가 아님, 칸수를 계산하기 위한 가상 도화지)
   const MAX_RES = config.maxResolution || 1920;
 
-  const sessionId = req.query.sessionId || req.body.sessionId || null;
+  const sessionId = session ? session.sessionId : (req.query.sessionId || req.body.sessionId || null);
   const io = socketManager.getIo();
 
   try {
@@ -299,24 +401,59 @@ router.post('/', upload.single('photo'), async (req, res) => {
       });
     }
 
-    // 디스플레이에 결과 전시 (SHOWCASE 상태)
-    io.emit('display_state', { state: 'showcase' });
+    // 5. 세션 매니저에 성공 기록 및 1회차 완료 즉시 게이트 오픈
+    let displayDuration = config.displayShowcaseDuration || 20;
+    let shotCount = 1;
+    let currentShot = 1;
+    let allRecords = [];
+
+    if (sessionToken && session) {
+      const recordResult = sessionManager.recordUploadSuccess(sessionToken, `/outputs/${outputFilename}`, {
+        elapsed,
+        totalCells,
+        theme: currentTheme,
+        resolution: `${canvasWidth}x${canvasHeight}`,
+        resultUrl: `/outputs/${outputFilename}`
+      });
+      if (recordResult) {
+        displayDuration = recordResult.displayDuration;
+        shotCount = recordResult.shotCount;
+        currentShot = recordResult.currentShot;
+        allRecords = recordResult.allRecords;
+      }
+    }
+
+    // 디스플레이에 결과 전시 (SHOWCASE 상태 및 1회차 동적/2회차 8초 전달)
+    io.emit('display_state', { state: 'showcase', duration: displayDuration });
     socketManager.getIo().emit('new_mosaic', {
       imageUrl: `/outputs/${outputFilename}`,
       tileSize: TILE_SIZE,
       width: CANVAS_W,
-      height: CANVAS_H
+      height: CANVAS_H,
+      displayDuration: displayDuration,
+      shotNumber: currentShot
     });
 
-    res.json({ success: true, imageUrl: `/outputs/${outputFilename}`, timeElapsed: elapsed });
+    res.json({
+      success: true,
+      imageUrl: `/outputs/${outputFilename}`,
+      timeElapsed: elapsed,
+      shotCount,
+      currentShot,
+      displayDuration,
+      allRecords
+    });
 
   } catch (err) {
     console.error('❌ 처리 에러:', err);
+    if (sessionToken) {
+      sessionManager.recordUploadFailure(sessionToken, err.message);
+    }
     try {
       const logPath = path.join(__dirname, '../logs/server.error.log');
       fs.appendFileSync(logPath, `[${new Date().toISOString()}] ERROR in /api/upload: ${err.stack || err.message}\n`);
     } catch (e) { }
-    res.status(500).json({ error: '서버 에러가 발생했습니다.' });
+    res.status(500).json({ error: '서버 에러가 발생했습니다. 다시 촬영해주세요.' });
   }
 });
 

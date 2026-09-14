@@ -8,6 +8,7 @@ const sharp = require('sharp');
 const configModule = require('./config');
 const buildTileDB = require('../scripts/build.db');
 const mosaicQueue = require('./mosaic.queue');
+const sessionLogger = require('./session.logger');
 
 // 멀터 메모리 스토리지 (청크 전처리용)
 const upload = multer({ storage: multer.memoryStorage() });
@@ -121,6 +122,28 @@ router.get('/stats', (req, res) => {
       estimatedWaitTime: mosaicQueue.estimateWaitTime(),
     }
   });
+});
+
+// GET /api/admin/session-stats — 관람객 세션 여정 통계 및 감사 로그 조회
+router.get('/session-stats', (req, res) => {
+  res.json(sessionLogger.getAggregatedStats());
+});
+
+// GET /api/admin/export-csv — 관람객 세션 여정 CSV 내보내기 및 다운로드
+router.get('/export-csv', (req, res) => {
+  try {
+    const month = req.query.month || null;
+    const csvPath = sessionLogger.getCsvFilePath(month);
+    const filename = path.basename(csvPath);
+    res.download(csvPath, filename, (err) => {
+      if (err && !res.headersSent) {
+        res.status(500).json({ error: 'CSV 다운로드 실패' });
+      }
+    });
+  } catch (e) {
+    console.error('[Admin] CSV 내보내기 에러:', e);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // GET /api/admin/themes — 테마 목록 조회

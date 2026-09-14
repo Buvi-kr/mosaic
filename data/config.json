@@ -12,10 +12,11 @@
   "gridDownscaleThreshold": 10,
   "candidatePoolSize": 150,
   "renderTileSize": 200,
+  "lowMemoryMode": false,
   "displayShowcaseDuration": 20,
+  "displayRetryDuration": 8,
   "displayGuideInterval": 5,
   "displayPhotozoneTheme": "nebula",
   "displayShowTimer": true,
-  "turboMode": false,
-  "lowMemoryMode": false
+  "turboMode": false
 }

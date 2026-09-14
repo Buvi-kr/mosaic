@@ -386,6 +386,90 @@
         </div>
       </div>
     </div>
+
+    <!-- 📊 전시장 관람객 세션 여정 & 감사 분석 (Session Journey & Audit Analytics) -->
+    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+      <div class="flex justify-between items-center pb-4 border-b border-slate-100">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-3xl text-indigo-600">query_stats</span>
+          <div>
+            <h2 class="text-xl font-black text-slate-900">전시장 관람객 세션 여정 & 감사 분석 (Session Audit)</h2>
+            <p class="text-xs text-slate-500 font-medium">QR 입장 ➔ 1차 촬영 ➔ 업로드 ➔ 모자이크 ➔ 추가 촬영 ➔ 다운로드 전체 퍼널 실시간 분석</p>
+          </div>
+        <div class="flex items-center gap-2">
+          <button onclick="downloadSessionCsv()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm">
+            <span class="material-symbols-outlined text-sm">file_download</span> 엑셀 CSV 다운로드
+          </button>
+          <button onclick="fetchSessionStats()" class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all flex items-center gap-1 border border-slate-200">
+            <span class="material-symbols-outlined text-sm">refresh</span> 새로고침
+          </button>
+        </div>
+      </div>
+
+      <!-- 6대 핵심 퍼널 지표 카드 -->
+      <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <p class="text-[11px] font-bold text-slate-500 uppercase">총 입장 세션</p>
+          <p class="text-2xl font-black text-slate-800 mt-1" id="statTotalSessions">0</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">평균 체류: <span id="statAvgStay">0s</span></p>
+        </div>
+        <div class="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
+          <p class="text-[11px] font-bold text-indigo-700 uppercase">📸 1차 촬영율</p>
+          <p class="text-2xl font-black text-indigo-900 mt-1" id="statCaptureRate">0%</p>
+          <p class="text-[10px] text-indigo-500 mt-0.5">진입자 대비</p>
+        </div>
+        <div class="p-4 rounded-xl bg-sky-50 border border-sky-100">
+          <p class="text-[11px] font-bold text-sky-700 uppercase">☁️ 업로드 성공</p>
+          <p class="text-2xl font-black text-sky-900 mt-1" id="statUploadRate">0%</p>
+          <p class="text-[10px] text-sky-500 mt-0.5">서버 정상 수신</p>
+        </div>
+        <div class="p-4 rounded-xl bg-purple-50 border border-purple-100">
+          <p class="text-[11px] font-bold text-purple-700 uppercase">🎨 모자이크 완료</p>
+          <p class="text-2xl font-black text-purple-900 mt-1" id="statMosaicRate">0%</p>
+          <p class="text-[10px] text-purple-500 mt-0.5">디스크 저장 확정</p>
+        </div>
+        <div class="p-4 rounded-xl bg-amber-50 border border-amber-100">
+          <p class="text-[11px] font-bold text-amber-700 uppercase">🔁 추가촬영률</p>
+          <p class="text-2xl font-black text-amber-900 mt-1" id="statRetryRate">0%</p>
+          <p class="text-[10px] text-amber-500 mt-0.5">2회차 재도전 선택</p>
+        </div>
+        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+          <p class="text-[11px] font-bold text-emerald-700 uppercase">💾 다운로드율</p>
+          <p class="text-2xl font-black text-emerald-900 mt-1" id="statDownloadRate">0%</p>
+          <p class="text-[10px] text-emerald-500 mt-0.5">완료자 중 저장</p>
+        </div>
+      </div>
+
+      <!-- 실시간 최근 세션 감사 로그 피드 -->
+      <div>
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="text-xs font-bold text-slate-600 uppercase tracking-wider">최근 관람객 여정 감사 피드 (실시간 20건)</h3>
+          <span class="text-[11px] text-slate-400">자동 갱신 (5초 주기)</span>
+        </div>
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-left text-xs text-slate-700">
+            <thead class="bg-slate-100 text-slate-600 uppercase text-[10px] font-bold border-b border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3">세션 ID</th>
+                <th class="py-2.5 px-3">접근 일시</th>
+                <th class="py-2.5 px-3">체류시간</th>
+                <th class="py-2.5 px-3">1차촬영</th>
+                <th class="py-2.5 px-3">1차모자이크</th>
+                <th class="py-2.5 px-3">추가촬영</th>
+                <th class="py-2.5 px-3">2차모자이크</th>
+                <th class="py-2.5 px-3">다운로드</th>
+                <th class="py-2.5 px-3">최종상태</th>
+              </tr>
+            </thead>
+            <tbody id="sessionAuditTableBody" class="divide-y divide-slate-100 font-medium">
+              <tr>
+                <td colspan="9" class="py-4 text-center text-slate-400">세션 데이터를 불러오는 중...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -514,6 +598,75 @@
 
     setInterval(fetchStats, 1500);
     fetchStats();
+
+    // ===== 전시장 세션 감사 및 전환율 통계 로드 =====
+    async function fetchSessionStats() {
+      try {
+        const res = await fetch('/api/admin/session-stats');
+        const data = await res.json();
+
+        document.getElementById('statTotalSessions').textContent = data.totalSessions;
+        document.getElementById('statAvgStay').textContent = data.avgStaySec + 's';
+        document.getElementById('statCaptureRate').textContent = data.captureRate + '%';
+        document.getElementById('statUploadRate').textContent = data.uploadRate + '%';
+        document.getElementById('statMosaicRate').textContent = data.mosaicRate + '%';
+        document.getElementById('statRetryRate').textContent = data.retryRate + '%';
+        document.getElementById('statDownloadRate').textContent = data.downloadRate + '%';
+
+        const tbody = document.getElementById('sessionAuditTableBody');
+        if (!data.recentSessions || data.recentSessions.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="py-4 text-center text-slate-400">아직 수집된 세션 기록이 없습니다.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = data.recentSessions.map(s => {
+          let statusBadge = '';
+          if (s.finalStatus === 'COMPLETED_DUAL') {
+            statusBadge = '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold">2회완료</span>';
+          } else if (s.finalStatus === 'COMPLETED_SINGLE') {
+            statusBadge = '<span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">1회완료</span>';
+          } else if (s.finalStatus === 'IN_PROGRESS') {
+            statusBadge = '<span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-bold animate-pulse">진행중</span>';
+          } else {
+            statusBadge = `<span class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded-full font-bold">${(s.finalStatus || '').replace('ABORTED_', '')}</span>`;
+          }
+
+          const cap1 = s.shot1Capture ? '<span class="text-emerald-600 font-bold">성공</span>' : '<span class="text-slate-400">-</span>';
+          const mos1 = s.shot1Mosaic ? `<span class="text-indigo-600 font-bold">성공 (${s.mosaic1Duration}s)</span>` : '<span class="text-slate-400">-</span>';
+          
+          let retry = '-';
+          if (s.retryChoice === 'RETRY') retry = '<span class="text-purple-600 font-bold">재도전(YES)</span>';
+          else if (s.retryChoice === 'FINISH') retry = '<span class="text-slate-500">마침(NO)</span>';
+          else if (s.retryChoice === 'TIMEOUT') retry = '<span class="text-amber-600">만료</span>';
+
+          const mos2 = s.shot2Mosaic ? '<span class="text-emerald-600 font-bold">성공</span>' : (s.retryChoice === 'RETRY' ? '<span class="text-slate-400">진행/실패</span>' : '-');
+          const down = s.downloadCount > 0 ? `<span class="text-emerald-600 font-bold">💾 ${s.downloadCount}건</span>` : '<span class="text-slate-400">미다운</span>';
+
+          const shortId = s.sessionId.length > 18 ? s.sessionId.substring(0, 18) + '...' : s.sessionId;
+
+          return `<tr class="hover:bg-slate-50 transition-colors">
+            <td class="py-2.5 px-3 font-mono font-bold text-slate-800" title="${s.sessionId}">${shortId}</td>
+            <td class="py-2.5 px-3 text-slate-600">${s.accessTime}</td>
+            <td class="py-2.5 px-3 text-slate-600">${s.staySec}s</td>
+            <td class="py-2.5 px-3">${cap1}</td>
+            <td class="py-2.5 px-3">${mos1}</td>
+            <td class="py-2.5 px-3">${retry}</td>
+            <td class="py-2.5 px-3">${mos2}</td>
+            <td class="py-2.5 px-3">${down}</td>
+            <td class="py-2.5 px-3">${statusBadge}</td>
+          </tr>`;
+        }).join('');
+      } catch(e) {
+        console.error('세션 감사 통계 로드 실패:', e);
+      }
+    }
+
+    setInterval(fetchSessionStats, 5000);
+    fetchSessionStats();
+
+    function downloadSessionCsv() {
+      window.open('/api/admin/export-csv', '_blank');
+    }
 
     // ===== 테마 목록 로드 =====
     async function loadThemes() {

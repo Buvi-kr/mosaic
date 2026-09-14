@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>코즈믹 모자이크 | Cosmic Mosaic</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>코즈믹 모자이크 | 셀카 포토존</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -11,53 +11,31 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <style>
     body {
-      background: url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?q=80&w=2000&auto=format&fit=crop') no-repeat center center fixed;
-      background-size: cover;
+      background: #060814;
+      background-image: radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.15), transparent 60%),
+                        radial-gradient(circle at 80% 80%, rgba(244, 63, 94, 0.1), transparent 50%);
       color: white;
       overscroll-behavior-y: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", Pretendard, Roboto, sans-serif;
     }
     .glass {
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(15, 23, 42, 0.82);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
     }
-    .cropper-container { max-height: 65vh; }
-    /* 크롭 화면일 때 상단 정렬로 전환 */
-    body.cropping { align-items: flex-start; padding-top: 1rem; }
-    
-    /* ===== 모바일 크로퍼 터치 타겟 확장 (바깥쪽으로만) ===== */
-    .cropper-point {
-      width: 12px !important;
-      height: 12px !important;
-      background-color: #3b82f6 !important;
-      border-radius: 50% !important;
-      opacity: 1 !important;
-      /* 투명한 터치 영역을 바깥쪽으로 확장 (안쪽 침범 방지) */
-      outline: 18px solid transparent !important;
-    }
-    .cropper-line {
-      background-color: #3b82f6 !important;
-      opacity: 0.6 !important;
-    }
-    /* 세로 선: 좌/우 바깥으로만 터치 영역 확장 */
-    .cropper-line.line-w, .cropper-line.line-e {
-      width: 3px !important;
-      outline: 15px solid transparent !important;
-    }
-    /* 가로 선: 위/아래 바깥으로만 터치 영역 확장 */
-    .cropper-line.line-n, .cropper-line.line-s {
-      height: 3px !important;
-      outline: 15px solid transparent !important;
-    }
-    /* 크롭 박스 테두리 강조 */
+    .cropper-container { max-height: 60vh; }
     .cropper-view-box {
-      outline: 2px solid #3b82f6 !important;
-      outline-color: rgba(59, 130, 246, 0.75) !important;
+      outline: 2px solid #818cf8 !important;
+      outline-color: rgba(129, 140, 248, 0.9) !important;
     }
-    
-    /* 진행률 바 */
+    .cropper-point {
+      width: 14px !important;
+      height: 14px !important;
+      background-color: #818cf8 !important;
+      border-radius: 50% !important;
+    }
     .progress-bar-bg {
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.08);
       border-radius: 100px;
       overflow: hidden;
       height: 8px;
@@ -65,509 +43,773 @@
     .progress-bar-fill {
       height: 100%;
       border-radius: 100px;
-      background: linear-gradient(90deg, #818cf8, #a78bfa, #c084fc);
-      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
-    }
-    
-    /* 미니 캔버스 */
-    #miniCanvas {
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.15);
-      box-shadow: 0 0 30px rgba(138, 43, 226, 0.2);
-      max-width: 100%;
-      max-height: 200px;
-      object-fit: contain;
+      background: linear-gradient(90deg, #6366f1, #a855f7, #38bdf8);
+      transition: width 0.3s ease;
     }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-  <div class="glass w-full max-w-md rounded-3xl p-6 shadow-2xl text-center">
+  <!-- 메인 모바일 컨테이너 -->
+  <div class="glass w-full max-w-md rounded-3xl p-5 shadow-2xl text-center relative overflow-hidden">
     
-    <!-- 시작 및 개인정보 동의 화면 (Step 0) -->
-    <div id="step-0">
-      <h1 class="text-3xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">코즈믹 모자이크</h1>
-      
-      <div class="bg-slate-800/50 p-4 rounded-2xl mb-6 text-sm text-gray-300 text-left border border-slate-700/50 leading-relaxed">
-        <p class="mb-2 font-bold text-white text-base">✨ 체험 안내 및 개인정보 수집 동의</p>
-        <p class="mb-2">환영합니다! 코즈믹 모자이크는 관람객의 사진을 수천 장의 우주 사진과 결합하여 거대한 미디어아트 작품을 만듭니다.</p>
-        <p class="mb-2 text-purple-300 font-medium">※ 수집된 사진은 모자이크 작품 생성에만 사용되며, 목적 달성 직후(서버 재시작 시점) 시스템에서 영구적으로 자동 폐기됩니다.</p>
-        <p>아래 '시작하기' 버튼을 누르시면 위 안내 사항에 동의하신 것으로 간주합니다.</p>
+    <!-- 상단 상태 & 재연결 알림 배너 -->
+    <div id="reconnectBanner" class="hidden mb-3 py-1.5 px-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold animate-pulse">
+      📡 네트워크 재연결 중...
+    </div>
+
+    <!-- 30초 진입 카운트다운 게이지 (촬영 전) -->
+    <div id="entryTimerContainer" class="hidden mb-4 p-3 rounded-2xl bg-indigo-950/60 border border-indigo-500/30 text-left">
+      <div class="flex justify-between items-center text-xs font-bold mb-1.5">
+        <span class="text-indigo-200">⏱ 촬영 시작 제한시간</span>
+        <span id="entryTimerText" class="text-amber-400 font-mono font-black text-sm">30s</span>
       </div>
-      
-      <button id="startBtn" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 py-4 rounded-xl font-bold shadow-lg text-lg mb-2">
-        시작하기 (동의)
+      <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+        <div id="entryTimerBar" class="h-full bg-gradient-to-r from-indigo-500 to-amber-400 transition-all duration-1000" style="width: 100%;"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- [STATE 1] SLOT BUSY / 대기 화면                                  -->
+    <!-- ============================================================== -->
+    <div id="view-busy" class="hidden py-8">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-rose-500/20 border-2 border-rose-500/40 flex items-center justify-center">
+        <span class="text-3xl">⏳</span>
+      </div>
+      <h2 class="text-2xl font-black mb-2 text-white">체험 진행 중입니다</h2>
+      <p class="text-gray-300 text-sm leading-relaxed mb-6">
+        현재 다른 관람객이 포토존에서 촬영 중입니다.<br>
+        <span class="text-amber-300 font-bold">키오스크 화면에 새 QR이 나타나면</span><br>
+        다시 스캔해주세요!
+      </p>
+      <button onclick="location.reload()" class="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm transition-colors border border-white/10">
+        새로고침
       </button>
     </div>
 
-    <!-- 사진 선택 화면 (Step 1) -->
-    <div id="step-1" class="hidden">
-      <h1 class="text-3xl font-extrabold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">코즈믹 모자이크</h1>
-      <p class="text-gray-300 text-sm mb-6">나의 사진으로 우주를 채워보세요 🌌</p>
-      
-      <label class="block w-full border-2 border-dashed border-purple-500/50 rounded-2xl p-12 hover:bg-purple-500/20 transition-colors cursor-pointer">
-        <svg class="mx-auto h-12 w-12 text-purple-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        <span class="text-purple-100 font-medium text-lg">사진 앨범 열기</span>
-        <input type="file" id="photo" accept="image/*" class="hidden">
-      </label>
+    <!-- ============================================================== -->
+    <!-- [STATE 2] WAITING IN LINE (다음 순서 대기 중)                    -->
+    <!-- ============================================================== -->
+    <div id="view-waiting-line" class="hidden py-8">
+      <div class="relative w-16 h-16 mx-auto mb-4 rounded-full bg-indigo-500/20 border-2 border-indigo-400 flex items-center justify-center">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-40"></span>
+        <span class="text-3xl">🚶‍♂️</span>
+      </div>
+      <h2 class="text-2xl font-black mb-2 text-white">다음 차례로 예약되었습니다!</h2>
+      <p class="text-gray-300 text-sm leading-relaxed mb-4">
+        앞 관람객의 촬영이 마무리되는 중입니다.<br>
+        포토존 앞으로 천천히 이동해 준비해주세요.
+      </p>
+      <div class="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 text-xs text-indigo-300 font-medium">
+        잠시 후 화면이 자동으로 촬영 모드로 전환됩니다.
+      </div>
     </div>
 
-    <!-- 크롭 화면 -->
-    <div id="step-2" class="hidden">
-      <h2 class="text-base font-bold mb-2">원하는 영역을 선택하세요</h2>
-      <div class="bg-black/50 rounded-xl overflow-hidden mb-4 border border-white/10 flex items-center justify-center" style="height: 60vh; width: 100%;">
+    <!-- ============================================================== -->
+    <!-- [STATE 3] 촬영 준비 화면 (Step 0 & Step 1 통합)                 -->
+    <!-- ============================================================== -->
+    <div id="view-capture">
+      <div class="mb-4">
+        <span class="text-xs font-black tracking-widest text-indigo-400 uppercase bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+          COSMIC MOSAIC
+        </span>
+      </div>
+      <h1 class="text-2xl font-black text-white tracking-tight mb-2">
+        얼굴 셀카를 찍어주세요 📸
+      </h1>
+      <p class="text-xs text-slate-300 mb-6 leading-relaxed">
+        스크린의 2단계 포토스팟에 서서<br>얼굴이 잘 보이게 셀카를 촬영해주세요.
+      </p>
+
+      <!-- 셀카 전용 촬영 버튼 (갤러리 선택 없음) -->
+      <label class="block w-full border-2 border-dashed border-indigo-500/50 rounded-2xl p-8 hover:bg-indigo-500/10 transition-colors cursor-pointer mb-4">
+        <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-indigo-600/30 border border-indigo-400/50 flex items-center justify-center">
+          <svg class="w-8 h-8 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <span class="text-white font-black text-lg block mb-1">카메라로 셀카 찍기</span>
+        <span class="text-xs text-indigo-300">터치하면 전면 카메라가 실행됩니다</span>
+        <!-- 전면 카메라 capture="user" 지정 -->
+        <input type="file" id="photoInput" accept="image/*" capture="user" class="hidden">
+      </label>
+
+      <p class="text-[11px] text-slate-400">
+        ※ 촬영된 사진은 모자이크 생성 직후 안전하게 폐기됩니다.
+      </p>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- [STATE 4] 크롭 & 영역 선택 화면                                  -->
+    <!-- ============================================================== -->
+    <div id="view-crop" class="hidden">
+      <h2 class="text-base font-bold mb-2 text-white">얼굴 영역을 맞춰주세요</h2>
+      <div class="bg-black/80 rounded-2xl overflow-hidden mb-4 border border-white/10 flex items-center justify-center" style="height: 55vh; width: 100%;">
         <img id="image-to-crop" src="" style="max-width: 100%; max-height: 100%; display: block;">
       </div>
-      <div class="flex gap-3">
-        <button id="cancelBtn" class="flex-1 bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-bold">취소</button>
-        <button id="cropBtn" class="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 py-3 rounded-xl font-bold shadow-lg">이대로 전송🚀</button>
+      <div class="flex gap-2.5">
+        <button id="cancelCropBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 py-3.5 rounded-xl font-bold text-sm">다시 찍기</button>
+        <button id="submitCropBtn" class="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 py-3.5 rounded-xl font-bold text-sm shadow-lg">모자이크 만들기 🚀</button>
       </div>
     </div>
 
-    <!-- 로딩 화면 (해커톤 스타일 터미널 로그) -->
-    <div id="step-3" class="hidden py-4 text-left">
-      <h3 class="text-xl font-bold text-indigo-400 mb-3 flex items-center">
-        <span class="animate-spin mr-2">⚙️</span> 연산 중...
-      </h3>
-      
-      <div id="terminalLog" class="bg-black/80 rounded-xl p-4 font-mono text-xs text-green-400 h-48 overflow-y-auto border border-green-500/30 shadow-inner mb-4">
-        <div>> 시스템 초기화 완료</div>
-        <div>> 업로드된 이미지 분석 중...</div>
+    <!-- ============================================================== -->
+    <!-- [STATE 5] 연산 중 로딩 화면                                      -->
+    <!-- ============================================================== -->
+    <div id="view-processing" class="hidden py-6 text-left">
+      <div class="flex items-center gap-2.5 mb-3">
+        <span class="animate-spin text-xl">⚙️</span>
+        <h3 class="text-lg font-black text-white" id="procHeader">우주 모자이크 생성 중...</h3>
       </div>
-      
-      <!-- 진행률 -->
+
+      <div id="terminalLog" class="bg-black/90 rounded-2xl p-4 font-mono text-xs text-emerald-400 h-44 overflow-y-auto border border-emerald-500/30 shadow-inner mb-4 leading-relaxed">
+        <div>> 셀카 이미지 분석 완료</div>
+        <div>> 수천 장의 우주 타일 매칭 시작...</div>
+      </div>
+
       <div class="progress-bar-bg mb-2">
-        <div id="progressFill" class="progress-bar-fill transition-all duration-300" style="width: 0%;"></div>
+        <div id="procFill" class="progress-bar-fill" style="width: 0%;"></div>
+      </div>
+      <p id="procSubNotice" class="text-center text-xs text-slate-400 mt-3 font-medium">
+        잠시만 기다려주세요 (약 5~10초 소요)
+      </p>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- [STATE 6] DECISION (1회차 완료 즉시 10초 컨티뉴 결정 모달)          -->
+    <!-- ============================================================== -->
+    <div id="view-decision" class="hidden py-4">
+      <div class="w-full rounded-2xl overflow-hidden mb-4 border border-white/15 shadow-xl bg-black max-h-56 flex items-center justify-center">
+        <img id="decisionPhotoPreview" src="" alt="1회차 모자이크" class="w-full h-full object-contain">
+      </div>
+
+      <div class="p-4 rounded-2xl bg-indigo-950/50 border border-indigo-500/30 mb-5">
+        <h3 class="text-lg font-black text-white mb-1">한 번 더 찍으시겠어요?</h3>
+        <p class="text-xs text-indigo-200 mb-2">마지막 1회 보너스 기회가 남아있습니다.</p>
+        <div class="flex justify-between items-center text-xs font-bold text-amber-300">
+          <span>⏱ 미응답 시 자동 저장으로 이동</span>
+          <span id="decisionTimerText" class="font-mono text-base font-black">10s</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2.5">
+        <button id="decisionRetryBtn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-base shadow-lg transition-all">
+          🔁 네, 한 번 더 찍을게요 (보너스)
+        </button>
+        <button id="decisionFinishBtn" class="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all border border-white/10">
+          아니요, 완료할게요
+        </button>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-3">
+        ※ 2회차 보너스 사진은 대형 스크린에 8초간 전시됩니다.
+      </p>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- [STATE 7] 최종 다운로드 화면 (단독 or 듀얼 저장)                    -->
+    <!-- ============================================================== -->
+    <div id="view-download" class="hidden py-4">
+      <div class="text-center mb-4">
+        <span class="text-3xl block mb-1">🎉</span>
+        <h2 class="text-2xl font-black text-white" id="downloadTitle">모자이크 완성!</h2>
+        <p class="text-xs text-slate-300 mt-1" id="downloadSubtitle">나만의 우주 모자이크 작품을 저장하세요.</p>
+      </div>
+
+      <!-- 듀얼 or 단일 사진 컨테이너 -->
+      <div id="downloadCardsContainer" class="flex flex-col gap-3 mb-5 max-h-[48vh] overflow-y-auto pr-1">
+        <!-- 동적으로 카드 삽입 -->
+      </div>
+
+      <!-- 70대 어르신 배려 직관 저장 완료 배너 -->
+      <div class="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-bold mb-4 leading-relaxed">
+        ✅ 저장이 완료되었습니다!<br>
+        내 휴대폰의 <span class="text-white underline">[사진 / 갤러리 앱]</span>을 열어 확인하세요.
+      </div>
+
+      <!-- iOS 사파리 롱프레스 팁 접이식 안내 -->
+      <p class="text-[11px] text-slate-400 mb-4 leading-relaxed">
+        (아이폰 안내) 저장이 안 될 경우, 사진을 2초간 길게 눌러 <span class="text-indigo-300 font-bold">[사진에 저장]</span>을 누르세요.
+      </p>
+
+      <button id="finalFinishBtn" class="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-colors border border-white/10">
+        체험 마치기 (닫기)
+      </button>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- [STATE 8] 2회차 실패 시 1회차 구제 비상 화면                        -->
+    <!-- ============================================================== -->
+    <div id="view-failure-rescue" class="hidden py-6">
+      <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-rose-500/20 border-2 border-rose-500/40 flex items-center justify-center">
+        <span class="text-2xl">⚠️</span>
+      </div>
+      <h3 class="text-xl font-black text-white mb-2">사진 처리 중 문제가 생겼습니다</h3>
+      <p class="text-xs text-slate-300 leading-relaxed mb-6">
+        2회차 사진 처리에 실패했습니다.<br>기회는 차감되지 않았으니 다시 찍으시거나,<br>
+        소중한 1회차 사진을 안전하게 저장하고 마칠 수 있습니다.
+      </p>
+      <div class="flex flex-col gap-2.5">
+        <button id="rescueRetryBtn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black text-sm">
+          다시 촬영하기
+        </button>
+        <button id="rescueKeepFirstBtn" class="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-sm">
+          1회차 사진만 저장하고 끝내기 💾
+        </button>
       </div>
     </div>
 
-      <!-- step-4가 원래 여기 있었으나, backdrop-filter 버그 방지를 위해 밖으로 빼냈습니다. -->
-    </div>
   </div>
 
-  <!-- 완료 화면 (풀스크린 캔버스 애니메이션) -->
-  <div id="step-4" class="hidden fixed inset-0 z-50 bg-black flex flex-col p-4 sm:p-8">
-    <div class="text-center mb-4 pt-8">
-      <h3 class="text-3xl font-extrabold text-green-400 mb-2">모자이크 완성! ✨</h3>
-      <p class="text-gray-300 text-base">수천 장의 별빛으로 그려진 당신의 우주입니다.</p>
-    </div>
-    
-    <div id="resultCanvasContainer" class="flex-1 w-full relative rounded-2xl overflow-hidden shadow-2xl border border-white/20 mb-8 bg-slate-900 flex items-center justify-center">
-      <!-- 캔버스와 롱프레스용 이미지 겹치기 -->
-      <canvas id="resultCanvas" class="absolute w-full h-full object-contain pointer-events-none"></canvas>
-      <img id="resultImageLayer" src="" class="absolute w-full h-full object-contain opacity-0 transition-opacity duration-1000 z-10" alt="완성된 모자이크">
-      <div id="particleOverlayStep4" class="absolute inset-0 pointer-events-none z-0"></div>
-    </div>
-    
-    <div class="flex flex-col gap-3 pb-safe max-w-lg mx-auto w-full">
-      <button id="downloadBtn" class="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 py-4 rounded-xl font-bold shadow-[0_0_15px_rgba(37,99,235,0.5)] text-center text-lg">내 사진 저장하기 💾</button>
-      <button onclick="location.reload()" class="w-full bg-white/10 hover:bg-white/20 py-4 rounded-xl font-bold text-lg">다른 사진 해보기</button>
-    </div>
-  </div>
-
-  <!-- 커스텀 알림 모달 (카카오톡 내장 브라우저 alert 무시 대비) -->
-  <div id="customAlertModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-opacity opacity-0">
-    <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl p-6 w-full max-w-sm transform scale-95 transition-transform duration-300">
-      <div class="flex items-center justify-center w-12 h-12 mx-auto mb-4 bg-blue-500/20 rounded-full">
-        <span class="text-2xl">ℹ️</span>
-      </div>
-      <p id="customAlertMessage" class="text-white text-center whitespace-pre-line text-sm leading-relaxed mb-6"></p>
-      <button onclick="closeCustomAlert()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-colors">
+  <!-- 커스텀 알림 모달 -->
+  <div id="customAlertModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl p-6 w-full max-w-xs text-center">
+      <p id="customAlertMessage" class="text-white text-sm leading-relaxed mb-5 whitespace-pre-line"></p>
+      <button onclick="closeCustomAlert()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-sm">
         확인
       </button>
     </div>
   </div>
 
   <script>
-    function showCustomAlert(message) {
-      const modal = document.getElementById('customAlertModal');
-      document.getElementById('customAlertMessage').innerText = message;
-      modal.classList.remove('hidden');
-      // 트랜지션 애니메이션 적용
-      requestAnimationFrame(() => {
-        modal.classList.remove('opacity-0');
-        modal.firstElementChild.classList.remove('scale-95');
-        modal.firstElementChild.classList.add('scale-100');
+    // ===== URL 파라미터 파싱 =====
+    const urlParams = new URLSearchParams(window.location.search);
+    const gateTokenFromUrl = urlParams.get('gateToken') || '';
+
+    // ===== 상태 변수 =====
+    let socket = null;
+    let sessionToken = null;
+    let sessionId = null;
+    let currentShot = 1;
+    let shotCount = 0;
+    let allRecords = [];
+    let cropper = null;
+    let entryTimerInterval = null;
+    let decisionTimerInterval = null;
+
+    // 뷰 요소들
+    const viewBusy = document.getElementById('view-busy');
+    const viewWaitingLine = document.getElementById('view-waiting-line');
+    const viewCapture = document.getElementById('view-capture');
+    const viewCrop = document.getElementById('view-crop');
+    const viewProcessing = document.getElementById('view-processing');
+    const viewDecision = document.getElementById('view-decision');
+    const viewDownload = document.getElementById('view-download');
+    const viewFailureRescue = document.getElementById('view-failure-rescue');
+    const reconnectBanner = document.getElementById('reconnectBanner');
+    const entryTimerContainer = document.getElementById('entryTimerContainer');
+    const entryTimerText = document.getElementById('entryTimerText');
+    const entryTimerBar = document.getElementById('entryTimerBar');
+
+    function hideAllViews() {
+      [viewBusy, viewWaitingLine, viewCapture, viewCrop, viewProcessing, viewDecision, viewDownload, viewFailureRescue].forEach(v => {
+        if (v) v.classList.add('hidden');
       });
     }
 
-    function closeCustomAlert() {
-      const modal = document.getElementById('customAlertModal');
-      modal.classList.add('opacity-0');
-      modal.firstElementChild.classList.remove('scale-100');
-      modal.firstElementChild.classList.add('scale-95');
-      setTimeout(() => {
-        modal.classList.add('hidden');
-      }, 300);
+    function showView(viewElement) {
+      hideAllViews();
+      if (viewElement) viewElement.classList.remove('hidden');
     }
 
+    function showCustomAlert(msg) {
+      document.getElementById('customAlertMessage').innerText = msg;
+      document.getElementById('customAlertModal').classList.remove('hidden');
+    }
 
-    const step0 = document.getElementById('step-0');
-    const startBtn = document.getElementById('startBtn');
-    const step1 = document.getElementById('step-1');
-    const step2 = document.getElementById('step-2');
-    const step3 = document.getElementById('step-3');
-    const step4 = document.getElementById('step-4');
+    function closeCustomAlert() {
+      document.getElementById('customAlertModal').classList.add('hidden');
+    }
 
-    // 시작 화면 전환
-    startBtn.addEventListener('click', () => {
-      step0.classList.add('hidden');
-      step1.classList.remove('hidden');
-    });
+    // ===== 1. 소켓 및 세션 초기화 =====
+    function initApp() {
+      // 1) 로컬 스토리지에 이미 완성된 모자이크 사진이 있는지 확인
+      // "5분 세션과 사진 다운로드 권한은 로컬스토리지에 보존하여 다운로드는 영구 허용,
+      // 촬영/슬롯 재진입은 차단하여 포토존 회전율 완벽 방어"
+      const savedRecordsJson = localStorage.getItem('mosaic_saved_records');
+      const lockUntil = localStorage.getItem('mosaic_lock_until');
 
-    const photoInput = document.getElementById('photo');
+      if (savedRecordsJson) {
+        try {
+          const savedRecords = JSON.parse(savedRecordsJson);
+          if (Array.isArray(savedRecords) && savedRecords.length > 0) {
+            sessionToken = localStorage.getItem('mosaic_saved_session') || '';
+            console.log('📦 로컬스토리지에서 완성된 모자이크 사진 복원:', savedRecords);
+            showFinalDownloadView(savedRecords, true);
+            return;
+          }
+        } catch (e) {
+          console.warn('저장된 사진 파싱 실패:', e);
+        }
+      }
+
+      // 2) 완성된 사진이 없는데 락만 걸려 있는 경우
+      if (lockUntil && Date.now() < parseInt(lockUntil, 10)) {
+        const remainingMin = Math.ceil((parseInt(lockUntil, 10) - Date.now()) / 60000);
+        showView(viewBusy);
+        viewBusy.querySelector('h2').textContent = '체험 완료 안내';
+        viewBusy.querySelector('p').innerHTML = `체험 횟수를 모두 사용했습니다.<br><span class="text-amber-300 font-bold">${remainingMin}분 후</span> 다시 참여할 수 있습니다.`;
+        return;
+      }
+
+      socket = io();
+
+      socket.on('connect', () => {
+        console.log('🔌 소켓 연결 완료:', socket.id);
+        if (reconnectBanner) reconnectBanner.classList.add('hidden');
+
+        // 기존 sessionToken이 있으면 재연결 시도
+        if (sessionToken) {
+          socket.emit('reconnect_session', { sessionToken }, (res) => {
+            if (res && res.success) {
+              console.log('🔄 세션 복원 성공:', res);
+              if (res.completedResult) {
+                renderCompletedResult(res.completedResult, res.allRecords);
+              }
+            }
+          });
+        } else {
+          // 신규 게이트 토큰으로 슬롯 claim
+          claimSlot(gateTokenFromUrl);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        if (reconnectBanner) reconnectBanner.classList.remove('hidden');
+      });
+
+      // B 승격 신호 수신
+      socket.on('photozone_ready', (data) => {
+        console.log('🎉 포토존 승격 수신:', data);
+        showView(viewCapture);
+        startEntryTimer();
+      });
+
+      // 진행률 이벤트 수신
+      socket.on('mosaic_progress', (data) => {
+        const procFill = document.getElementById('procFill');
+        const terminalLog = document.getElementById('terminalLog');
+        if (procFill && data.percent !== undefined) procFill.style.width = data.percent + '%';
+        if (terminalLog && data.message) {
+          const div = document.createElement('div');
+          div.textContent = `> ${data.message}`;
+          terminalLog.appendChild(div);
+          terminalLog.scrollTop = terminalLog.scrollHeight;
+        }
+      });
+
+      // 처리 실패 이벤트 수신
+      socket.on('processing_failed', (data) => {
+        console.warn('⚠️ 처리 실패 수신:', data);
+        if (data.hasFirstShot) {
+          showView(viewFailureRescue);
+        } else {
+          showCustomAlert(data.message || '사진 처리에 실패했습니다. 다시 촬영해주세요.');
+          showView(viewCapture);
+          startEntryTimer();
+        }
+      });
+
+      // 세션 타임아웃 만료
+      socket.on('session_aborted', (data) => {
+        showCustomAlert(data.message || '시간이 초과되어 세션이 종료되었습니다.');
+        location.reload();
+      });
+    }
+
+    // ===== 2. 슬롯 Claim =====
+    async function claimSlot(gateToken) {
+      try {
+        const res = await fetch('/api/upload/claim-slot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gateToken, socketId: socket ? socket.id : null })
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          showView(viewBusy);
+          return;
+        }
+
+        sessionToken = data.sessionToken;
+        sessionId = data.sessionId;
+
+        if (socket && sessionId) {
+          socket.emit('join_session', sessionId);
+        }
+
+        if (data.isImmediate) {
+          showView(viewCapture);
+          startEntryTimer();
+        } else {
+          showView(viewWaitingLine);
+        }
+      } catch (e) {
+        console.error('슬롯 요청 실패:', e);
+        showView(viewBusy);
+      }
+    }
+
+    // ===== 3. 진입 방치 30초 타이머 =====
+    function startEntryTimer() {
+      stopEntryTimer();
+      if (entryTimerContainer) entryTimerContainer.classList.remove('hidden');
+
+      let remaining = 30;
+      if (entryTimerText) entryTimerText.textContent = remaining + 's';
+      if (entryTimerBar) entryTimerBar.style.width = '100%';
+
+      entryTimerInterval = setInterval(() => {
+        remaining--;
+        if (entryTimerText) entryTimerText.textContent = remaining + 's';
+        if (entryTimerBar) entryTimerBar.style.width = ((remaining / 30) * 100) + '%';
+
+        if (remaining <= 0) {
+          stopEntryTimer();
+          showCustomAlert('촬영 시작 시간이 초과되었습니다.');
+          location.reload();
+        }
+      }, 1000);
+    }
+
+    function stopEntryTimer() {
+      if (entryTimerInterval) {
+        clearInterval(entryTimerInterval);
+        entryTimerInterval = null;
+      }
+      if (entryTimerContainer) entryTimerContainer.classList.add('hidden');
+    }
+
+    // ===== 4. 카메라 촬영 및 파일 수신 =====
+    const photoInput = document.getElementById('photoInput');
     const imageToCrop = document.getElementById('image-to-crop');
-    const cancelBtn = document.getElementById('cancelBtn');
-    const cropBtn = document.getElementById('cropBtn');
-    
-    // 진행 UI 요소
-    const progressFill = document.getElementById('progressFill');
-    
-    let cropper = null;
-    let socket = null;
-    let currentSessionId = null;
-    let lastSnapshotImg = null;
+    const cancelCropBtn = document.getElementById('cancelCropBtn');
+    const submitCropBtn = document.getElementById('submitCropBtn');
 
     photoInput.addEventListener('change', (e) => {
       const files = e.target.files;
       if (files && files.length > 0) {
+        // 촬영 시작 신호 -> 서버의 30초 진입 타이머 즉시 취소!
+        stopEntryTimer();
+        if (socket && sessionToken) {
+          socket.emit('start_capture', { sessionToken });
+        }
+
         const file = files[0];
         imageToCrop.src = URL.createObjectURL(file);
-        
-        step1.classList.add('hidden');
-        step2.classList.remove('hidden');
-        document.body.classList.add('cropping');
+        showView(viewCrop);
 
-        if(cropper) cropper.destroy();
+        if (cropper) cropper.destroy();
         cropper = new Cropper(imageToCrop, {
-          viewMode: 1,                 // 크롭 상자가 이미지를 벗어나지 않도록 제한
-          dragMode: 'none',            // 배경 사진 자체는 드래그되지 않도록 고정
-          zoomable: false,             // 확대/축소 비활성화 (무조건 화면에 꽉 차게 고정)
+          viewMode: 1,
+          dragMode: 'none',
+          zoomable: false,
           autoCropArea: 0.9,
           restore: false,
           guides: true,
           center: true,
           highlight: false,
-          cropBoxMovable: true,        // 크롭 상자 위치 이동 가능
-          cropBoxResizable: true,      // 크기 조절 가능
-          toggleDragModeOnDblclick: false,
-          minCropBoxWidth: 50,
-          minCropBoxHeight: 50,
+          cropBoxMovable: true,
+          cropBoxResizable: true,
+          minCropBoxWidth: 60,
+          minCropBoxHeight: 60,
         });
       }
     });
 
-    cancelBtn.addEventListener('click', () => {
-      step2.classList.add('hidden');
-      step1.classList.remove('hidden');
-      document.body.classList.remove('cropping');
+    cancelCropBtn.addEventListener('click', () => {
+      showView(viewCapture);
       photoInput.value = '';
+      startEntryTimer();
     });
 
-    // Socket.io 연결 및 진행 상황 수신 설정
-    function setupProgressSocket() {
-      currentSessionId = 'upload_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
-      
-      if (!socket) {
-        socket = io();
-      }
-      socket.emit('join_session', currentSessionId);
-      
-      // 진행 상황 수신
-      socket.off('mosaic_progress'); // 기존 리스너 제거
-      socket.on('mosaic_progress', (data) => {
-        // 진행률 바 업데이트 (워커에서 10% 단위로 전송)
-        if (data.percent !== undefined) {
-          progressFill.style.width = data.percent + '%';
-        }
-        
-        const terminalLog = document.getElementById('terminalLog');
-        const addLog = (msg, isDetail = false) => {
-          const div = document.createElement('div');
-          div.textContent = `> ${msg}`;
-          if (isDetail) div.className = 'text-gray-500 ml-4';
-          terminalLog.appendChild(div);
-          terminalLog.scrollTop = terminalLog.scrollHeight;
-        };
-        
-        switch (data.phase) {
-          case 'matching':
-            addLog(data.message || `타일 매칭 중... [${data.cols || '?'}x${data.rows || '?'}]`);
-            break;
-            
-          case 'caching':
-            addLog(data.message || '타일 이미지 로딩 중...', true);
-            break;
-            
-          case 'compositing':
-            addLog(data.message || '캔버스 합성 중...', true);
-            break;
-
-          case 'blending':
-            addLog(data.message || '블렌딩 처리 중...', true);
-            break;
-            
-          case 'done':
-            addLog('모자이크 렌더링 완료. 전송 중...', false);
-            progressFill.style.width = '100%';
-            
-            // 캔버스 애니메이션용 메타데이터 저장
-            window.mosaicInfo = {
-              width: data.width,
-              height: data.height,
-              tileSize: data.tileSize
-            };
-            break;
-        }
-      });
-      
-      return currentSessionId;
-    }
-    
-
-    cropBtn.addEventListener('click', () => {
+    // ===== 5. 크롭 확인 및 모자이크 생성 요청 =====
+    submitCropBtn.addEventListener('click', () => {
       if (!cropper) return;
+      submitCropBtn.disabled = true; // 더블클릭 연타 방지
 
-      step2.classList.add('hidden');
-      step3.classList.remove('hidden');
-      document.body.classList.remove('cropping');
-      
-      // 진행률 초기화
-      progressFill.style.width = '0%';
+      showView(viewProcessing);
+      const procFill = document.getElementById('procFill');
       const terminalLog = document.getElementById('terminalLog');
-      terminalLog.innerHTML = '<div>> 시스템 초기화 완료</div><div>> 업로드된 이미지 전송 중...</div>';
-      
-      // Socket.io 연결 및 세션 참가
-      const sessionId = setupProgressSocket();
+      if (procFill) procFill.style.width = '0%';
+      if (terminalLog) terminalLog.innerHTML = '<div>> 시스템 연결 완료</div><div>> 셀카 이미지 전송 중...</div>';
 
-      const cvs = cropper.getCroppedCanvas({
-        maxWidth: 4096,
-        maxHeight: 4096,
-      });
-
+      const cvs = cropper.getCroppedCanvas({ maxWidth: 2048, maxHeight: 2048 });
       if (!cvs) {
-        photoInput.value = ''; // 초기화
-        showCustomAlert('사진이 너무 작습니다. 최소 100x100px 이상의 이미지를 업로드해주세요.');
-        step3.classList.add('hidden');
-        step2.classList.remove('hidden');
+        showCustomAlert('이미지 크롭에 실패했습니다. 다시 촬영해주세요.');
+        submitCropBtn.disabled = false;
+        showView(viewCapture);
         return;
       }
 
       cvs.toBlob(async (blob) => {
         const formData = new FormData();
-        formData.append('photo', blob, 'user_cropped.jpg');
+        formData.append('photo', blob, 'selfie.jpg');
 
         try {
-          // sessionId를 query parameter로 전달
-          const res = await fetch(`/api/upload?sessionId=${encodeURIComponent(sessionId)}`, {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 35000); // 35초 클라이언트 타임아웃
+
+          const res = await fetch(`/api/upload?sessionToken=${encodeURIComponent(sessionToken)}`, {
             method: 'POST',
-            body: formData
+            body: formData,
+            signal: controller.signal
           });
+          clearTimeout(timeoutId);
+
           const data = await res.json();
-          
-          if(data.success) {
-            // 이미지 다운로드 대기 중임을 터미널에 표시
-            const term = document.getElementById('terminalLog');
-            if(term) {
-              const msg = document.createElement('div');
-              msg.innerHTML = '<span class="text-yellow-400">> 최종 이미지 다운로드 중... (데이터 크기에 따라 1~3초 소요)</span>';
-              term.appendChild(msg);
-              term.scrollTop = term.scrollHeight;
-            }
+          submitCropBtn.disabled = false;
 
-            // 캔버스 애니메이션 준비
-            const img = new Image();
-            img.onload = () => {
-              // 다운로드 완료 후 화면 전환
-              step3.classList.add('hidden');
-              step4.classList.remove('hidden');
-              
-              const info = window.mosaicInfo || { width: 1440, height: 1440, tileSize: 20 };
-              startUploadFlyInAnimation(img, info.width, info.height, info.tileSize);
-            };
-            img.src = data.imageUrl;
-            
-            
-            // iOS/카카오 호환 다운로드 버튼 설정
-            const dlBtn = document.getElementById('downloadBtn');
-            dlBtn.onclick = () => {
-              const ua = navigator.userAgent.toLowerCase();
-              const isKakao = ua.includes('kakaotalk');
-              const isInsta = ua.includes('instagram');
-              const isIOS = /ipad|iphone|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-              // 1. 카카오톡/인스타그램 등 인앱 브라우저 (가장 악질적인 차단 환경)
-              if (isKakao || isInsta) {
-                showCustomAlert("카카오톡/인스타 내장 브라우저에서는 파일 다운로드가 완전히 차단되어 있습니다.\n\n해결 방법 2가지:\n1. 화면 중앙의 완성된 사진을 꾹~ 눌러서 '이미지 저장' 선택\n2. 화면 우측 하단/상단 메뉴(⋮)를 눌러 '다른 브라우저로 열기(Safari/Chrome)' 선택 후 다운로드");
-                return; // 인앱 브라우저는 여기서 중단시켜 무의미한 에러 방지
-              }
-
-              // 2. iOS Safari (다운로드 시 '파일' 앱으로 들어가버리는 문제 해결)
-              if (isIOS) {
-                showCustomAlert("아이폰(Safari)은 보안상 사진첩 자동 저장이 제한됩니다.\n새 창으로 사진이 열리면, 사진을 '꾹' 눌러서 [사진 앱에 저장]을 선택해주세요!");
-                window.open(data.imageUrl, '_blank');
-                return;
-              }
-
-              // 3. 일반 안드로이드 / PC 브라우저 (정상 다운로드 동작)
-              const a = document.createElement('a');
-              a.href = data.imageUrl;
-              a.download = 'cosmic_mosaic.jpg';
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            };
+          if (data.success) {
+            shotCount = data.shotCount || shotCount + 1;
+            allRecords = data.allRecords || [];
+            renderCompletedResult(data.imageUrl, allRecords);
           } else {
-            showCustomAlert('오류: ' + data.error);
-            step1.classList.remove('hidden');
+            showCustomAlert('오류: ' + (data.error || '처리에 실패했습니다.'));
+            showView(viewCapture);
           }
-        } catch(e) {
-          showCustomAlert('서버와 통신할 수 없습니다.');
-          location.reload();
+        } catch (err) {
+          submitCropBtn.disabled = false;
+          console.error('업로드 실패:', err);
+          showCustomAlert('전송에 실패했습니다. 네트워크 상태를 확인 후 다시 시도해주세요.');
+          showView(viewCapture);
         }
       }, 'image/jpeg', 0.9);
     });
 
-    // 고품질 타일 비행 애니메이션 (모바일 최적화 버전)
-    function startUploadFlyInAnimation(img, width, height, tileSize) {
-      const cvs = document.getElementById('resultCanvas');
-      const ctx = cvs.getContext('2d');
-      const imgLayer = document.getElementById('resultImageLayer');
-      
-      // 모바일 사파리 등에서 14000px 이미지를 매 프레임 조각내서 그리면 뻗습니다.
-      // 1. 애니메이션용 저해상도 오프스크린 캔버스 생성 (최대 1000px)
-      const maxAnimSize = 1000;
-      let animScale = 1;
-      if (width > maxAnimSize || height > maxAnimSize) {
-        animScale = maxAnimSize / Math.max(width, height);
+    // ===== 6. 결과 렌더링 & 컨티뉴 분기 =====
+    function renderCompletedResult(latestUrl, records) {
+      // 1회차 성공 시 -> DECISION 화면 (다운로드 버튼 숨기고 10초 선택 집중)
+      if (shotCount === 1) {
+        document.getElementById('decisionPhotoPreview').src = latestUrl;
+        showView(viewDecision);
+        startDecisionTimer();
+      } else {
+        // 2회차까지 완료 -> DOWNLOAD_DUAL 화면
+        showFinalDownloadView(records);
       }
-      
-      const animW = Math.floor(width * animScale);
-      const animH = Math.floor(height * animScale);
-      
-      const offCanvas = document.createElement('canvas');
-      offCanvas.width = animW;
-      offCanvas.height = animH;
-      const offCtx = offCanvas.getContext('2d');
-      offCtx.drawImage(img, 0, 0, animW, animH); // 딱 1번만 리사이즈해서 그림
-      
-      // 화면용 캔버스 설정
-      cvs.width = animW;
-      cvs.height = animH;
-      ctx.clearRect(0, 0, animW, animH);
-      
-      // 2. 고도의 최적화를 적용하여 32x32 (1024개) 조각으로 분할
-      const cols = 32;
-      const rows = 32;
-      const chunkW = Math.floor(animW / cols);
-      const chunkH = Math.floor(animH / rows);
-      
-      const chunks = [];
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          chunks.push({
-            c, r,
-            x: c * chunkW,
-            y: r * chunkH,
-            // 화면 밖 랜덤한 좌표에서 시작 (우주에서 날아오는 느낌)
-            startX: (Math.random() - 0.5) * animW * 3,
-            startY: (Math.random() - 0.5) * animH * 3 + animH,
-            scale: Math.random() * 2 + 0.5,
-            opacity: 0,
-            rotation: (Math.random() - 0.5) * Math.PI * 2
-          });
-        }
-      }
-
-      // 🎬 마블 시네마틱 스타일 지수 가속 커브 (딱... 딱... 딱딱딱딱... 타다다다다닥!)
-      const shuffledIndices = Array.from({ length: chunks.length }, (_, i) => i).sort(() => Math.random() - 0.5);
-      const totalLaunchWindow = 3.0; // 전체 조각 출발 윈도우 (3초)
-
-      shuffledIndices.forEach((chunkIdx, order) => {
-        const normalized = order / (chunks.length - 1); // 0.0 ~ 1.0
-        // Power 2.8 지수 가속: 초반엔 1~2개씩 천천히, 후반엔 수백 개가 폭풍처럼 쏟아짐
-        chunks[chunkIdx].customDelay = Math.pow(normalized, 2.8) * totalLaunchWindow;
-        // 초반 조각은 더 우아하게, 후반 조각은 날렵하게 안착
-        chunks[chunkIdx].flyDuration = 1.6 + (1 - normalized) * 0.7;
-      });
-
-      // 3. 초고속 렌더 루프 (Canvas state 변경 최소화 + 정수 좌표 렌더링)
-      const halfW = chunkW / 2;
-      const halfH = chunkH / 2;
-      
-      function render() {
-        // 매 프레임 시작 시 transform 초기화 상태에서 clearRect 실행
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.clearRect(0, 0, animW, animH);
-        
-        let lastAlpha = -1;
-        
-        for (const ch of chunks) {
-          if (ch.opacity <= 0) continue;
-          
-          // Alpha 상태 변경을 최소화하기 위한 캐싱 (소수점 1자리로 그룹화)
-          const currentAlpha = Math.round(ch.opacity * 10) / 10;
-          if (lastAlpha !== currentAlpha) {
-            ctx.globalAlpha = currentAlpha;
-            lastAlpha = currentAlpha;
-          }
-          
-          // 비트연산(|0)으로 소수점을 버려 Sub-pixel 렌더링 부하 완벽 제거
-          const cx = (ch.x + halfW) | 0;
-          const cy = (ch.y + halfH) | 0;
-          
-          // 수학적 변환(setTransform) 적용
-          const cos = Math.cos(ch.rotation) * ch.scale;
-          const sin = Math.sin(ch.rotation) * ch.scale;
-          ctx.setTransform(cos, sin, -sin, cos, cx, cy);
-          
-          ctx.drawImage(offCanvas, 
-            ch.c * chunkW, ch.r * chunkH, chunkW, chunkH,
-            -halfW | 0, -halfH | 0, chunkW, chunkH
-          );
-        }
-        
-        // 마지막에 globalAlpha 리셋
-        ctx.globalAlpha = 1;
-      }
-
-      gsap.ticker.add(render);
-
-      gsap.fromTo(chunks, {
-        x: (i, ch) => ch.startX,
-        y: (i, ch) => ch.startY
-      }, {
-        x: (i, ch) => ch.c * chunkW,
-        y: (i, ch) => ch.r * chunkH,
-        scale: 1,
-        opacity: 1,
-        rotation: 0,
-        duration: (i, ch) => ch.flyDuration,
-        delay: (i, ch) => ch.customDelay,
-        ease: 'power3.out',
-        onComplete: () => {
-          gsap.ticker.remove(render);
-          // 최종본 깔끔하게 마무리 렌더링
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
-          ctx.globalAlpha = 1;
-          ctx.drawImage(offCanvas, 0, 0, animW, animH);
-          
-          // 5. 애니메이션이 끝난 후, 고해상도 원본 <img> 태그를 오버레이 페이드인 (저장용)
-          imgLayer.src = img.src;
-          imgLayer.classList.remove('opacity-0');
-        }
-      });
-      
-      // 배경 캔버스 자체 부유 효과 (천천히 등장)
-      gsap.fromTo(cvs, 
-        { scale: 0.9, opacity: 0 }, 
-        { scale: 1, opacity: 1, duration: 3, ease: 'power2.out' }
-      );
     }
+
+    // 10초 컨티뉴 카운트다운
+    function startDecisionTimer() {
+      let remaining = 10;
+      const decisionTimerText = document.getElementById('decisionTimerText');
+      if (decisionTimerText) decisionTimerText.textContent = remaining + 's';
+
+      decisionTimerInterval = setInterval(() => {
+        remaining--;
+        if (decisionTimerText) decisionTimerText.textContent = remaining + 's';
+
+        if (remaining <= 0) {
+          clearInterval(decisionTimerInterval);
+          // 10초 미응답 -> 1회차 다운로드 화면으로 자동 전환
+          proceedToDownloadOnly();
+        }
+      }, 1000);
+    }
+
+    function stopDecisionTimer() {
+      if (decisionTimerInterval) {
+        clearInterval(decisionTimerInterval);
+        decisionTimerInterval = null;
+      }
+    }
+
+    // [🔁 네, 한 번 더 찍을게요 (보너스)]
+    document.getElementById('decisionRetryBtn').addEventListener('click', async () => {
+      stopDecisionTimer();
+      currentShot = 2;
+      try {
+        await fetch('/api/upload/decision-choice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionToken, choice: 'retry' })
+        });
+        showView(viewCapture);
+        viewCapture.querySelector('h1').textContent = '마지막 보너스 셀카 📸';
+        photoInput.value = '';
+      } catch (e) {
+        console.error(e);
+      }
+    });
+
+    // [아니요, 완료할게요]
+    document.getElementById('decisionFinishBtn').addEventListener('click', () => {
+      stopDecisionTimer();
+      proceedToDownloadOnly();
+    });
+
+    async function proceedToDownloadOnly() {
+      try {
+        const res = await fetch('/api/upload/finish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionToken })
+        });
+        const data = await res.json();
+        showFinalDownloadView(data.allRecords || allRecords);
+      } catch (e) {
+        showFinalDownloadView(allRecords);
+      }
+    }
+
+    // ===== 7. 최종 다운로드 뷰 렌더링 =====
+    function showFinalDownloadView(records, isRestored = false) {
+      showView(viewDownload);
+      const container = document.getElementById('downloadCardsContainer');
+      container.innerHTML = '';
+
+      if (!records || records.length === 0) {
+        records = [{ shotNumber: 1, resultUrl: document.getElementById('decisionPhotoPreview')?.src }];
+      }
+      allRecords = records;
+
+      // 1) 로컬스토리지에 완성작 및 세션 영구 보존 (창을 닫아도, 5분이 지나도 다운로드 영구 허용)
+      try {
+        localStorage.setItem('mosaic_saved_records', JSON.stringify(records));
+        if (sessionToken) {
+          localStorage.setItem('mosaic_saved_session', sessionToken);
+        }
+        if (!localStorage.getItem('mosaic_lock_until')) {
+          localStorage.setItem('mosaic_lock_until', Date.now() + 15 * 60 * 1000);
+        }
+      } catch (e) {
+        console.warn('로컬스토리지 저장 실패:', e);
+      }
+
+      // 2) 타이틀 및 안내 문구 설정
+      const titleEl = document.getElementById('downloadTitle');
+      const subEl = document.getElementById('downloadSubtitle');
+      if (isRestored) {
+        if (titleEl) titleEl.textContent = '내 우주 모자이크 🌌';
+        if (subEl) subEl.innerHTML = '완성된 모자이크 사진입니다. 언제든 기기에 다운로드하실 수 있습니다.<br><span class="text-amber-300 font-bold">🔒 현재 포토존 촬영은 완료되었습니다.</span>';
+      } else {
+        if (titleEl) titleEl.textContent = '모자이크 완성! 🎉';
+        if (subEl) subEl.textContent = '나만의 우주 모자이크 작품을 저장하세요.';
+      }
+
+      // 3) 다운로드 카드 렌더링
+      records.forEach((rec, idx) => {
+        const card = document.createElement('div');
+        card.className = 'flex items-center gap-3 p-3 rounded-2xl bg-black/60 border border-white/10';
+        card.innerHTML = `
+          <img src="${rec.resultUrl}" class="w-20 h-20 rounded-xl object-contain bg-black border border-white/10 flex-shrink-0" alt="사진">
+          <div class="flex-1 text-left">
+            <h4 class="text-sm font-black text-white">${rec.shotNumber || idx + 1}회차 모자이크</h4>
+            <p class="text-[11px] text-slate-400 mb-2">고해상도 원본 이미지</p>
+            <button onclick="downloadImage('${rec.resultUrl}', 'mosaic_${rec.shotNumber || idx + 1}.jpg', ${rec.shotNumber || idx + 1})" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md">
+              💾 사진 저장하기
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // 4) 포토존 재진입 차단 & 15분 경과 후 신규 체험 초기화 버튼
+      const lockUntil = localStorage.getItem('mosaic_lock_until');
+      const isLocked = lockUntil && Date.now() < parseInt(lockUntil, 10);
+      let lockNotice = document.getElementById('downloadLockNotice');
+      if (!lockNotice) {
+        lockNotice = document.createElement('div');
+        lockNotice.id = 'downloadLockNotice';
+        container.parentNode.insertBefore(lockNotice, container.nextSibling);
+      }
+
+      if (isLocked) {
+        const remainingMin = Math.ceil((parseInt(lockUntil, 10) - Date.now()) / 60000);
+        lockNotice.innerHTML = `
+          <div class="p-3 mb-3 rounded-xl bg-slate-800/80 border border-slate-700 text-[11px] text-slate-300 text-center">
+            🔒 다음 참여는 <span class="text-amber-300 font-bold">${remainingMin}분 후</span>에 가능합니다.<br>
+            사진 저장은 지금 바로 다운로드 버튼을 눌러주세요.
+          </div>
+        `;
+      } else {
+        lockNotice.innerHTML = `
+          <button id="resetExperienceBtn" class="w-full mb-3 py-2.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/40 text-xs font-bold transition-colors">
+            ✨ 새로운 셀카 체험 시작하기 (초기화)
+          </button>
+        `;
+        const resetBtn = document.getElementById('resetExperienceBtn');
+        if (resetBtn) {
+          resetBtn.onclick = () => {
+            if (confirm('새로운 셀카 체험을 시작하시겠습니까?\n기존 사진 저장을 모두 마치셨는지 확인해주세요!')) {
+              localStorage.removeItem('mosaic_saved_records');
+              localStorage.removeItem('mosaic_saved_session');
+              localStorage.removeItem('mosaic_lock_until');
+              location.reload();
+            }
+          };
+        }
+      }
+    }
+
+    // 이미지 다운로드 핸들러
+    window.downloadImage = function(url, filename, shotNumber = 1) {
+      const ua = navigator.userAgent.toLowerCase();
+      const isIOS = /ipad|iphone|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      // 서버에 다운로드 감사 로그 전송 (현재 세션 토큰 또는 복원된 세션 토큰)
+      const token = sessionToken || localStorage.getItem('mosaic_saved_session') || '';
+      if (token) {
+        fetch('/api/upload/record-download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionToken: token,
+            shotNumber: shotNumber,
+            filename: filename
+          })
+        }).catch(e => console.warn('다운로드 로깅 전송 실패:', e));
+      }
+
+      // Web Share API 지원 시 우선 시도
+      if (navigator.share) {
+        fetch(url)
+          .then(res => res.blob())
+          .then(blob => {
+            const file = new File([blob], filename, { type: 'image/jpeg' });
+            return navigator.share({
+              files: [file],
+              title: '나의 우주 모자이크',
+              text: '코즈믹 모자이크 셀카 작품입니다!'
+            });
+          })
+          .catch(() => fallbackDownload(url, filename, isIOS));
+      } else {
+        fallbackDownload(url, filename, isIOS);
+      }
+    };
+
+    function fallbackDownload(url, filename, isIOS) {
+      if (isIOS) {
+        window.open(url, '_blank');
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    }
+
+    // [체험 마치기] 버튼
+    document.getElementById('finalFinishBtn').addEventListener('click', () => {
+      showCustomAlert('체험이 완료되었습니다.\n사진 저장은 이 화면에서 언제든 가능합니다.\n(창을 닫으셔도 됩니다)');
+    });
+
+    // 2회차 실패 구제 버튼 핸들러
+    document.getElementById('rescueRetryBtn').addEventListener('click', () => {
+      showView(viewCapture);
+      photoInput.value = '';
+    });
+    document.getElementById('rescueKeepFirstBtn').addEventListener('click', () => {
+      proceedToDownloadOnly();
+    });
+
+    // 시작
+    initApp();
   </script>
 </body>
 </html>

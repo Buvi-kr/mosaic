@@ -62,6 +62,7 @@ data/tileDB.json
 cloudflared.exe
 node-*.msi
 dist/
+scratch/
 *.zip
 *.msi
 *.tar.gz
