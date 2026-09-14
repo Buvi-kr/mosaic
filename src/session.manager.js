@@ -282,11 +282,11 @@ class SessionManager {
       this.rotateGateToken();
       this.broadcastGateState();
 
-      // 모바일 즉시 DECISION_1 진입: 10초 컨티뉴 카운트다운 가동
+      // 모바일 즉시 DECISION_1 진입: 20초 컨티뉴 카운트다운 가동 (사진 로딩 및 어르신 관람객 2배 여유 시간 보장)
       session.state = 'DECISION_1';
-      this.setDecisionTimer(session, 10000, () => {
-        console.log(`[세션] 10초 컨티뉴 결정 미응답 -> 1회차 다운로드로 자동 전환: ${session.sessionId}`);
-        sessionLogger.recordDecision(session.sessionId, 'TIMEOUT', 10);
+      this.setDecisionTimer(session, 20000, () => {
+        console.log(`[세션] 20초 컨티뉴 결정 미응답 -> 1회차 다운로드로 자동 전환: ${session.sessionId}`);
+        sessionLogger.recordDecision(session.sessionId, 'TIMEOUT', 20);
         this.finishExperience(sessionToken, 'TIMEOUT');
       });
     } else {

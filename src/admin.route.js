@@ -189,6 +189,8 @@ router.post('/config', async (req, res) => {
   console.log(` - 현재 테마: ${newConfig.currentTheme}`);
   console.log(` - 타일 중복 제한: ${newConfig.maxTileUsage}회`);
   console.log(` - Ban Radius: ${newConfig.banRadius}`);
+  console.log(` - 1차 전시 시간: ${newConfig.displayShowcaseDuration}초`);
+  console.log(` - 2차 재도전 전시 시간: ${newConfig.displayRetryDuration}초`);
   console.log('======================================================\n');
 
   // Socket.io로 설정 변경 알림

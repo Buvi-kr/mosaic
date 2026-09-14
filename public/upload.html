@@ -23,17 +23,33 @@
       backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.12);
     }
-    .cropper-container { max-height: 60vh; }
+    .cropper-container { max-height: 52vh; }
     .cropper-view-box {
       outline: 2px solid #818cf8 !important;
-      outline-color: rgba(129, 140, 248, 0.9) !important;
+      outline-color: rgba(129, 140, 248, 0.95) !important;
     }
-    .cropper-point {
-      width: 14px !important;
-      height: 14px !important;
+    .cropper-line {
       background-color: #818cf8 !important;
-      border-radius: 50% !important;
+      opacity: 0.3 !important;
     }
+    /* 8방향 리사이즈 핸들 확대 및 정확한 터치 오프셋 (-10px) */
+    .cropper-point {
+      width: 20px !important;
+      height: 20px !important;
+      background-color: #ffffff !important;
+      border: 3px solid #6366f1 !important;
+      border-radius: 50% !important;
+      box-shadow: 0 0 6px rgba(0,0,0,0.6) !important;
+      opacity: 0.95 !important;
+    }
+    .cropper-point.point-e { margin-top: -10px !important; right: -10px !important; }
+    .cropper-point.point-w { margin-top: -10px !important; left: -10px !important; }
+    .cropper-point.point-s { margin-left: -10px !important; bottom: -10px !important; }
+    .cropper-point.point-n { margin-left: -10px !important; top: -10px !important; }
+    .cropper-point.point-ne { top: -10px !important; right: -10px !important; }
+    .cropper-point.point-nw { top: -10px !important; left: -10px !important; }
+    .cropper-point.point-se { bottom: -10px !important; right: -10px !important; }
+    .cropper-point.point-sw { bottom: -10px !important; left: -10px !important; }
     .progress-bar-bg {
       background: rgba(255,255,255,0.08);
       border-radius: 100px;
@@ -51,7 +67,7 @@
 <body class="min-h-screen flex items-center justify-center p-4">
 
   <!-- 메인 모바일 컨테이너 -->
-  <div class="glass w-full max-w-md rounded-3xl p-5 shadow-2xl text-center relative overflow-hidden">
+  <div class="glass w-full max-w-md rounded-3xl p-4 sm:p-5 shadow-2xl text-center relative max-h-[96vh] overflow-y-auto">
     
     <!-- 상단 상태 & 재연결 알림 배너 -->
     <div id="reconnectBanner" class="hidden mb-3 py-1.5 px-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold animate-pulse">
@@ -144,13 +160,31 @@
     <!-- [STATE 4] 크롭 & 영역 선택 화면                                  -->
     <!-- ============================================================== -->
     <div id="view-crop" class="hidden">
-      <h2 class="text-base font-bold mb-2 text-white">얼굴 영역을 맞춰주세요</h2>
-      <div class="bg-black/80 rounded-2xl overflow-hidden mb-4 border border-white/10 flex items-center justify-center" style="height: 55vh; width: 100%;">
+      <h2 class="text-base font-bold mb-1 text-white">얼굴 영역을 맞춰주세요</h2>
+      <p class="text-[11px] text-slate-300 mb-2">모서리 점을 당겨 크기를 조절하거나 두 손가락으로 확대/축소하세요.</p>
+
+      <!-- 줌 & 회전 조작 툴바 (Issue 7) -->
+      <div class="flex items-center justify-center gap-2 mb-2">
+        <button type="button" id="cropZoomInBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center gap-1">
+          🔍+ 확대
+        </button>
+        <button type="button" id="cropZoomOutBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center gap-1">
+          🔍- 축소
+        </button>
+        <button type="button" id="cropRotateBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center gap-1">
+          🔄 회전
+        </button>
+        <button type="button" id="cropResetBtn" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center gap-1">
+          ⟲ 초기화
+        </button>
+      </div>
+
+      <div class="bg-black/80 rounded-2xl overflow-hidden mb-3 border border-white/10 flex items-center justify-center" style="height: 48vh; max-height: 380px; width: 100%;">
         <img id="image-to-crop" src="" style="max-width: 100%; max-height: 100%; display: block;">
       </div>
       <div class="flex gap-2.5">
-        <button id="cancelCropBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 py-3.5 rounded-xl font-bold text-sm">다시 찍기</button>
-        <button id="submitCropBtn" class="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 py-3.5 rounded-xl font-bold text-sm shadow-lg">모자이크 만들기 🚀</button>
+        <button id="cancelCropBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 py-3 rounded-xl font-bold text-sm">다시 찍기</button>
+        <button id="submitCropBtn" class="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 py-3 rounded-xl font-bold text-sm shadow-lg">모자이크 만들기 🚀</button>
       </div>
     </div>
 
@@ -177,31 +211,32 @@
     </div>
 
     <!-- ============================================================== -->
-    <!-- [STATE 6] DECISION (1회차 완료 즉시 10초 컨티뉴 결정 모달)          -->
+    <!-- [STATE 6] DECISION (1회차 완료 즉시 20초 컨티뉴 결정 모달)          -->
     <!-- ============================================================== -->
-    <div id="view-decision" class="hidden py-4">
-      <div class="w-full rounded-2xl overflow-hidden mb-4 border border-white/15 shadow-xl bg-black max-h-56 flex items-center justify-center">
+    <div id="view-decision" class="hidden py-2">
+      <!-- 사진 미리보기: 높이를 반응형으로 제어하여 버튼 밀림 방지 (Issue 5) -->
+      <div class="w-full rounded-2xl overflow-hidden mb-3 border border-white/15 shadow-xl bg-black h-[30vh] max-h-60 min-h-[160px] flex items-center justify-center">
         <img id="decisionPhotoPreview" src="" alt="1회차 모자이크" class="w-full h-full object-contain">
       </div>
 
-      <div class="p-4 rounded-2xl bg-indigo-950/50 border border-indigo-500/30 mb-5">
-        <h3 class="text-lg font-black text-white mb-1">한 번 더 찍으시겠어요?</h3>
-        <p class="text-xs text-indigo-200 mb-2">마지막 1회 보너스 기회가 남아있습니다.</p>
+      <div class="p-3 rounded-xl bg-indigo-950/50 border border-indigo-500/30 mb-3">
+        <h3 class="text-base font-black text-white mb-0.5">한 번 더 찍으시겠어요?</h3>
+        <p class="text-xs text-indigo-200 mb-1.5">마지막 1회 보너스 기회가 남아있습니다.</p>
         <div class="flex justify-between items-center text-xs font-bold text-amber-300">
-          <span>⏱ 미응답 시 자동 저장으로 이동</span>
-          <span id="decisionTimerText" class="font-mono text-base font-black">10s</span>
+          <span>⏱ 미응답 시 자동 저장 이동</span>
+          <span id="decisionTimerText" class="font-mono text-base font-black">20s</span>
         </div>
       </div>
 
-      <div class="flex flex-col gap-2.5">
-        <button id="decisionRetryBtn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-base shadow-lg transition-all">
+      <div class="flex flex-col gap-2">
+        <button id="decisionRetryBtn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black text-sm shadow-lg transition-all">
           🔁 네, 한 번 더 찍을게요 (보너스)
         </button>
-        <button id="decisionFinishBtn" class="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all border border-white/10">
+        <button id="decisionFinishBtn" class="w-full py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all border border-white/10">
           아니요, 완료할게요
         </button>
       </div>
-      <p class="text-[11px] text-slate-400 mt-3">
+      <p class="text-[10px] text-slate-400 mt-2">
         ※ 2회차 보너스 사진은 대형 스크린에 8초간 전시됩니다.
       </p>
     </div>
@@ -209,26 +244,31 @@
     <!-- ============================================================== -->
     <!-- [STATE 7] 최종 다운로드 화면 (단독 or 듀얼 저장)                    -->
     <!-- ============================================================== -->
-    <div id="view-download" class="hidden py-4">
-      <div class="text-center mb-4">
+    <div id="view-download" class="hidden py-3">
+      <div class="text-center mb-3">
         <span class="text-3xl block mb-1">🎉</span>
         <h2 class="text-2xl font-black text-white" id="downloadTitle">모자이크 완성!</h2>
         <p class="text-xs text-slate-300 mt-1" id="downloadSubtitle">나만의 우주 모자이크 작품을 저장하세요.</p>
       </div>
 
       <!-- 듀얼 or 단일 사진 컨테이너 -->
-      <div id="downloadCardsContainer" class="flex flex-col gap-3 mb-5 max-h-[48vh] overflow-y-auto pr-1">
+      <div id="downloadCardsContainer" class="flex flex-col gap-3 mb-4 max-h-[48vh] overflow-y-auto pr-1">
         <!-- 동적으로 카드 삽입 -->
       </div>
 
-      <!-- 70대 어르신 배려 직관 저장 완료 배너 -->
-      <div class="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-bold mb-4 leading-relaxed">
-        ✅ 저장이 완료되었습니다!<br>
-        내 휴대폰의 <span class="text-white underline">[사진 / 갤러리 앱]</span>을 열어 확인하세요.
+      <!-- 저장 전 안내 배너 (Issue 4 해결) -->
+      <div id="downloadGuideBanner" class="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-indigo-200 text-xs font-bold mb-3 leading-relaxed">
+        💾 아래 <span class="text-white underline font-extrabold">[사진 저장하기]</span> 버튼을 눌러 기기에 저장하세요.
+      </div>
+
+      <!-- 실제 다운로드 버튼 클릭 시에만 표시되는 저장 완료 배너 (Issue 4 해결) -->
+      <div id="downloadSuccessBanner" class="hidden p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/50 text-emerald-300 text-xs font-bold mb-3 leading-relaxed">
+        ✅ 사진 저장이 진행되었습니다!<br>
+        내 휴대폰의 <span class="text-white underline font-extrabold">[사진 / 갤러리 앱 또는 다운로드]</span>를 확인하세요.
       </div>
 
       <!-- iOS 사파리 롱프레스 팁 접이식 안내 -->
-      <p class="text-[11px] text-slate-400 mb-4 leading-relaxed">
+      <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
         (아이폰 안내) 저장이 안 될 경우, 사진을 2초간 길게 눌러 <span class="text-indigo-300 font-bold">[사진에 저장]</span>을 누르세요.
       </p>
 
@@ -502,21 +542,29 @@
 
         if (cropper) cropper.destroy();
         cropper = new Cropper(imageToCrop, {
-          viewMode: 1,
-          dragMode: 'none',
-          zoomable: false,
-          autoCropArea: 0.9,
+          viewMode: 0,
+          dragMode: 'move',
+          autoCropArea: 0.85,
           restore: false,
           guides: true,
           center: true,
           highlight: false,
           cropBoxMovable: true,
           cropBoxResizable: true,
-          minCropBoxWidth: 60,
-          minCropBoxHeight: 60,
+          zoomable: true,
+          zoomOnTouch: true,
+          zoomOnWheel: true,
+          minCropBoxWidth: 50,
+          minCropBoxHeight: 50,
         });
       }
     });
+
+    // 크롭 툴바 버튼 이벤트 (Issue 7 해결)
+    document.getElementById('cropZoomInBtn').addEventListener('click', () => { if (cropper) cropper.zoom(0.1); });
+    document.getElementById('cropZoomOutBtn').addEventListener('click', () => { if (cropper) cropper.zoom(-0.1); });
+    document.getElementById('cropRotateBtn').addEventListener('click', () => { if (cropper) cropper.rotate(90); });
+    document.getElementById('cropResetBtn').addEventListener('click', () => { if (cropper) cropper.reset(); });
 
     cancelCropBtn.addEventListener('click', () => {
       showView(viewCapture);
@@ -591,9 +639,9 @@
       }
     }
 
-    // 10초 컨티뉴 카운트다운
+    // 20초 컨티뉴 카운트다운 (Issue 3 해결)
     function startDecisionTimer() {
-      let remaining = 10;
+      let remaining = 20;
       const decisionTimerText = document.getElementById('decisionTimerText');
       if (decisionTimerText) decisionTimerText.textContent = remaining + 's';
 
@@ -603,7 +651,7 @@
 
         if (remaining <= 0) {
           clearInterval(decisionTimerInterval);
-          // 10초 미응답 -> 1회차 다운로드 화면으로 자동 전환
+          // 20초 미응답 -> 1회차 다운로드 화면으로 자동 전환
           proceedToDownloadOnly();
         }
       }, 1000);
@@ -706,9 +754,7 @@
         container.appendChild(card);
       });
 
-      // 4) 포토존 재진입 차단 & 15분 경과 후 신규 체험 초기화 버튼
-      const lockUntil = localStorage.getItem('mosaic_lock_until');
-      const isLocked = lockUntil && Date.now() < parseInt(lockUntil, 10);
+      // 4) 포토존 재진입 차단 & 안내 (Issue 6 해결: 재촬영 불가 명시하여 혼선 및 권한오류 원천 차단)
       let lockNotice = document.getElementById('downloadLockNotice');
       if (!lockNotice) {
         lockNotice = document.createElement('div');
@@ -716,36 +762,22 @@
         container.parentNode.insertBefore(lockNotice, container.nextSibling);
       }
 
-      if (isLocked) {
-        const remainingMin = Math.ceil((parseInt(lockUntil, 10) - Date.now()) / 60000);
-        lockNotice.innerHTML = `
-          <div class="p-3 mb-3 rounded-xl bg-slate-800/80 border border-slate-700 text-[11px] text-slate-300 text-center">
-            🔒 다음 참여는 <span class="text-amber-300 font-bold">${remainingMin}분 후</span>에 가능합니다.<br>
-            사진 저장은 지금 바로 다운로드 버튼을 눌러주세요.
-          </div>
-        `;
-      } else {
-        lockNotice.innerHTML = `
-          <button id="resetExperienceBtn" class="w-full mb-3 py-2.5 rounded-xl bg-indigo-950/80 hover:bg-indigo-900 text-indigo-300 border border-indigo-500/40 text-xs font-bold transition-colors">
-            ✨ 새로운 셀카 체험 시작하기 (초기화)
-          </button>
-        `;
-        const resetBtn = document.getElementById('resetExperienceBtn');
-        if (resetBtn) {
-          resetBtn.onclick = () => {
-            if (confirm('새로운 셀카 체험을 시작하시겠습니까?\n기존 사진 저장을 모두 마치셨는지 확인해주세요!')) {
-              localStorage.removeItem('mosaic_saved_records');
-              localStorage.removeItem('mosaic_saved_session');
-              localStorage.removeItem('mosaic_lock_until');
-              location.reload();
-            }
-          };
-        }
-      }
+      lockNotice.innerHTML = `
+        <div class="p-3 mb-3 rounded-xl bg-slate-800/80 border border-slate-700 text-[11px] text-slate-300 text-center leading-relaxed">
+          🔒 <span class="text-white font-bold">포토존 셀카 촬영이 완료되었습니다.</span><br>
+          <span class="text-slate-400">새로운 촬영을 원하시면 키오스크 화면의 새 QR코드를 스캔해주세요.</span>
+        </div>
+      `;
     }
 
     // 이미지 다운로드 핸들러
     window.downloadImage = function(url, filename, shotNumber = 1) {
+      // 안내 배너 전환 (Issue 4 해결: 다운로드 버튼 클릭 시에만 완료 배너 노출)
+      const guideBanner = document.getElementById('downloadGuideBanner');
+      const successBanner = document.getElementById('downloadSuccessBanner');
+      if (guideBanner) guideBanner.classList.add('hidden');
+      if (successBanner) successBanner.classList.remove('hidden');
+
       const ua = navigator.userAgent.toLowerCase();
       const isIOS = /ipad|iphone|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
