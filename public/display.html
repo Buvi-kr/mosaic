@@ -19,7 +19,7 @@
     }
     body {
       margin: 0;
-      padding: 16px;
+      padding: 10px;
       width: 100vw;
       height: 100vh;
       background-color: #000000;
@@ -36,10 +36,18 @@
     .glass-card {
       background: #0a0a0d;
       border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 26px;
+      border-radius: 22px;
       box-shadow: 0 10px 40px rgba(0, 0, 0, 0.95);
       position: relative;
       overflow: hidden;
+    }
+
+    /* 🏛️ 전시장 최외곽 샴페인 골드 앰비언트 프레임 */
+    .exhibition-outer-frame {
+      border: 3px solid #f59e0b;
+      box-shadow: 0 0 50px rgba(245, 158, 11, 0.38), 0 20px 60px rgba(0, 0, 0, 0.9), inset 0 0 35px rgba(245, 158, 11, 0.08);
+      border-radius: 24px;
+      position: relative;
     }
 
     .glass-card-glow {
@@ -173,12 +181,116 @@
       color: #ffffff;
       letter-spacing: 0.02em;
     }
+
+    /* ============================================================== */
+    /* 🏛️ Modern Hybrid Gallery Theme (가운데만 블랙 스튜디오 + 외곽 화이트 큐브) */
+    /* ============================================================== */
+    body.theme-hybrid {
+      background-color: #cbd5e1;
+      color: #0f172a;
+    }
+
+    body.theme-hybrid .exhibition-outer-frame {
+      background: #f8fafc;
+      border: 3.5px solid #d97706;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15), 0 0 45px rgba(245, 158, 11, 0.28), inset 0 0 30px rgba(245, 158, 11, 0.06);
+    }
+
+    body.theme-hybrid .glass-card {
+      background: #ffffff;
+      border: 1px solid rgba(203, 213, 225, 0.85);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.07);
+      color: #0f172a;
+    }
+
+    /* 좌측 STEP 3: 결과 감상 카드 */
+    body.theme-hybrid .panel-mosaic {
+      border: 1.5px solid rgba(16, 185, 129, 0.35);
+    }
+    body.theme-hybrid .panel-mosaic h2 {
+      color: #0f172a !important;
+    }
+    body.theme-hybrid #mosaicHeaderSubtext {
+      color: #059669 !important;
+    }
+
+    /* 📸 중앙 STEP 2: 포토존은 100% 완전 무결 트루 블랙 스튜디오 유지! */
+    body.theme-hybrid .panel-photozone {
+      background: #000000 !important;
+      border: 2px solid rgba(244, 63, 94, 0.45) !important;
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8), 0 0 35px rgba(244, 63, 94, 0.25) !important;
+      color: #ffffff !important;
+    }
+    body.theme-hybrid .panel-photozone h2 {
+      color: #ffffff !important;
+    }
+
+    /* 우측 STEP 1 Row 1: 가이드 카드 */
+    body.theme-hybrid .panel-guide {
+      border: 1.5px solid rgba(245, 158, 11, 0.35);
+    }
+    body.theme-hybrid .panel-guide h2 {
+      color: #0f172a !important;
+    }
+    body.theme-hybrid .panel-guide .guide-step-item {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+    }
+    body.theme-hybrid .panel-guide .guide-step-item .step-num {
+      background: #e0e7ff;
+      color: #4338ca;
+    }
+    body.theme-hybrid .panel-guide .guide-step-item .step-title {
+      color: #1e293b;
+    }
+    body.theme-hybrid .panel-guide .guide-step-item.active {
+      background: #eef2ff;
+      border-color: #6366f1;
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.35);
+    }
+    body.theme-hybrid .panel-guide .guide-step-item.active .step-num {
+      background: #6366f1;
+      color: #ffffff;
+    }
+    body.theme-hybrid .panel-guide .guide-step-item.active .step-title {
+      color: #312e81;
+    }
+
+    /* 우측 STEP 1 Row 2: QR 카드 */
+    body.theme-hybrid .panel-qr {
+      border: 1.5px solid rgba(99, 102, 241, 0.35);
+    }
+    body.theme-hybrid .panel-qr h2 {
+      color: #0f172a !important;
+    }
+    body.theme-hybrid #qrGuideText {
+      color: #4338ca !important;
+    }
+    body.theme-hybrid #qrSubGuide {
+      color: #475569 !important;
+    }
   </style>
 </head>
-<body>
+<body class="theme-hybrid">
 
-  <!-- 전체 화면 그리드 컨테이너 -->
-  <div class="display-grid">
+  <!-- ============================================================== -->
+  <!-- 🏛️ 전시장 최외곽 샴페인 골드 앰비언트 프레임 (Exhibition Gold Frame)  -->
+  <!-- ============================================================== -->
+  <div id="exhibitionOuterFrame" class="exhibition-outer-frame relative w-full h-full p-2.5 bg-[#05060b] overflow-hidden flex flex-col">
+    <!-- 4개 코너 골드 메탈릭 브래킷 -->
+    <div class="absolute top-1.5 left-1.5 w-7 h-7 border-t-[3.5px] border-l-[3.5px] border-amber-300 rounded-tl-md pointer-events-none z-30 filter drop-shadow-[0_0_8px_rgba(251,191,36,0.7)]"></div>
+    <div class="absolute top-1.5 right-1.5 w-7 h-7 border-t-[3.5px] border-r-[3.5px] border-amber-300 rounded-tr-md pointer-events-none z-30 filter drop-shadow-[0_0_8px_rgba(251,191,36,0.7)]"></div>
+    <div class="absolute bottom-1.5 left-1.5 w-7 h-7 border-b-[3.5px] border-l-[3.5px] border-amber-300 rounded-bl-md pointer-events-none z-30 filter drop-shadow-[0_0_8px_rgba(251,191,36,0.7)]"></div>
+    <div class="absolute bottom-1.5 right-1.5 w-7 h-7 border-b-[3.5px] border-r-[3.5px] border-amber-300 rounded-br-md pointer-events-none z-30 filter drop-shadow-[0_0_8px_rgba(251,191,36,0.7)]"></div>
+
+    <!-- 🌓 실시간 테마 토글 버튼 (화이트 갤러리 ↔ 다크 코즈믹) -->
+    <button id="themeToggleBtn" onclick="toggleDisplayTheme()" class="absolute top-3 right-6 z-40 px-3.5 py-1 rounded-full text-xs font-black transition-all flex items-center gap-1.5 shadow-lg border cursor-pointer">
+      <span id="themeToggleIcon">🏛️</span>
+      <span id="themeToggleText">갤러리 모드</span>
+    </button>
+
+    <!-- 전체 화면 그리드 컨테이너 -->
+    <div class="display-grid flex-1 h-full">
     
     <!-- ============================================================== -->
     <!-- [좌측 전체: STEP 3] 나의 우주 모자이크 완성 결과 화면                -->
@@ -405,6 +517,10 @@
     </div>
 
   </div>
+  <!-- /display-grid -->
+
+  </div>
+  <!-- /#exhibitionOuterFrame -->
 
   <script>
     // ================================================================
@@ -466,6 +582,49 @@
         if (busyBox) busyBox.classList.remove('hidden');
       }
     }
+
+    // ================================================================
+    // 🏛️ 실시간 테마 스위처 (갤러리 하이브리드 ↔ 다크 코즈믹)
+    // ================================================================
+    function toggleDisplayTheme() {
+      const isHybrid = document.body.classList.toggle('theme-hybrid');
+      localStorage.setItem('display_theme', isHybrid ? 'hybrid' : 'dark');
+      updateThemeToggleBtn(isHybrid);
+    }
+
+    function updateThemeToggleBtn(isHybrid) {
+      const btn = document.getElementById('themeToggleBtn');
+      const icon = document.getElementById('themeToggleIcon');
+      const text = document.getElementById('themeToggleText');
+      if (!btn) return;
+
+      if (isHybrid) {
+        btn.className = 'absolute top-3 right-6 z-40 px-3.5 py-1 rounded-full text-xs font-black transition-all flex items-center gap-1.5 shadow-lg border border-amber-500/50 bg-amber-50 text-amber-900 hover:bg-amber-100 cursor-pointer';
+        if (icon) icon.textContent = '🏛️';
+        if (text) text.textContent = '갤러리 모드';
+      } else {
+        btn.className = 'absolute top-3 right-6 z-40 px-3.5 py-1 rounded-full text-xs font-black transition-all flex items-center gap-1.5 shadow-lg border border-indigo-400/50 bg-indigo-950/80 text-indigo-200 hover:bg-indigo-900/80 cursor-pointer';
+        if (icon) icon.textContent = '🌌';
+        if (text) text.textContent = '다크 코즈믹';
+      }
+    }
+
+    // 초기 테마 복원 (기본값: hybrid)
+    const savedTheme = localStorage.getItem('display_theme');
+    if (savedTheme === 'dark') {
+      document.body.classList.remove('theme-hybrid');
+      updateThemeToggleBtn(false);
+    } else {
+      document.body.classList.add('theme-hybrid');
+      updateThemeToggleBtn(true);
+    }
+
+    // 'T' 키로 테마 즉시 토글
+    window.addEventListener('keydown', (e) => {
+      if ((e.key === 't' || e.key === 'T') && !e.target.matches('input, textarea')) {
+        toggleDisplayTheme();
+      }
+    });
 
     // ================================================================
     // 스마트 인체 실루엣 포토스팟 가이드 (3.5초 노출 후 100% 트루블랙 페이드아웃)
@@ -597,13 +756,19 @@
     }
 
     // 2) 데모 모자이크 순환 (가장 가볍고 깔끔한 순수 opacity 0.8s 페이드)
-    function displayDemoItem(index) {
+    function displayDemoItem(index, immediate = false) {
       if (demoMosaics.length === 0 || isShowcasingUser) return;
       currentDemoIndex = index % demoMosaics.length;
       const url = demoMosaics[currentDemoIndex];
 
       resetViewportState();
       if (newBadge) newBadge.classList.add('hidden');
+
+      if (immediate) {
+        mosaicImage.src = url;
+        mosaicImage.style.opacity = '1';
+        return;
+      }
 
       mosaicImage.style.transition = 'opacity 0.8s ease-in-out';
       mosaicImage.style.opacity = '0';
@@ -751,8 +916,8 @@
       }, 100);
     }
 
-    // 5) 초기 데모 갤러리 기동
-    displayDemoItem(0);
+    // 5) 초기 데모 갤러리 기동 (지연 없이 즉시 렌더링)
+    displayDemoItem(0, true);
     startDemoGalleryLoop();
     loadDemoMosaics();
 
