@@ -171,14 +171,29 @@ router.post('/', upload.single('photo'), async (req, res) => {
   let session = null;
   if (sessionToken) {
     session = sessionManager.getSession(sessionToken);
+    // 세션이 만료되었거나 메모리에서 정리된 경우에도 관람객 사진을 버리지 않고 안전하게 처리
     if (!session) {
-      return res.status(401).json({ error: '유효하지 않은 세션입니다. 키오스크의 QR을 다시 스캔해주세요.' });
+      console.log(`[Upload] 만료된 세션 토큰 복구 생성: ${sessionToken}`);
+      session = {
+        sessionId: `sess_${Date.now()}`,
+        sessionToken,
+        state: 'CAPTURING_1',
+        shotCount: 0,
+        currentShot: 1,
+        shotRecords: new Map(),
+        createdAt: Date.now(),
+        lastActiveAt: Date.now()
+      };
+      sessionManager.sessions.set(sessionToken, session);
     }
-    if (sessionManager.activePhotozoneToken !== sessionToken) {
-      return res.status(403).json({ error: '현재 포토존 촬영 권한이 없습니다. 순서를 기다려주세요.' });
-    }
+
     if (session.shotCount >= 2) {
-      return res.status(403).json({ error: '체험 횟수(2회)를 모두 사용했습니다. 감사합니다.' });
+      return res.json({
+        success: true,
+        message: '체험 횟수(2회)를 모두 완료했습니다.',
+        shotCount: session.shotCount,
+        allRecords: sessionManager.getAllRecords(session)
+      });
     }
 
     // 멱등성 검사 (Idempotency)

@@ -184,6 +184,12 @@
         <input type="file" id="photoInput" accept="image/*" capture="user" class="hidden">
       </label>
 
+      <!-- 2회차 보너스 모드 시 1차 사진 즉시 다운로드 바로가기 버튼 -->
+      <button id="downloadShot1EarlyBtn" type="button" class="hidden w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:opacity-95 text-white font-extrabold text-sm shadow-xl flex items-center justify-center gap-2 mb-3 active:scale-[0.98] transition-all">
+        <span>📥</span>
+        <span>1차 사진 바로 다운로드 / 종료</span>
+      </button>
+
       <p class="text-[11px] text-slate-400">
         ※ 촬영된 사진은 모자이크 생성 직후 안전하게 폐기됩니다.
       </p>
@@ -406,13 +412,15 @@
 
     // ===== 1. 소켓 및 세션 초기화 =====
     function initApp() {
-      // 로컬 키오스크에서는 연속 촬영을 위해 15분 잠금을 건너뜁니다
-      if (isLocalKiosk) {
+      // 1) 키오스크의 신규 QR을 찍고 들어온 경우 (URL에 gateToken 포함 시) 이전 잠금 해제 & 신규 참여 허용
+      const currentUrlGateToken = urlParams.get('gateToken');
+      if (currentUrlGateToken || isLocalKiosk) {
         localStorage.removeItem('mosaic_lock_until');
       }
 
-      const savedRecordsJson = !isLocalKiosk ? localStorage.getItem('mosaic_saved_records') : null;
-      const lockUntil = !isLocalKiosk ? localStorage.getItem('mosaic_lock_until') : null;
+      // 2) 신규 QR 스캔이 아닌 브라우저 단순 재방문인 경우에만 이전 완성본 복원
+      const savedRecordsJson = (!isLocalKiosk && !currentUrlGateToken) ? localStorage.getItem('mosaic_saved_records') : null;
+      const lockUntil = (!isLocalKiosk && !currentUrlGateToken) ? localStorage.getItem('mosaic_lock_until') : null;
 
       if (savedRecordsJson) {
         try {
@@ -588,26 +596,11 @@
       }
     }
 
-    // ===== 3. 진입 방치 30초 타이머 =====
+    // ===== 3. 진입 타이머 (관람객 편의를 위해 카운트다운 강제 종료 해제) =====
     function startEntryTimer() {
       stopEntryTimer();
-      if (entryTimerContainer) entryTimerContainer.classList.remove('hidden');
-
-      let remaining = 30;
-      if (entryTimerText) entryTimerText.textContent = remaining + 's';
-      if (entryTimerBar) entryTimerBar.style.width = '100%';
-
-      entryTimerInterval = setInterval(() => {
-        remaining--;
-        if (entryTimerText) entryTimerText.textContent = remaining + 's';
-        if (entryTimerBar) entryTimerBar.style.width = ((remaining / 30) * 100) + '%';
-
-        if (remaining <= 0) {
-          stopEntryTimer();
-          showCustomAlert('촬영 시작 시간이 초과되었습니다.');
-          location.reload();
-        }
-      }, 1000);
+      // 카운트다운 압박 없이 편안하게 촬영할 수 있도록 타이머 바 숨김 유지
+      if (entryTimerContainer) entryTimerContainer.classList.add('hidden');
     }
 
     function stopEntryTimer() {
@@ -726,9 +719,19 @@
 
     // ===== 6. 결과 렌더링 & 컨티뉴 분기 =====
     function renderCompletedResult(latestUrl, records) {
-      // 1회차 성공 시 -> DECISION 화면 (다운로드 버튼 숨기고 10초 선택 집중)
+      // 1회차 성공 시 -> DECISION 화면 (다운로드 버튼 숨기고 선택 집중)
       if (shotCount === 1) {
         document.getElementById('decisionPhotoPreview').src = latestUrl;
+        
+        // ★ 1차 사진 완성 즉시 로컬스토리지에 안전 백업 (도중 이탈/종료 시에도 100% 보존)
+        try {
+          const rec = [{ shotNumber: 1, resultUrl: latestUrl }];
+          localStorage.setItem('mosaic_saved_records', JSON.stringify(rec));
+          if (sessionToken) localStorage.setItem('mosaic_saved_session', sessionToken);
+        } catch (e) {
+          console.warn('1차 사진 백업 실패:', e);
+        }
+
         showView(viewDecision);
         startDecisionTimer();
       } else {
@@ -737,7 +740,7 @@
       }
     }
 
-    // 20초 컨티뉴 카운트다운 (Issue 3 해결)
+    // 20초 컨티뉴 카운트다운
     function startDecisionTimer() {
       let remaining = 20;
       const decisionTimerText = document.getElementById('decisionTimerText');
@@ -774,11 +777,23 @@
         });
         showView(viewCapture);
         viewCapture.querySelector('h1').textContent = '마지막 보너스 셀카 📸';
+        // 2회차 화면에서 언제든 1차 사진을 바로 다운로드하고 마칠 수 있는 안전 버튼 노출
+        const dlBtn = document.getElementById('downloadShot1EarlyBtn');
+        if (dlBtn) dlBtn.classList.remove('hidden');
         photoInput.value = '';
       } catch (e) {
         console.error(e);
+        proceedToDownloadOnly();
       }
     });
+
+    // 2회차 화면의 1차 사진 바로 다운로드 버튼 리스너
+    const downloadShot1EarlyBtn = document.getElementById('downloadShot1EarlyBtn');
+    if (downloadShot1EarlyBtn) {
+      downloadShot1EarlyBtn.addEventListener('click', () => {
+        proceedToDownloadOnly();
+      });
+    }
 
     // [아니요, 완료할게요]
     document.getElementById('decisionFinishBtn').addEventListener('click', () => {

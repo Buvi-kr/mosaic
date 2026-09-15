@@ -151,15 +151,25 @@ class SessionManager {
     if (!this.activePhotozoneToken) {
       this.activePhotozoneToken = sessionToken;
       session.state = 'RESERVED';
-      this.isGateOpen = false; // 촬영 완료 전까지 게이트 닫음
+      this.isGateOpen = false; // 촬영 시작 시 게이트 닫음
       this.rotateGateToken();
       this.broadcastGateState();
       this.broadcastStandGuide(3.5);
 
-      // 최초 진입 방치 30초 타이머 가동
-      this.setSessionTimer(session, 30000, () => {
-        console.log(`[세션] 진입 방치(30초) 초과: ${sessionId}`);
-        this.handleTimeout(session, 'ENTRY_TIMEOUT');
+      // 관람객이 촬영 중이어도 20초 후 다음 대기자를 위해 신규 QR 자동 개방
+      setTimeout(() => {
+        if (!this.isGateOpen) {
+          console.log(`[게이트] 20초 경과: 다음 관람객을 위해 신규 QR 자동 개방`);
+          this.isGateOpen = true;
+          this.rotateGateToken();
+          this.broadcastGateState();
+        }
+      }, 20000);
+
+      // 3분 유휴 타이머 가동 (어르신/가족 관람객이 여유롭게 촬영할 수 있도록 배려)
+      this.setSessionTimer(session, 180000, () => {
+        console.log(`[세션] 유휴 시간(3분) 초과 정리: ${sessionId}`);
+        this.handleTimeout(session, 'INACTIVITY_TIMEOUT');
       });
 
       return {
@@ -362,9 +372,9 @@ class SessionManager {
     sessionLogger.recordCaptureStart(session.sessionId, 2);
     this.broadcastStandGuide(3.5);
 
-    // 2회차 촬영 시간 60초 타이머
-    this.setSessionTimer(session, 60000, () => {
-      console.log(`[세션] 2회차 촬영 시간(60초) 초과: ${session.sessionId}`);
+    // 2회차 촬영 시간 120초(2분) 타이머 - 시간 초과 시 1차 사진 안전 다운로드로 전환
+    this.setSessionTimer(session, 120000, () => {
+      console.log(`[세션] 2회차 촬영 시간(120초) 초과: 1차 완성본 다운로드로 안전 전환 ${session.sessionId}`);
       this.finishExperience(sessionToken, 'TIMEOUT');
     });
 
@@ -428,10 +438,10 @@ class SessionManager {
       nextSession.state = 'RESERVED';
       nextSession.lastActiveAt = Date.now();
 
-      // ★ B가 진짜 승격된 이 순간부터 30초 진입 타이머 시작!
-      this.setSessionTimer(nextSession, 30000, () => {
-        console.log(`[세션] 승격 후 진입 방치(30초) 초과: ${nextSession.sessionId}`);
-        this.handleTimeout(nextSession, 'ENTRY_TIMEOUT');
+      // ★ B가 승격된 시점부터 3분 유휴 타이머 시작
+      this.setSessionTimer(nextSession, 180000, () => {
+        console.log(`[세션] 승격 후 유휴 시간(3분) 초과: ${nextSession.sessionId}`);
+        this.handleTimeout(nextSession, 'INACTIVITY_TIMEOUT');
       });
 
       // B에게 촬영 준비 완료 신호 전송
