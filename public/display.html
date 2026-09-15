@@ -251,29 +251,42 @@
         </div>
       </div>
 
-      <!-- 스마트 인체 실루엣 포토스팟 가이드 (QR 스캔 시 3.5초 노출 후 100% 트루블랙 페이드아웃) -->
-      <div id="standGuideOverlay" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-0 transition-opacity duration-700 z-20" style="visibility: hidden;">
-        <div class="flex flex-col items-center justify-center transform -translate-y-2">
-          <!-- 미려한 인체 상반신 실루엣 (사이버네틱 네온 라인아트) -->
-          <div class="relative flex items-center justify-center mb-5">
-            <svg class="w-52 h-72 lg:w-60 lg:h-88 text-indigo-400 filter drop-shadow-[0_0_30px_rgba(99,102,241,0.7)]" viewBox="0 0 100 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <!-- 머리 원형 타겟 & 크로스헤어 -->
-              <circle cx="50" cy="30" r="16" stroke="currentColor" stroke-width="2.5" stroke-dasharray="4 2" class="animate-pulse" />
-              <circle cx="50" cy="30" r="3.5" fill="#38bdf8" />
-              <line x1="50" y1="8" x2="50" y2="16" stroke="#38bdf8" stroke-width="2" />
-              <line x1="50" y1="44" x2="50" y2="52" stroke="#38bdf8" stroke-width="2" />
-              <!-- 목, 어깨, 상반신 윤곽 -->
-              <path d="M42 46 L38 58 L20 66 L12 110 L28 112 L34 82 L38 140 L62 140 L66 82 L72 112 L88 110 L80 66 L62 58 L58 46 Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" opacity="0.9" />
-              <!-- 가슴 중앙 포지셔닝 타겟 포인트 -->
-              <circle cx="50" cy="75" r="9" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3 3" />
-              <circle cx="50" cy="75" r="3" fill="#38bdf8" />
-            </svg>
-          </div>
-          <!-- 감성적인 포토스팟 안내 명판 -->
-          <div class="px-6 py-2.5 rounded-full bg-indigo-950/90 border border-indigo-400/60 shadow-[0_0_30px_rgba(99,102,241,0.55)] backdrop-blur-md flex items-center gap-2.5">
-            <span class="text-amber-300 text-lg animate-bounce">📍</span>
-            <span class="text-sm lg:text-base font-black text-white tracking-tight">가운데에 서서 셀카를 준비해주세요</span>
-          </div>
+      <!-- 스마트 인체 실루엣 포토스팟 가이드 (guide_sample_1.png 1:1 매칭 - 화면 꽉 채우는 상반신 가득 실루엣) -->
+      <div id="standGuideOverlay" class="absolute inset-0 flex flex-col items-center justify-between p-6 pt-24 pb-8 pointer-events-none opacity-0 transition-opacity duration-700 z-20" style="visibility: hidden;">
+        <!-- 상단 여백 및 중앙 대형 실루엣 뷰포트 -->
+        <div class="relative w-full flex-1 flex flex-col items-center justify-center overflow-hidden my-auto">
+          <!-- 화면 꽉 채우는 대형 실루엣 (guide_sample_1.png 디자인 1:1 완벽 구현) -->
+          <svg class="w-full h-full max-h-[68vh] xl:max-h-[72vh] text-indigo-400 filter drop-shadow-[0_0_40px_rgba(139,92,246,0.6)]" viewBox="0 0 500 650" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- 은은하게 빛나는 퍼플-인디고 네온 그라데이션 -->
+              <linearGradient id="silhouetteBorderGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#6366f1" />
+                <stop offset="45%" stop-color="#8b5cf6" />
+                <stop offset="100%" stop-color="#c084fc" />
+              </linearGradient>
+              <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#8b5cf6" flood-opacity="0.55" />
+              </filter>
+            </defs>
+            
+            <!-- 1) 대형 머리 원형 실루엣 (guide_sample_1.png 1:1 비율) -->
+            <circle cx="250" cy="205" r="105" fill="#f8fafc" stroke="url(#silhouetteBorderGrad)" stroke-width="26" filter="url(#softGlow)" />
+
+            <!-- 2) 화면 꽉 채우는 상반신/어깨 돔 실루엣 (BEST 1: 상반신 가득) -->
+            <!-- 넓이 420px (좌 40 ~ 우 460)로 화면을 가득 채우는 부드러운 호 -->
+            <path d="M 45 540 A 205 180 0 0 1 455 540 Z" fill="#f8fafc" stroke="url(#silhouetteBorderGrad)" stroke-width="26" stroke-linejoin="round" filter="url(#softGlow)" />
+
+            <!-- 3) BEST 1: 상반신 가득 네온 텍스트 -->
+            <text x="250" y="618" text-anchor="middle" fill="#38bdf8" font-size="32" font-weight="900" font-family="'Pretendard', sans-serif" letter-spacing="1.5px" filter="drop-shadow(0 0 12px rgba(56, 189, 248, 0.85))">
+              BEST 1: 상반신 가득
+            </text>
+          </svg>
+        </div>
+
+        <!-- 감성적인 포토스팟 안내 명판 -->
+        <div class="px-6 py-2.5 rounded-full bg-indigo-950/90 border border-indigo-400/60 shadow-[0_0_30px_rgba(99,102,241,0.55)] backdrop-blur-md flex items-center gap-2.5 mt-2">
+          <span class="text-amber-300 text-lg animate-bounce">📍</span>
+          <span class="text-sm lg:text-base font-black text-white tracking-tight">가운데에 서서 화면 가득 셀카를 찍어주세요</span>
         </div>
       </div>
 
@@ -460,7 +473,7 @@
     let standGuideTimeout = null;
     let standGuideFadeoutTimer = null;
 
-    function showStandGuide(durationSec = 3.5) {
+    function showStandGuide(durationSec = 4.5) {
       const overlay = document.getElementById('standGuideOverlay');
       if (!overlay) return;
 
@@ -476,13 +489,22 @@
         overlay.style.opacity = '0';
         standGuideFadeoutTimer = setTimeout(() => {
           overlay.style.visibility = 'hidden';
-        }, 750);
+        }, 800);
       }, durationSec * 1000);
+    }
+
+    // 포토존 스크린 클릭 시에도 테스트/확인용으로 실루엣 즉시 노출
+    const photozoneCardEl = document.getElementById('photozoneCard');
+    if (photozoneCardEl) {
+      photozoneCardEl.style.cursor = 'pointer';
+      photozoneCardEl.addEventListener('click', () => {
+        showStandGuide(4.5);
+      });
     }
 
     socket.on('photozone_stand_guide', (data) => {
       console.log('📍 포토존 스마트 실루엣 가이드 수신:', data);
-      showStandGuide(data && data.duration ? data.duration : 3.5);
+      showStandGuide(data && data.duration ? data.duration : 4.5);
     });
 
     // 게이트 상태 실시간 수신 및 새로고침 복구 요청
