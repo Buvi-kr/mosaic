@@ -190,10 +190,47 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);
   console.log(`- 관리자 패널: http://localhost:${PORT}/admin.html\n`);
 
-  // 백그라운드 무인 실행 모드 대응: 브라우저 자동 오픈
-  exec(`start http://localhost:${PORT}/admin.html`, (err) => {
-    if (err) console.error('[시스템] 브라우저 자동 열기 실패:', err.message);
-  });
+  // 전시장 키오스크 자동 실행: 전체화면(F11) 다중 탭 (1번 탭: admin.html, 2번 탭: upload.html 전면 활성화)
+  function launchExhibitionBrowser(port) {
+    const adminUrl = `http://localhost:${port}/admin.html`;
+    const uploadUrl = `http://localhost:${port}/upload.html`;
+
+    const chromeCandidates = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+    ];
+    const edgeCandidates = [
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    ];
+
+    let browserPath = null;
+    for (const p of chromeCandidates) {
+      if (fs.existsSync(p)) { browserPath = p; break; }
+    }
+    if (!browserPath) {
+      for (const p of edgeCandidates) {
+        if (fs.existsSync(p)) { browserPath = p; break; }
+      }
+    }
+
+    if (browserPath) {
+      console.log(`[시스템] 키오스크 전체화면(F11) 브라우저 기동: ${browserPath}`);
+      exec(`"${browserPath}" --start-fullscreen "${adminUrl}" "${uploadUrl}"`, (err) => {
+        if (err) console.error('[시스템] 브라우저 실행 실패:', err.message);
+      });
+    } else {
+      console.log('[시스템] 기본 브라우저 순차 탭 실행...');
+      exec(`start "" "${adminUrl}"`, () => {
+        setTimeout(() => {
+          exec(`start "" "${uploadUrl}"`);
+        }, 600);
+      });
+    }
+  }
+
+  launchExhibitionBrowser(PORT);
 
   // Cloudflare 터널을 Node.js의 자식 프로세스로 실행하여 생명주기를 동기화
   const exePath = path.join(__dirname, '../cloudflared.exe');

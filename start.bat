@@ -113,5 +113,10 @@ if not exist "node_modules" (
 echo ==============================================
 echo [START] Starting Reverse Cosmos Mosaic Server...
 echo ==============================================
+echo [INFO] Exhibition Mode: Chrome/Edge F11 Fullscreen with Admin & Upload Tabs.
+echo [TIP]  To start automatically on Windows boot:
+echo        1. Press Win + R, type 'shell:startup' and press Enter.
+echo        2. Create a shortcut to this start.bat in the startup folder.
+echo ==============================================
 %NODE_CMD% src/app.js
 pause

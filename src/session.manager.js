@@ -86,6 +86,12 @@ class SessionManager {
     }
   }
 
+  broadcastStandGuide(duration = 3.5) {
+    if (this.io) {
+      this.io.emit('photozone_stand_guide', { duration });
+    }
+  }
+
   getGateState() {
     return {
       isOpen: this.isGateOpen,
@@ -148,6 +154,7 @@ class SessionManager {
       this.isGateOpen = false; // 촬영 완료 전까지 게이트 닫음
       this.rotateGateToken();
       this.broadcastGateState();
+      this.broadcastStandGuide(3.5);
 
       // 최초 진입 방치 30초 타이머 가동
       this.setSessionTimer(session, 30000, () => {
@@ -353,6 +360,7 @@ class SessionManager {
 
     sessionLogger.recordDecision(session.sessionId, 'RETRY');
     sessionLogger.recordCaptureStart(session.sessionId, 2);
+    this.broadcastStandGuide(3.5);
 
     // 2회차 촬영 시간 60초 타이머
     this.setSessionTimer(session, 60000, () => {
@@ -435,6 +443,7 @@ class SessionManager {
       }
 
       this.broadcastGateState();
+      this.broadcastStandGuide(3.5);
       console.log(`[세션] 관람객 승격 완료: ${nextSession.sessionId}`);
     }, 2500);
   }

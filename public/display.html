@@ -76,11 +76,11 @@
       box-shadow: none !important;
     }
 
-    .panel-qr {
+    .panel-guide {
       grid-column: 3 / 4;
       grid-row: 1 / 2;
     }
-    .panel-guide {
+    .panel-qr {
       grid-column: 3 / 4;
       grid-row: 2 / 3;
     }
@@ -225,6 +225,9 @@
     <!-- ============================================================== -->
     <!-- [중앙 전체: 2단계] 트루 블랙 포토존 배경 스크린                       -->
     <!-- ============================================================== -->
+    <!-- ============================================================== -->
+    <!-- [중앙 전체: 2단계] 트루 블랙 포토존 배경 스크린                       -->
+    <!-- ============================================================== -->
     <div class="glass-card panel-photozone flex flex-col justify-between p-6 relative overflow-hidden bg-black" id="photozoneCard">
       <!-- 상단 헤더 & STEP 2 뱃지 (관람객 머리 위 높은 위치) -->
       <div class="relative z-10 flex items-start justify-between">
@@ -248,12 +251,84 @@
         </div>
       </div>
 
+      <!-- 스마트 인체 실루엣 포토스팟 가이드 (QR 스캔 시 3.5초 노출 후 100% 트루블랙 페이드아웃) -->
+      <div id="standGuideOverlay" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-0 transition-opacity duration-700 z-20" style="visibility: hidden;">
+        <div class="flex flex-col items-center justify-center transform -translate-y-2">
+          <!-- 미려한 인체 상반신 실루엣 (사이버네틱 네온 라인아트) -->
+          <div class="relative flex items-center justify-center mb-5">
+            <svg class="w-52 h-72 lg:w-60 lg:h-88 text-indigo-400 filter drop-shadow-[0_0_30px_rgba(99,102,241,0.7)]" viewBox="0 0 100 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- 머리 원형 타겟 & 크로스헤어 -->
+              <circle cx="50" cy="30" r="16" stroke="currentColor" stroke-width="2.5" stroke-dasharray="4 2" class="animate-pulse" />
+              <circle cx="50" cy="30" r="3.5" fill="#38bdf8" />
+              <line x1="50" y1="8" x2="50" y2="16" stroke="#38bdf8" stroke-width="2" />
+              <line x1="50" y1="44" x2="50" y2="52" stroke="#38bdf8" stroke-width="2" />
+              <!-- 목, 어깨, 상반신 윤곽 -->
+              <path d="M42 46 L38 58 L20 66 L12 110 L28 112 L34 82 L38 140 L62 140 L66 82 L72 112 L88 110 L80 66 L62 58 L58 46 Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" opacity="0.9" />
+              <!-- 가슴 중앙 포지셔닝 타겟 포인트 -->
+              <circle cx="50" cy="75" r="9" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3 3" />
+              <circle cx="50" cy="75" r="3" fill="#38bdf8" />
+            </svg>
+          </div>
+          <!-- 감성적인 포토스팟 안내 명판 -->
+          <div class="px-6 py-2.5 rounded-full bg-indigo-950/90 border border-indigo-400/60 shadow-[0_0_30px_rgba(99,102,241,0.55)] backdrop-blur-md flex items-center gap-2.5">
+            <span class="text-amber-300 text-lg animate-bounce">📍</span>
+            <span class="text-sm lg:text-base font-black text-white tracking-tight">가운데에 서서 셀카를 준비해주세요</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 중앙 및 하단: 100% 완전 무결 트루 블랙 빔 차단 구역 (얼굴 반사 및 눈부심 원천 제로) -->
       <div class="flex-1 w-full bg-black"></div>
     </div>
 
     <!-- ============================================================== -->
-    <!-- [우측 상단: 1단계] 스마트 게이트 도어 & QR 코드 스캔                 -->
+    <!-- [우측 상단: 이용 방법] 3단계 가이드 이미지 & 텍스트 동기화 (Row 1)       -->
+    <!-- ============================================================== -->
+    <div class="glass-card panel-guide flex flex-col justify-between p-6 relative overflow-hidden" id="guideCard">
+      <!-- 상단 헤더 -->
+      <div class="relative z-10 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📖</span>
+          <h2 class="text-lg lg:text-xl font-black text-white tracking-tight">이용 방법 안내</h2>
+        </div>
+        <span class="text-xs font-bold text-amber-300 bg-amber-400/15 px-3 py-1 rounded-full border border-amber-400/30">
+          3단계 쉬운 참여
+        </span>
+      </div>
+
+      <!-- 중앙 스플릿 레이아웃 (좌: 가이드 이미지 3종 순환 54%, 우: 3단계 텍스트 46%) -->
+      <div class="relative z-10 my-auto py-1 flex items-center gap-4 h-full">
+        <!-- 좌측: 가이드 이미지 순환 박스 (화면 꽉 채움) -->
+        <div class="w-[54%] h-44 lg:h-48 xl:h-52 rounded-2xl bg-black/60 border border-indigo-500/40 overflow-hidden shadow-2xl relative flex items-center justify-center">
+          <img id="guideImg" src="/guides/guide_step1_qr.png" alt="이용 안내" class="w-full h-full object-cover transition-all duration-700">
+        </div>
+
+        <!-- 우측: 3단계 텍스트 실시간 동기화 리스트 (어르신도 1초 만에 이해하는 대형 타이틀) -->
+        <div class="w-[46%] flex flex-col justify-center gap-2.5">
+          <div id="guideTextStep1" class="guide-step-item active">
+            <span class="step-num">1</span>
+            <p class="step-title">1. QR 스캔</p>
+          </div>
+          <div id="guideTextStep2" class="guide-step-item">
+            <span class="step-num">2</span>
+            <p class="step-title">2. 셀카 촬영</p>
+          </div>
+          <div id="guideTextStep3" class="guide-step-item">
+            <span class="step-num">3</span>
+            <p class="step-title">3. 모자이크 완성</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 하단 안내 문구 -->
+      <div class="relative z-10 pt-2 border-t border-white/10 flex items-center justify-between text-xs text-slate-300 font-medium">
+        <span>별도 앱 설치 없이 스마트폰으로 즉시 참여</span>
+        <span class="text-cyan-400 font-bold">30초 완성</span>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- [우측 하단: 1단계] 스마트 게이트 도어 & QR 코드 스캔 (Row 2)          -->
     <!-- ============================================================== -->
     <div class="glass-card panel-qr flex flex-col justify-between items-center p-6 text-center" id="qrCard">
       <!-- 상단 메인 타이틀 & STEP 1 뱃지 -->
@@ -316,52 +391,6 @@
       </div>
     </div>
 
-    <!-- ============================================================== -->
-    <!-- [우측 하단: 이용 방법] 3단계 가이드 이미지 & 텍스트 동기화              -->
-    <!-- ============================================================== -->
-    <div class="glass-card panel-guide flex flex-col justify-between p-6 relative overflow-hidden" id="guideCard">
-      <!-- 상단 헤더 -->
-      <div class="relative z-10 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-xl">📖</span>
-          <h2 class="text-lg lg:text-xl font-black text-white tracking-tight">이용 방법 안내</h2>
-        </div>
-        <span class="text-xs font-bold text-amber-300 bg-amber-400/15 px-3 py-1 rounded-full border border-amber-400/30">
-          3단계 쉬운 참여
-        </span>
-      </div>
-
-      <!-- 중앙 스플릿 레이아웃 (좌: 가이드 이미지 3종 순환 54%, 우: 3단계 텍스트 46%) -->
-      <div class="relative z-10 my-auto py-1 flex items-center gap-4 h-full">
-        <!-- 좌측: 가이드 이미지 순환 박스 (화면 꽉 채움) -->
-        <div class="w-[54%] h-44 lg:h-48 xl:h-52 rounded-2xl bg-black/60 border border-indigo-500/40 overflow-hidden shadow-2xl relative flex items-center justify-center">
-          <img id="guideImg" src="/guides/guide_step1_qr.png" alt="이용 안내" class="w-full h-full object-cover transition-all duration-700">
-        </div>
-
-        <!-- 우측: 3단계 텍스트 실시간 동기화 리스트 (어르신도 1초 만에 이해하는 대형 타이틀) -->
-        <div class="w-[46%] flex flex-col justify-center gap-2.5">
-          <div id="guideTextStep1" class="guide-step-item active">
-            <span class="step-num">1</span>
-            <p class="step-title">1. QR 스캔</p>
-          </div>
-          <div id="guideTextStep2" class="guide-step-item">
-            <span class="step-num">2</span>
-            <p class="step-title">2. 셀카 촬영</p>
-          </div>
-          <div id="guideTextStep3" class="guide-step-item">
-            <span class="step-num">3</span>
-            <p class="step-title">3. 모자이크 완성</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 하단 안내 문구 -->
-      <div class="relative z-10 pt-2 border-t border-white/10 flex items-center justify-between text-xs text-slate-300 font-medium">
-        <span>별도 앱 설치 없이 스마트폰으로 즉시 참여</span>
-        <span class="text-cyan-400 font-bold">30초 완성</span>
-      </div>
-    </div>
-
   </div>
 
   <script>
@@ -402,8 +431,14 @@
 
     function renderGateState(state) {
       if (!state) return;
+      const wasOpen = isGateOpen;
       isGateOpen = state.isOpen;
       currentGateToken = state.gateToken || '';
+
+      // 게이트가 열려있다가 닫히며 포토존이 점유된 경우 실루엣 가이드 즉시 발동
+      if (wasOpen && !isGateOpen && state.hasActivePhotozone) {
+        showStandGuide(3.5);
+      }
 
       const qrBox = document.getElementById('qrcode-box');
       const busyBox = document.getElementById('gateBusyBox');
@@ -418,6 +453,37 @@
         if (busyBox) busyBox.classList.remove('hidden');
       }
     }
+
+    // ================================================================
+    // 스마트 인체 실루엣 포토스팟 가이드 (3.5초 노출 후 100% 트루블랙 페이드아웃)
+    // ================================================================
+    let standGuideTimeout = null;
+    let standGuideFadeoutTimer = null;
+
+    function showStandGuide(durationSec = 3.5) {
+      const overlay = document.getElementById('standGuideOverlay');
+      if (!overlay) return;
+
+      if (standGuideTimeout) clearTimeout(standGuideTimeout);
+      if (standGuideFadeoutTimer) clearTimeout(standGuideFadeoutTimer);
+
+      overlay.style.visibility = 'visible';
+      requestAnimationFrame(() => {
+        overlay.style.opacity = '1';
+      });
+
+      standGuideTimeout = setTimeout(() => {
+        overlay.style.opacity = '0';
+        standGuideFadeoutTimer = setTimeout(() => {
+          overlay.style.visibility = 'hidden';
+        }, 750);
+      }, durationSec * 1000);
+    }
+
+    socket.on('photozone_stand_guide', (data) => {
+      console.log('📍 포토존 스마트 실루엣 가이드 수신:', data);
+      showStandGuide(data && data.duration ? data.duration : 3.5);
+    });
 
     // 게이트 상태 실시간 수신 및 새로고침 복구 요청
     socket.on('gate_state', (state) => {

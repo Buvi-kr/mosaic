@@ -18,10 +18,13 @@
       overscroll-behavior-y: none;
       font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", Pretendard, Roboto, sans-serif;
     }
-    .glass {
-      background: rgba(15, 23, 42, 0.82);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+    .glass, .exhibition-gold-frame {
+      background: rgba(10, 14, 28, 0.94);
+      backdrop-filter: blur(25px);
+      border: 2.5px solid #f59e0b;
+      box-shadow: 0 0 35px rgba(245, 158, 11, 0.35), 0 25px 60px rgba(0, 0, 0, 0.95), inset 0 0 20px rgba(251, 191, 36, 0.08);
+      border-radius: 28px;
+      position: relative;
     }
     .cropper-container { max-height: 52vh; }
     .cropper-view-box {
@@ -78,9 +81,27 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
 
-  <!-- 메인 모바일 컨테이너 -->
-  <div class="glass w-full max-w-md rounded-3xl p-4 sm:p-5 shadow-2xl text-center relative max-h-[96vh] overflow-y-auto">
+  <!-- 메인 컨테이너 (전시품 특화 골드 앰비언트 프레임) -->
+  <div class="exhibition-gold-frame w-full max-w-md p-4 sm:p-5 text-center relative max-h-[96vh] overflow-y-auto">
     
+    <!-- 4방향 갤러리 메탈릭 코너 브래킷 (전시품 고유 아이덴티티) -->
+    <div class="absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 border-amber-400 pointer-events-none rounded-tl-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+    <div class="absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 border-amber-400 pointer-events-none rounded-tr-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+    <div class="absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 border-amber-400 pointer-events-none rounded-bl-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+    <div class="absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 border-amber-400 pointer-events-none rounded-br-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+
+    <!-- 상단 툴바: 엑시비션 배지 & 전체화면 F11 버튼 -->
+    <div class="flex items-center justify-between mb-3 px-1">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 font-extrabold text-[11px] tracking-wider uppercase shadow-[0_0_15px_rgba(245,158,11,0.25)]">
+        <span>🏛️</span>
+        <span>REVERSE COSMOS EXHIBITION</span>
+      </div>
+      <button id="toggleFullscreenBtn" type="button" onclick="toggleFullscreen()" title="전체화면(F11) 전환" class="px-2.5 py-1 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-amber-400/40 text-xs font-mono font-bold flex items-center gap-1 shadow-md transition-all active:scale-95">
+        <span>⛶</span>
+        <span>F11</span>
+      </button>
+    </div>
+
     <!-- 상단 상태 & 재연결 알림 배너 -->
     <div id="reconnectBanner" class="hidden mb-3 py-1.5 px-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold animate-pulse">
       📡 네트워크 재연결 중...
@@ -226,9 +247,12 @@
     <!-- [STATE 6] DECISION (1회차 완료 즉시 20초 컨티뉴 결정 모달)          -->
     <!-- ============================================================== -->
     <div id="view-decision" class="hidden py-2">
-      <!-- 사진 미리보기: 높이를 반응형으로 제어하여 버튼 밀림 방지 (Issue 5) -->
-      <div class="w-full rounded-2xl overflow-hidden mb-3 border border-white/15 shadow-xl bg-black h-[30vh] max-h-60 min-h-[160px] flex items-center justify-center">
+      <!-- 사진 미리보기: 미술관 골드 액자 프레임 -->
+      <div class="w-full rounded-2xl overflow-hidden mb-3 bg-black border-2 border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.35)] h-[30vh] max-h-60 min-h-[160px] flex items-center justify-center relative">
         <img id="decisionPhotoPreview" src="" alt="1회차 모자이크" class="w-full h-full object-contain">
+        <div class="absolute bottom-1.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded bg-black/80 border border-amber-400/60 text-[9px] text-amber-300 font-mono font-bold tracking-wider whitespace-nowrap shadow-md">
+          🏛️ EXHIBITION PREVIEW
+        </div>
       </div>
 
       <div class="p-3 rounded-xl bg-indigo-950/50 border border-indigo-500/30 mb-3">
@@ -257,13 +281,13 @@
     <!-- [STATE 7] 최종 다운로드 화면 (내 사진 최우선 초대형 UI)              -->
     <!-- ============================================================== -->
     <div id="view-download" class="hidden py-1">
-      <!-- 컴팩트 미니멀 헤더 (군더더기 배너 및 대형 타이틀 제거) -->
+      <!-- 컴팩트 골드 헤더 -->
       <div class="flex items-center justify-between mb-2 px-1">
         <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-xs font-black tracking-wider text-indigo-300 uppercase">COSMIC MOSAIC</span>
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+          <span class="text-xs font-black tracking-wider text-amber-300 uppercase">COSMIC MOSAIC PIECE</span>
         </div>
-        <span class="text-[11px] text-slate-400 font-medium">고해상도 원본</span>
+        <span class="text-[11px] text-amber-200/70 font-medium">🏛️ 공식 전시작</span>
       </div>
 
       <!-- 초대형 사진 & 다운로드 버튼 컨테이너 (JS에서 최대 크기로 렌더링) -->
@@ -361,13 +385,34 @@
       document.getElementById('customAlertModal').classList.add('hidden');
     }
 
+    const isLocalKiosk = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.warn('전체화면 전환 오류:', err);
+        });
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+    }
+
+    // 첫 사용자 터치 시 전체화면 시도 (키오스크 환경)
+    document.addEventListener('click', () => {
+      if (isLocalKiosk && !document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    }, { once: true });
+
     // ===== 1. 소켓 및 세션 초기화 =====
     function initApp() {
-      // 1) 로컬 스토리지에 이미 완성된 모자이크 사진이 있는지 확인
-      // "5분 세션과 사진 다운로드 권한은 로컬스토리지에 보존하여 다운로드는 영구 허용,
-      // 촬영/슬롯 재진입은 차단하여 포토존 회전율 완벽 방어"
-      const savedRecordsJson = localStorage.getItem('mosaic_saved_records');
-      const lockUntil = localStorage.getItem('mosaic_lock_until');
+      // 로컬 키오스크에서는 연속 촬영을 위해 15분 잠금을 건너뜁니다
+      if (isLocalKiosk) {
+        localStorage.removeItem('mosaic_lock_until');
+      }
+
+      const savedRecordsJson = !isLocalKiosk ? localStorage.getItem('mosaic_saved_records') : null;
+      const lockUntil = !isLocalKiosk ? localStorage.getItem('mosaic_lock_until') : null;
 
       if (savedRecordsJson) {
         try {
@@ -406,16 +451,28 @@
               if (res.completedResult) {
                 renderCompletedResult(res.completedResult, res.allRecords);
               }
+            } else {
+              sessionToken = null;
+              initSlotClaim();
             }
           });
         } else {
-          // 신규 게이트 토큰으로 슬롯 claim
-          claimSlot(gateTokenFromUrl);
+          initSlotClaim();
         }
       });
 
       socket.on('disconnect', () => {
         if (reconnectBanner) reconnectBanner.classList.remove('hidden');
+      });
+
+      // 게이트가 열렸을 때 현재 대기 상태라면 자동 슬롯 점유 재시도
+      socket.on('gate_state', (state) => {
+        if (state && state.isOpen && !sessionToken) {
+          if (!viewBusy.classList.contains('hidden') || !viewWaitingLine.classList.contains('hidden')) {
+            console.log('🚪 게이트 OPEN 감지: 슬롯 자동 점유 재시도');
+            initSlotClaim();
+          }
+        }
       });
 
       // B 승격 신호 수신
@@ -457,7 +514,47 @@
       });
     }
 
-    // ===== 2. 슬롯 Claim =====
+    // ===== 2. 슬롯 자동 조회 및 Claim =====
+    async function initSlotClaim() {
+      let token = gateTokenFromUrl;
+      if (!token) {
+        try {
+          const res = await fetch('/api/upload/gate-state');
+          const state = await res.json();
+          if (state && state.isOpen && state.gateToken) {
+            token = state.gateToken;
+            console.log('🚪 활성 게이트 토큰 자동 취득:', token);
+          }
+        } catch (e) {
+          console.warn('게이트 상태 확인 실패:', e);
+        }
+      }
+      claimSlot(token);
+    }
+
+    let kioskResetTimer = null;
+
+    function startNextVisitorKiosk() {
+      if (kioskResetTimer) {
+        clearTimeout(kioskResetTimer);
+        kioskResetTimer = null;
+      }
+      localStorage.removeItem('mosaic_saved_records');
+      localStorage.removeItem('mosaic_saved_session');
+      localStorage.removeItem('mosaic_lock_until');
+      sessionToken = null;
+      sessionId = null;
+      currentShot = 1;
+      shotCount = 0;
+      allRecords = [];
+      const pInput = document.getElementById('photoInput');
+      if (pInput) pInput.value = '';
+      stopEntryTimer();
+      stopDecisionTimer();
+      console.log('🔄 키오스크: 다음 관람객 세션 준비');
+      initSlotClaim();
+    }
+
     async function claimSlot(gateToken) {
       try {
         const res = await fetch('/api/upload/claim-slot', {
@@ -718,33 +815,42 @@
       allRecords = records;
       currentDualRecords = records;
 
-      // 1) 로컬스토리지에 완성작 및 세션 영구 보존
-      try {
-        localStorage.setItem('mosaic_saved_records', JSON.stringify(records));
-        if (sessionToken) {
-          localStorage.setItem('mosaic_saved_session', sessionToken);
+      // 1) 로컬스토리지 보존 (일반 모바일 관람객만 15분 잠금)
+      if (!isLocalKiosk) {
+        try {
+          localStorage.setItem('mosaic_saved_records', JSON.stringify(records));
+          if (sessionToken) {
+            localStorage.setItem('mosaic_saved_session', sessionToken);
+          }
+          if (!localStorage.getItem('mosaic_lock_until')) {
+            localStorage.setItem('mosaic_lock_until', Date.now() + 15 * 60 * 1000);
+          }
+        } catch (e) {
+          console.warn('로컬스토리지 저장 실패:', e);
         }
-        if (!localStorage.getItem('mosaic_lock_until')) {
-          localStorage.setItem('mosaic_lock_until', Date.now() + 15 * 60 * 1000);
-        }
-      } catch (e) {
-        console.warn('로컬스토리지 저장 실패:', e);
       }
 
-      // 2) 1개 사진 (단독) vs 2개 사진 (듀얼) 초대형 렌더링
+      // 2) 1개 사진 (단독) vs 2개 사진 (듀얼) 미술관 골드 액자 렌더링
       if (records.length === 1) {
         const rec = records[0];
         container.innerHTML = `
-          <div class="relative w-full rounded-2xl overflow-hidden bg-black border border-white/20 shadow-2xl mb-3 flex items-center justify-center" style="height: 56vh; max-height: 480px; min-height: 260px;">
+          <div class="relative w-full rounded-2xl overflow-hidden bg-black border-[2.5px] border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.4)] mb-3 flex items-center justify-center" style="height: 56vh; max-height: 480px; min-height: 260px;">
             <img src="${rec.resultUrl}" class="w-full h-full object-contain" alt="모자이크 사진">
+            <div class="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-md bg-black/80 border border-amber-400/70 text-[10px] text-amber-300 font-mono font-bold tracking-wider whitespace-nowrap backdrop-blur-sm shadow-lg">
+              🏛️ EXHIBITION PIECE 2026
+            </div>
           </div>
-          <button onclick="downloadImage('${rec.resultUrl}', 'mosaic_shot1.jpg', 1, this)" class="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-black text-base shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+          <button onclick="downloadImage('${rec.resultUrl}', 'mosaic_shot1.jpg', 1, this)" class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-black text-base shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
             <span class="text-xl">💾</span>
-            <span>사진 바로 다운로드 (내 폰에 저장)</span>
+            <span>사진 바로 다운로드 (내 기기에 저장)</span>
+          </button>
+          <button id="nextVisitorBtn" onclick="startNextVisitorKiosk()" class="w-full mt-2.5 py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-400/50 font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]">
+            <span class="text-base">✨</span>
+            <span>다음 관람객 촬영 시작 (새 세션)</span>
           </button>
         `;
       } else {
-        // 2회차 보너스까지 완료된 경우: 상단 탭 + 초대형 단일 뷰어
+        // 2회차 보너스까지 완료된 경우: 상단 탭 + 골드 액자 단일 뷰어
         currentActiveShot = 1;
         container.innerHTML = `
           <div class="flex gap-2 mb-2">
@@ -755,27 +861,45 @@
               2회차 보너스 (8s)
             </button>
           </div>
-          <div class="relative w-full rounded-2xl overflow-hidden bg-black border border-white/20 shadow-2xl mb-3 flex items-center justify-center" style="height: 52vh; max-height: 440px; min-height: 250px;">
+          <div class="relative w-full rounded-2xl overflow-hidden bg-black border-[2.5px] border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.4)] mb-3 flex items-center justify-center" style="height: 52vh; max-height: 440px; min-height: 250px;">
             <img id="dualPreviewImg" src="${records[0].resultUrl}" class="w-full h-full object-contain" alt="모자이크 사진">
+            <div class="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-md bg-black/80 border border-amber-400/70 text-[10px] text-amber-300 font-mono font-bold tracking-wider whitespace-nowrap backdrop-blur-sm shadow-lg">
+              🏛️ EXHIBITION PIECE 2026
+            </div>
           </div>
-          <button id="dualDownloadBtn" onclick="downloadImage('${records[0].resultUrl}', 'mosaic_shot1.jpg', 1, this)" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all mb-2">
+          <button id="dualDownloadBtn" onclick="downloadImage('${records[0].resultUrl}', 'mosaic_shot1.jpg', 1, this)" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all mb-2">
             <span class="text-lg">💾</span>
             <span id="dualDownloadBtnText">1회차 사진 바로 다운로드</span>
           </button>
-          <button onclick="downloadAllShots(this)" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center justify-center gap-1.5 transition-all">
+          <button onclick="downloadAllShots(this)" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center justify-center gap-1.5 transition-all mb-2">
             <span>📦</span> <span>1회차 + 2회차 두 장 모두 다운로드</span>
+          </button>
+          <button id="nextVisitorBtn" onclick="startNextVisitorKiosk()" class="w-full py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-400/50 font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]">
+            <span class="text-base">✨</span>
+            <span>다음 관람객 촬영 시작 (새 세션)</span>
           </button>
         `;
       }
 
-      // 3) 포토존 재진입 차단 & 안내
+      // 키오스크 무인 모드: 60초 후 자동 리셋
+      if (isLocalKiosk) {
+        if (kioskResetTimer) clearTimeout(kioskResetTimer);
+        kioskResetTimer = setTimeout(() => {
+          console.log('⏰ 키오스크 60초 무응답 자동 초기화');
+          startNextVisitorKiosk();
+        }, 60000);
+      }
+
+      // 3) 포토존 재진입 차단 및 안내
       const lockNotice = document.getElementById('downloadLockNotice');
       if (lockNotice) {
-        lockNotice.innerHTML = `
-          <div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] text-slate-400 text-center leading-relaxed">
-            🔒 포토존 촬영 완료 <span class="text-slate-500">| 재참여는 키오스크 새 QR 스캔</span>
-          </div>
-        `;
+        lockNotice.innerHTML = isLocalKiosk
+          ? `<div class="p-2 rounded-xl bg-amber-950/40 border border-amber-400/30 text-[11px] text-amber-300 text-center leading-relaxed">
+               🏛️ 키오스크 무인 운영 중 <span class="text-slate-400">| 60초 후 다음 관람객 모드로 자동 전환</span>
+             </div>`
+          : `<div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] text-slate-400 text-center leading-relaxed">
+               🔒 포토존 촬영 완료 <span class="text-slate-500">| 재참여는 키오스크 새 QR 스캔</span>
+             </div>`;
       }
     }
 
