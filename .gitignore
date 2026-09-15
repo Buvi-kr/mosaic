@@ -19,10 +19,12 @@ public/outputs/*
 !public/outputs/.gitkeep
 public/output_guides/*
 !public/output_guides/.gitkeep
+!public/output_guides/demo_mosaic_*.jpg
 public/raw_tiles/*
 !public/raw_tiles/.gitkeep
 public/guides/*
 !public/guides/.gitkeep
+!public/guides/guide_*.*
 
 # 3. 개인 사진 테마 제외 (유출 방지)
 public/tiles/*/
