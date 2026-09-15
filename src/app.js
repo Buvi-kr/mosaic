@@ -190,10 +190,10 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);
   console.log(`- 관리자 패널: http://localhost:${PORT}/admin.html\n`);
 
-  // 전시장 키오스크 자동 실행: 전체화면(F11) 다중 탭 (1번 탭: admin.html, 2번 탭: upload.html 전면 활성화)
+  // 전시장 대형 디스플레이 자동 실행: 전체화면(F11) 다중 탭 (1번 탭: display.html 전면 메인, 2번 탭: admin.html 백그라운드)
   function launchExhibitionBrowser(port) {
+    const displayUrl = `http://localhost:${port}/display.html`;
     const adminUrl = `http://localhost:${port}/admin.html`;
-    const uploadUrl = `http://localhost:${port}/upload.html`;
 
     const chromeCandidates = [
       'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -216,15 +216,16 @@ server.listen(PORT, '0.0.0.0', () => {
     }
 
     if (browserPath) {
-      console.log(`[시스템] 키오스크 전체화면(F11) 브라우저 기동: ${browserPath}`);
-      exec(`"${browserPath}" --start-fullscreen "${adminUrl}" "${uploadUrl}"`, (err) => {
+      console.log(`[시스템] 전시장 대형 디스플레이 전체화면(F11) 브라우저 기동: ${browserPath}`);
+      // displayUrl(1번 탭: 전면 메인)과 adminUrl(2번 탭: 백그라운드)을 순서대로 전달하여 display.html이 활성화되도록 실행
+      exec(`"${browserPath}" --start-fullscreen "${displayUrl}" "${adminUrl}"`, (err) => {
         if (err) console.error('[시스템] 브라우저 실행 실패:', err.message);
       });
     } else {
-      console.log('[시스템] 기본 브라우저 순차 탭 실행...');
+      console.log('[시스템] 기본 브라우저 순차 탭 실행 (display.html 전면 활성화)...');
       exec(`start "" "${adminUrl}"`, () => {
         setTimeout(() => {
-          exec(`start "" "${uploadUrl}"`);
+          exec(`start "" "${displayUrl}"`);
         }, 600);
       });
     }

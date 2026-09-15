@@ -183,7 +183,7 @@ let nextReservedToken = null;    // 사전 예약 포인터
 2. **모자이크 완성작 전용 박물관 더블 골드 액자 매트 (`artwork-gold-matte`)**:
    - 1회차 결정 미리보기 및 최종 다운로드 뷰의 사진 영역에 더블 골드 액자 테두리(`border: 2.5px solid #fbbf24`)와 하단 골드 전시 명판 배지(`[ 🏛️ EXHIBITION PIECE 2026 ]`)를 결합하여 한 장의 소장용 명화처럼 연출.
 3. **윈도우 시작프로그램(`shell:startup`) 무인 F11 자동 기동**:
-   - `start.bat`을 시작 프로그램에 등록해두면, PC 부팅 시 Chrome/Edge가 `--start-fullscreen` 옵션으로 실행되어 1번 탭(`admin.html`)과 2번 탭(`upload.html`)을 동시에 띄우며, 2번 탭이 전면에 전체화면(F11)으로 즉각 활성화됩니다.
+   - `start.bat`을 시작 프로그램에 등록해두면, PC 부팅 시 Chrome/Edge가 `--start-fullscreen` 옵션으로 실행되어 1번 탭(`display.html`: 메인 관람객 전시장 전면 화면)과 2번 탭(`admin.html`: 백그라운드 관리자 패널)을 동시에 띄우며, 1번 탭(`display.html`)이 전면에 전체화면(F11)으로 즉각 활성화되어 별도 조작 없이 즉시 전시가 시작됩니다.
 4. **키오스크 무인 연속 촬영 & 60초 자동 리셋**:
    - URL에 QR 토큰이 없어도 `/api/upload/gate-state`에서 열려있는 게이트 토큰을 자동 취득하여 즉시 셀카 촬영 대기 화면으로 직행.
    - 로컬 키오스크(`localhost`)에서는 15분 다운로드 락을 해제하고, 다운로드 화면에 **[다음 관람객 촬영 시작 (새 세션)]** 버튼 및 60초 무응답 자동 초기화 타이머를 가동하여 다음 관람객을 끊김 없이 맞이합니다.
@@ -603,9 +603,9 @@ Material Design 3 기반 대시보드에서 전시장 상황에 맞춰 실시간
 
 ### 📦 V8.10 Exhibition Kiosk & Golden Frame Overhaul (2026-09-15)
 #### 🏛️ 키오스크 무인 F11 다중 탭 자동 기동, 골드 프레임, 디스플레이 상하 반전 & 3.5초 스마트 실루엣 가이드
-- **전시장 키오스크 전체화면(F11) 다중 탭 자동 기동 (`src/app.js`, `start.bat`)**:
-  - `start.bat`을 Windows 시작 프로그램(`shell:startup`)에 등록 시, PC 부팅과 동시에 Chrome/Edge를 감지하여 `--start-fullscreen` 모드로 1번 탭(`admin.html`)과 2번 탭(`upload.html`)을 동시 기동.
-  - 2번 탭인 `upload.html`이 전면에 활성화된 상태로 즉시 나타나 관람객이 바로 셀카를 찍을 수 있는 준비 완료 상태 제공.
+- **전시장 디스플레이 전체화면(F11) 다중 탭 자동 기동 (`src/app.js`, `start.bat`)**:
+  - `start.bat`을 Windows 시작 프로그램(`shell:startup`)에 등록 시, PC 부팅과 동시에 Chrome/Edge를 감지하여 `--start-fullscreen` 모드로 1번 탭(`display.html`: 전시장 메인 전면 화면)과 2번 탭(`admin.html`: 백그라운드 관리자 패널)을 동시 기동.
+  - 1번 탭인 `display.html`이 전면에 활성화된 상태(F11 전체화면)로 즉시 나타나 관람객 맞이(3-2-1 전시, QR 스캔 안내, 모자이크 쇼케이스)를 즉시 개시.
   - 전용 브라우저 미발견 시 순차 탭 실행 폴백 제공.
 - **전시품 특화 황금빛 프레임 & 박물관 골드 액자 매트 (`upload.html`)**:
   - 메인 컨테이너에 미디어아트 갤러리 감성의 **샴페인 골드 앰비언트 프레임(`.exhibition-gold-frame`)** 및 사방 코너 메탈릭 브래킷, `🏛️ REVERSE COSMOS EXHIBITION` 배지, `⛶ F11` 전체화면 토글 버튼 적용.
