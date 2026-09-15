@@ -1,7 +1,7 @@
 {
   "opacity": 1,
   "secondOpacity": 0.2,
-  "tileSize": 20,
+  "tileSize": 30,
   "blendMode": "multiply",
   "maxResolution": 1920,
   "currentTheme": "default_nasa",
@@ -18,9 +18,9 @@
   "displayGuideInterval": 5,
   "displayPhotozoneTheme": "nebula",
   "displayShowTimer": true,
-  "turboMode": false,
   "googleSheets": {
     "enabled": false,
     "webAppUrl": ""
-  }
+  },
+  "turboMode": false
 }

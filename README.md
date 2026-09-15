@@ -1,15 +1,15 @@
-# 🌌 Reverse Cosmos Mosaic (V8.12 Google Sheets Remote Monitoring Edition)
+# 🌌 Reverse Cosmos Mosaic (V8.13 Beam Projector & Exhibition Studio Edition)
 > **로비 스크린 및 미디어아트 전시를 위한 인생네컷형 인터랙티브 스마트 모자이크 시스템**
 > *(Interactive Smart Photo Mosaic System for Kiosk Screens & Exhibitions)*
 
-![Version](https://img.shields.io/badge/Version-8.12%20Remote%20Sheets%20Monitoring-emerald.svg)
+![Version](https://img.shields.io/badge/Version-8.13%20Beam%20Projector%20Studio-rose.svg)
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
 **최종 업데이트**: 2026-09-15  
 **개요**: 관람객이 전시장 키오스크의 스마트 게이트 QR을 스캔하여 전면 카메라로 셀카를 촬영하면, 수천 장의 우주 타일과 결합하여 **실시간 초고화질 포토모자이크**를 완성하고, **대형 스크린(3-2-1 역방향 동선)에 실시간 단독 전시**하는 전시장 전용 무인 인터랙티브 엔진입니다.  
-고령 관람객(70대 이상)도 즉시 적응하는 **3단계 직관 UI**, 1회차 완료 즉시 다음 관람객 입장을 허용하는 **파이프라인 듀얼 세션(`activeExperience` + `nextReserved`)**, 그리고 저장을 깜빡하고 다음으로 넘어가는 사고를 원천 방지하는 **"결정 후 다운로드(Decision-First)" 2단계 컨티뉴 UX**, **Google Sheets 원격 실시간 관제 대시보드(1인 1행 실시간 갱신 & 월별 세션로그 자동 분할 & 10분 주기 시계열 스냅샷)**가 완벽 탑재되어 있습니다.
+빔프로젝터 대형 투사에 최적화된 **최상단 가로형 전시관 타이틀 배너(🪐 우주 한 컷 사진관)**, 글자를 가리지 않는 **하향 바운스 네온 화살표**, 고대비 **전시 타이머 배지**, **이용 방법 안내 대형 타이포그래피**, 그리고 귀여운 캐릭터 3종(강아지, 우주곰, 고양이) **5초 데모 순환 & 스포트라이트 앰비언스**가 탑재되어 있습니다.
 
 ---
 
@@ -604,6 +604,24 @@ Material Design 3 기반 대시보드에서 전시장 상황에 맞춰 실시간
 ---
 
 ## 10. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+
+### 📦 V8.13 Beam Projector & Exhibition Studio Edition (2026-09-15)
+#### 📽️ 빔프로젝터 전시장 특화 배너, 하향 바운스 화살표 여백 확보 및 데모 3종 5초 순환
+- **최상단 가로형 메인 타이틀 배너 신설 (`display.html`)**:
+  - 빔프로젝터 대형 투사 시 시각적 일체감과 전시장 아이덴티티를 확립하기 위해 최상단 전면 가로 배너(`🪐 우주 한 컷 사진관 | 나만의 셀카로 완성되는 실시간 인터랙티브 포토모자이크`)와 `LIVE EXHIBITION` 펄스 배지 탑재.
+  - 상하 여백을 컴팩트하게 조율하여 스크롤 없이 100% 한눈에 들어오는 황금비 레이아웃 완성.
+- **포토존 네온 화살표 글자 침범 원천 차단 (`display.html`)**:
+  - 2단계 헤더 하단 마진(`mb-8`) 및 화살표 상단 마진(`mt-8`)을 대폭 확장하여 "2. 여기에 서서 셀카 PHOTO SPOT" 글자를 0.001mm도 가리지 않도록 위치 하향 재배치.
+  - 화살표 바운스 애니메이션을 위로 튀는 방식에서 **바닥 쪽으로 향하는 하향 바운스(`arrowBounceDown`)**로 전환하여 헤더 텍스트와의 물리적 간섭 원천 차단.
+- **화이트 갤러리 모드 전시 남은 시간 배지 초고대비화 (`#newBadge`)**:
+  - 화이트 배경에서 흐릿하던 기존 연노랑 배지를 선명한 딥 오렌지-크림슨 그라데이션(`#ea580c`)과 굵은 화이트 볼드 텍스트(`전시 중`), 브라이트 골드 수치(`15s`)로 개편하여 원거리 100% 가독성 확보.
+- **화면 우측 상단 클린 미니멀화**:
+  - 화면을 복잡하게 하던 우측 상단 `[🏛️ 갤러리 모드]` 버튼과 `[3단계 쉬운 참여]` 배지를 전면 제거하여 전시관의 미니멀하고 세련된 미감 완성 (키보드 `T` 단축키는 보존).
+- **'이용 방법 안내' 헤더 대형화**:
+  - 1단계 및 2단계 규격과 동일한 `clamp(20px, 2.4vw, 34px)` 초대형 볼드 타이틀 및 서브텍스트를 적용하여 3개 열의 시각적 위계 완전 통일.
+- **데모 모자이크 3종(강아지, 우주곰, 고양이) 5초 순환 및 스포트라이트 앰비언스**:
+  - 사용자 제공 캐릭터 모자이크 3종을 기본 데모 풀로 탑재하고, 회전 주기를 **5초**로 단축(`DEMO_CYCLE_SEC: 5`).
+  - `#mosaicViewport`에 은은한 딥 인디고 코즈믹 스포트라이트 방사형 그라데이션(`radial-gradient`)을 부여하여 캐릭터가 어두운 전시장 조명 아래 떠 있는 명작처럼 입체적으로 돋보이도록 연출.
 
 ### 📦 V8.12 Google Sheets Remote Monitoring & Monthly Partitioning (2026-09-15)
 #### 📊 Google Apps Script (Web App) 기반 무인 원격 관제 및 월간 분할 세션로그 엔진

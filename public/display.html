@@ -234,6 +234,81 @@
       color: #ffffff !important;
     }
 
+    /* 전시 남은 시간 배지: 화이트 갤러리 모드에서 초고대비 (가독성 100% 확보) */
+    body.theme-hybrid #newBadge {
+      background: linear-gradient(135deg, #ea580c, #c2410c) !important;
+      border: 2px solid #9a3412 !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 15px rgba(234, 88, 12, 0.45) !important;
+    }
+    body.theme-hybrid #newBadge span {
+      color: #ffffff !important;
+      font-weight: 900 !important;
+    }
+    body.theme-hybrid #newBadge #showcaseSecondsText {
+      color: #fef08a !important;
+      font-weight: 900 !important;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 최상단 가로형 메인 배너 (우주 한 컷 사진관) */
+    #exhibitionMainHeader {
+      background: rgba(15, 23, 42, 0.85);
+      border: 2px solid rgba(99, 102, 241, 0.35);
+      backdrop-filter: blur(12px);
+      color: #ffffff;
+    }
+    #exhibitionMainHeader h1 {
+      color: #ffffff;
+      text-shadow: 0 0 20px rgba(99, 102, 241, 0.6);
+    }
+    #exhibitionMainHeader .badge-live {
+      border: 1.5px solid rgba(16, 185, 129, 0.6);
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+    }
+    body.theme-hybrid #exhibitionMainHeader {
+      background: #ffffff !important;
+      border: 2.5px solid #d97706 !important;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08), 0 0 25px rgba(245, 158, 11, 0.2) !important;
+      color: #0f172a !important;
+    }
+    body.theme-hybrid #exhibitionMainHeader h1 {
+      color: #0f172a !important;
+      text-shadow: none !important;
+    }
+    body.theme-hybrid #exhibitionMainHeader #headerSubtext {
+      color: #475569 !important;
+      font-weight: 800 !important;
+    }
+    body.theme-hybrid #exhibitionMainHeader .badge-live {
+      border: 2px solid #059669 !important;
+      background: #d1fae5 !important;
+      color: #065f46 !important;
+      font-weight: 900 !important;
+    }
+
+    /* 아래로 부드럽게 바운스되는 화살표 (글자 절대 안 가림) */
+    @keyframes arrowBounceDown {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(15px);
+      }
+    }
+    .arrow-bounce-down {
+      animation: arrowBounceDown 1.8s ease-in-out infinite;
+    }
+
+    /* 모자이크 뷰포트 배경: 캐릭터를 감싸는 은은한 코즈믹 스포트라이트 앰비언스 */
+    #mosaicViewport {
+      background: radial-gradient(circle at 50% 50%, #1e1b4b 0%, #0b0f19 55%, #000000 100%) !important;
+    }
+    #mosaicViewport img {
+      filter: drop-shadow(0 0 25px rgba(99, 102, 241, 0.25));
+    }
+
     /* 우측 STEP 1 Row 1: 가이드 카드 */
     body.theme-hybrid .panel-guide {
       border: 2px solid rgba(245, 158, 11, 0.4);
@@ -242,11 +317,9 @@
       color: #0f172a !important;
       font-weight: 900 !important;
     }
-    body.theme-hybrid .panel-guide span.text-amber-300 {
-      background: #fef3c7 !important;
-      color: #92400e !important;
-      border: 1.5px solid #f59e0b !important;
-      font-weight: 900 !important;
+    body.theme-hybrid .panel-guide p {
+      color: #4338ca !important;
+      font-weight: 700 !important;
     }
     body.theme-hybrid .panel-guide .guide-step-item {
       background: #f8fafc;
@@ -322,14 +395,29 @@
   <!-- 🏛️ 전시장 최외곽 샴페인 골드 앰비언트 프레임 (Exhibition Gold Frame)  -->
   <!-- ============================================================== -->
   <div id="exhibitionOuterFrame" class="exhibition-outer-frame relative w-full h-full p-2.5 bg-[#05060b] overflow-hidden flex flex-col">
-    <!-- 🌓 실시간 테마 토글 버튼 (화이트 갤러리 ↔ 다크 코즈믹) -->
-    <button id="themeToggleBtn" onclick="toggleDisplayTheme()" class="absolute top-3 right-6 z-40 px-3.5 py-1 rounded-full text-xs font-black transition-all flex items-center gap-1.5 shadow-lg border cursor-pointer">
-      <span id="themeToggleIcon">🏛️</span>
-      <span id="themeToggleText">갤러리 모드</span>
-    </button>
+    <!-- 🪐 전시장 최상단 가로형 메인 타이틀 배너 (우주 한 컷 사진관) -->
+    <header id="exhibitionMainHeader" class="w-full py-2 px-6 mb-2 rounded-2xl flex items-center justify-between shadow-md transition-all duration-300 flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl lg:text-3xl filter drop-shadow">🪐</span>
+        <div class="flex items-baseline gap-3">
+          <h1 class="text-2xl lg:text-3xl font-black tracking-tight" style="font-size: clamp(20px, 2.2vw, 32px);">
+            우주 한 컷 사진관
+          </h1>
+          <span id="headerSubtext" class="hidden sm:inline-block text-xs lg:text-sm font-bold opacity-80">
+            | 나만의 셀카로 완성되는 실시간 인터랙티브 포토모자이크
+          </span>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="badge-live px-3.5 py-1 rounded-full text-xs font-black tracking-wider uppercase flex items-center gap-1.5 shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          LIVE EXHIBITION
+        </span>
+      </div>
+    </header>
 
     <!-- 전체 화면 그리드 컨테이너 -->
-    <div class="display-grid flex-1 h-full">
+    <div class="display-grid flex-1 h-full min-h-0">
     
     <!-- ============================================================== -->
     <!-- [좌측 전체: STEP 3] 나의 우주 모자이크 완성 결과 화면                -->
@@ -381,7 +469,7 @@
     <!-- ============================================================== -->
     <div class="glass-card panel-photozone flex flex-col justify-between p-6 relative overflow-hidden bg-black" id="photozoneCard">
       <!-- 상단 헤더 & STEP 2 뱃지 (관람객 머리 위 높은 위치) -->
-      <div class="relative z-10 flex items-start justify-between">
+      <div class="relative z-10 flex items-start justify-between mb-8">
         <div class="flex items-center gap-2.5">
           <span class="text-3xl">📸</span>
           <div>
@@ -402,10 +490,10 @@
         </div>
       </div>
 
-      <!-- 적정 크기 네온 하향 안내 화살표 (헤더 바로 아래 밀착, 하단 블랙 공간 최대 확보) -->
-      <div class="relative z-10 flex flex-col items-center mt-2 pointer-events-none">
-        <div class="animate-bounce flex flex-col items-center justify-center" style="animation-duration: 2.0s;">
-          <svg class="w-16 h-20 md:w-20 md:h-24 lg:w-24 lg:h-28 text-rose-500 filter drop-shadow-[0_0_18px_rgba(244,63,94,0.8)]" viewBox="0 0 160 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- 적정 크기 네온 하향 안내 화살표 (글자 절대 안 가리도록 넉넉한 상단 여백 + 아래로 바운스) -->
+      <div class="relative z-10 flex flex-col items-center mt-6 lg:mt-8 pointer-events-none">
+        <div class="arrow-bounce-down flex flex-col items-center justify-center">
+          <svg class="w-16 h-20 md:w-20 md:h-24 lg:w-22 lg:h-26 text-rose-500 filter drop-shadow-[0_0_18px_rgba(244,63,94,0.8)]" viewBox="0 0 160 220" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="giantNeonArrowGrad" x1="50%" y1="0%" x2="50%" y2="100%">
                 <stop offset="0%" stop-color="#f43f5e" />
@@ -488,15 +576,17 @@
     <!-- [우측 상단: 이용 방법] 3단계 가이드 이미지 & 텍스트 동기화 (Row 1)       -->
     <!-- ============================================================== -->
     <div class="glass-card panel-guide flex flex-col justify-between p-6 relative overflow-hidden" id="guideCard">
-      <!-- 상단 헤더 -->
-      <div class="relative z-10 flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-xl">📖</span>
-          <h2 class="text-lg lg:text-xl font-black text-white tracking-tight">이용 방법 안내</h2>
+      <!-- 상단 헤더 (1단계 2단계처럼 대형 타이틀 적용 & 3단계 배지 제거) -->
+      <div class="relative z-10 flex items-start justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="text-3xl">📖</span>
+          <div>
+            <h2 class="text-2xl lg:text-3xl font-black text-white tracking-tight" style="font-size: clamp(20px, 2.4vw, 34px);">
+              이용 방법 안내
+            </h2>
+            <p class="text-xs lg:text-sm text-indigo-200 font-medium mt-0.5">30초 만에 완성되는 인터랙티브 전시</p>
+          </div>
         </div>
-        <span class="text-xs font-bold text-amber-300 bg-amber-400/15 px-3 py-1 rounded-full border border-amber-400/30">
-          3단계 쉬운 참여
-        </span>
       </div>
 
       <!-- 중앙 스플릿 레이아웃 (좌: 가이드 이미지 3종 순환 54%, 우: 3단계 텍스트 46%) -->
@@ -606,7 +696,7 @@
     // ================================================================
     const DISPLAY_CONFIG = {
       SHOWCASE_DURATION_SEC: 15,    // 신규 모자이크 단독 전시 보장 시간 (15초)
-      DEMO_CYCLE_SEC: 10,           // 유휴 시 데모 모자이크 순환 주기 (10초)
+      DEMO_CYCLE_SEC: 5,            // 유휴 시 데모 모자이크 순환 주기 (5초)
       GUIDE_CYCLE_SEC: 5,           // 이용 가이드 3단계 순환 주기 (5초)
     };
 
@@ -804,7 +894,7 @@
     const newBadge = document.getElementById('newBadge');
     const showcaseSecondsText = document.getElementById('showcaseSecondsText');
 
-    let demoMosaics = ['/output_guides/demo_mosaic_1.jpg', '/output_guides/demo_mosaic_2.jpg'];
+    let demoMosaics = ['/output_guides/demo_mosaic_1.jpg', '/output_guides/demo_mosaic_2.jpg', '/output_guides/demo_mosaic_3.jpg'];
     let currentDemoIndex = 0;
     let demoIntervalTimer = null;
     let isShowcasingUser = false;
@@ -868,7 +958,7 @@
           currentDemoIndex = (currentDemoIndex + 1) % demoMosaics.length;
           displayDemoItem(currentDemoIndex);
         }
-      }, 7000);
+      }, 5000);
     }
 
     // 3) 관람객 사진 완성 시 호출 (큐 시스템 보장 & 동적 전시 시간 지원)
