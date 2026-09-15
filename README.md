@@ -1,15 +1,15 @@
-# 🌌 Reverse Cosmos Mosaic (V8.11 Exhibition Kiosk & Giant Arrow Edition)
+# 🌌 Reverse Cosmos Mosaic (V8.12 Google Sheets Remote Monitoring Edition)
 > **로비 스크린 및 미디어아트 전시를 위한 인생네컷형 인터랙티브 스마트 모자이크 시스템**
 > *(Interactive Smart Photo Mosaic System for Kiosk Screens & Exhibitions)*
 
-![Version](https://img.shields.io/badge/Version-8.11%20Kiosk%20%26%20Giant%20Arrow-blue.svg)
+![Version](https://img.shields.io/badge/Version-8.12%20Remote%20Sheets%20Monitoring-emerald.svg)
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
 **최종 업데이트**: 2026-09-15  
 **개요**: 관람객이 전시장 키오스크의 스마트 게이트 QR을 스캔하여 전면 카메라로 셀카를 촬영하면, 수천 장의 우주 타일과 결합하여 **실시간 초고화질 포토모자이크**를 완성하고, **대형 스크린(3-2-1 역방향 동선)에 실시간 단독 전시**하는 전시장 전용 무인 인터랙티브 엔진입니다.  
-고령 관람객(70대 이상)도 즉시 적응하는 **3단계 직관 UI**, 1회차 완료 즉시 다음 관람객 입장을 허용하는 **파이프라인 듀얼 세션(`activeExperience` + `nextReserved`)**, 그리고 저장을 깜빡하고 다음으로 넘어가는 사고를 원천 방지하는 **"결정 후 다운로드(Decision-First)" 2단계 컨티뉴 UX**, **전시품 특화 황금빛 프레임(Gold Frame)**, **2단계 10배 확대 네온 하향 안내 화살표 & 3.5초 스마트 인체 실루엣 가이드**가 탑재되어 있습니다.
+고령 관람객(70대 이상)도 즉시 적응하는 **3단계 직관 UI**, 1회차 완료 즉시 다음 관람객 입장을 허용하는 **파이프라인 듀얼 세션(`activeExperience` + `nextReserved`)**, 그리고 저장을 깜빡하고 다음으로 넘어가는 사고를 원천 방지하는 **"결정 후 다운로드(Decision-First)" 2단계 컨티뉴 UX**, **Google Sheets 원격 실시간 관제 대시보드(1인 1행 실시간 갱신 & 월별 세션로그 자동 분할 & 10분 주기 시계열 스냅샷)**가 완벽 탑재되어 있습니다.
 
 ---
 
@@ -604,6 +604,23 @@ Material Design 3 기반 대시보드에서 전시장 상황에 맞춰 실시간
 ---
 
 ## 10. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+
+### 📦 V8.12 Google Sheets Remote Monitoring & Monthly Partitioning (2026-09-15)
+#### 📊 Google Apps Script (Web App) 기반 무인 원격 관제 및 월간 분할 세션로그 엔진
+- **구글 시트 실시간 원격 관제 엔진 구축 (`scripts/Code.gs`, `src/sheets.sync.js`)**:
+  - 외부 클라우드 과금이나 GCP 서비스 계정 설치 없이, 구글 시트의 Apps Script(Web App) 배포 URL을 통해 HTTP POST 방식으로 전시장 관람객 여정을 원격 동기화.
+  - Node.js (v24) 내장 `fetch`와 `AbortSignal.timeout(10000)`을 적용하여 추가 npm 패키지 없이 0.001초의 서버 부하도 없는 완전한 **Fire-and-Forget 비동기** 전송 구현.
+  - 인터넷이 불안정하거나 끊겨도 로컬 CSV/JSON 저장은 100% 정상 작동하며, 네트워크 복구 시 subsequent 이벤트가 매끄럽게 동기화.
+- **첫 페이지 대시보드 (`대시보드` 탭 자동 렌더링)**:
+  - 구글 시트를 열었을 때 언제나 맨 첫 번째 탭(index 0)에 위치하도록 자동 고정.
+  - 상단 6대 핵심 KPI 카드 (총 참여자, 모자이크 완주, 완주율, 촬영 성공율, 추가촬영률, 다운로드율, 평균 체류시간) 다크 테마 볼드 렌더링.
+  - **기간별 참여 & 완주 현황 표 (오늘 Today / 이번 달 This Month / 전체 누적 All-Time)**를 자동 집계하여 운영자에게 한눈에 제공.
+- **월간 분할 세션로그 자동 파티셔닝 (`세션로그_YYYY-MM`)**:
+  - 수천~수만 명의 관람객 로그가 단일 시트에 무한정 쌓여 시트가 무거워지는 현상을 원천 방지하기 위해 `세션로그_2026-09`, `세션로그_2026-10` 등 월별 탭으로 자동 분할 생성.
+  - 1인 관람객 = 1행 실시간 갱신(Upsert) 원칙을 유지하여 입장 ➔ 촬영 ➔ 모자이크 ➔ 다운로드 진행 상황이 같은 행에 실시간 반영.
+- **10분 주기 시계열 스냅샷 이력 누적 (`스냅샷_이력`)**:
+  - 서버 부팅 5초 후 최초 1회 및 이후 10분마다 KPI 집계 통계를 1행씩 누적.
+  - 구글 시트 상단 메뉴 [삽입] > [차트]를 통해 일간/주간/월간 관람객 유입 추이 꺾은선/막대 그래프의 원천 데이터로 즉시 활용 가능.
 
 ### 📦 V8.11 Exhibition Giant Arrow & Hybrid Gallery Update (2026-09-15)
 #### 🎯 2단계 포토존 10배 확대 네온 하향 화살표 가이드 및 모던 하이브리드 갤러리 테마

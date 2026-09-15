@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const sheetsSync = require('./sheets.sync');
 
 /**
  * SessionLogger (V8.8 Advanced Session Journey & Audit Logging Engine)
@@ -445,6 +446,11 @@ class SessionLogger {
       }
 
       fs.writeFileSync(csvPath, content, 'utf8');
+
+      // Google Sheets 원격 관제 실시간 동기화 (fire-and-forget, 실패해도 로컬 저장에 영향 없음)
+      if (sheetsSync.isEnabled()) {
+        sheetsSync.syncSessionRow(audit).catch(() => {});
+      }
     } catch (err) {
       console.error('[세션 로거] CSV 감사 기록 실패:', err.message);
     }

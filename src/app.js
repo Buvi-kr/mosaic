@@ -8,6 +8,8 @@ const configModule = require('./config');
 const socketManager = require('./socket.manager');
 const uploadRouter = require('./upload.route');
 const adminRouter = require('./admin.route');
+const sheetsSync = require('./sheets.sync');
+const sessionLogger = require('./session.logger');
 
 // 글로벌 에러 로깅 처리 (알 수 없는 크래시 방지 및 추적)
 const fs = require('fs');
@@ -189,6 +191,18 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`- 대형 디스플레이: http://localhost:${PORT}/display.html`);
   console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);
   console.log(`- 관리자 패널: http://localhost:${PORT}/admin.html\n`);
+
+  // Google Sheets 원격 관제 요약 통계 동기화 (부팅 5초 후 최초 1회 + 10분 주기 스냅샷)
+  if (sheetsSync.isEnabled()) {
+    console.log('📊 [Google Sheets] 원격 관제 대시보드 동기화 활성화됨 (10분 주기 자동 스냅샷)');
+    setTimeout(() => {
+      sheetsSync.syncSummary(sessionLogger.getAggregatedStats()).catch(() => {});
+    }, 5000);
+
+    setInterval(() => {
+      sheetsSync.syncSummary(sessionLogger.getAggregatedStats()).catch(() => {});
+    }, 10 * 60 * 1000);
+  }
 
   // 전시장 대형 디스플레이 자동 실행: 전체화면(F11) 다중 탭 (1번 탭: display.html 전면 메인, 2번 탭: admin.html 백그라운드)
   function launchExhibitionBrowser(port) {

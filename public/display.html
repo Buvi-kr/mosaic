@@ -402,10 +402,10 @@
         </div>
       </div>
 
-      <!-- 초대형 10배 확대 네온 하향 안내 화살표 (글자 일체 배제, 순수 화살표) -->
-      <div class="relative z-10 flex-1 flex flex-col items-center justify-center my-auto pointer-events-none">
-        <div class="animate-bounce flex flex-col items-center justify-center" style="animation-duration: 1.6s;">
-          <svg class="w-48 h-64 md:w-56 md:h-76 lg:w-64 lg:h-84 text-rose-500 filter drop-shadow-[0_0_35px_rgba(244,63,94,0.95)] drop-shadow-[0_0_70px_rgba(244,63,94,0.5)]" viewBox="0 0 160 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- 적정 크기 네온 하향 안내 화살표 (헤더 바로 아래 밀착, 하단 블랙 공간 최대 확보) -->
+      <div class="relative z-10 flex flex-col items-center mt-2 pointer-events-none">
+        <div class="animate-bounce flex flex-col items-center justify-center" style="animation-duration: 2.0s;">
+          <svg class="w-16 h-20 md:w-20 md:h-24 lg:w-24 lg:h-28 text-rose-500 filter drop-shadow-[0_0_18px_rgba(244,63,94,0.8)]" viewBox="0 0 160 220" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="giantNeonArrowGrad" x1="50%" y1="0%" x2="50%" y2="100%">
                 <stop offset="0%" stop-color="#f43f5e" />
@@ -417,13 +417,13 @@
                 <stop offset="70%" stop-color="#f43f5e" />
                 <stop offset="100%" stop-color="#be123c" />
               </linearGradient>
-              <filter id="arrowNeonGlow" x="-30%" y="-30%" width="160%" height="160%">
-                <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#f43f5e" flood-opacity="0.9" />
-                <feDropShadow dx="0" dy="0" stdDeviation="32" flood-color="#f43f5e" flood-opacity="0.5" />
+              <filter id="arrowNeonGlow" x="-25%" y="-25%" width="150%" height="150%">
+                <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#f43f5e" flood-opacity="0.8" />
+                <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#f43f5e" flood-opacity="0.35" />
               </filter>
             </defs>
             
-            <!-- 대형 화살표 본체 (너비 160, 높이 220 - 기존 대비 10배 확대) -->
+            <!-- 화살표 본체 -->
             <path d="M 58 12
                      C 58 6 62 2 70 2
                      L 90 2
@@ -450,13 +450,15 @@
         </div>
       </div>
 
-      <!-- 스마트 인체 실루엣 포토스팟 가이드 (guide_sample_1.png 1:1 매칭 - 하단 밀착 상반신 가득 실루엣) -->
+      <!-- 중앙 및 하단: 100% 완전 무결 트루 블랙 빔 차단 구역 (관람객 셀카 백드롭) -->
+      <div class="flex-1 w-full bg-black"></div>
+
+      <!-- 스마트 인체 실루엣 포토스팟 가이드 (QR 스캔 직후 4.5초 노출) -->
       <div id="standGuideOverlay" class="absolute inset-x-0 bottom-0 top-28 flex flex-col items-center justify-end p-4 pb-2 pointer-events-none opacity-0 transition-opacity duration-700 z-20" style="visibility: hidden;">
-        <!-- 하단에 밀착된 대형 실루엣 뷰포트 (사이즈 살짝 줄이고 아래 밀착) -->
+        <!-- 하단에 밀착된 대형 실루엣 뷰포트 -->
         <div class="relative w-full flex-1 flex flex-col items-center justify-end overflow-hidden pb-1">
           <svg class="w-full max-h-[48vh] xl:max-h-[52vh] text-indigo-400 filter drop-shadow-[0_0_35px_rgba(139,92,246,0.6)]" viewBox="0 0 500 650" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-              <!-- 은은하게 빛나는 퍼플-인디고 네온 그라데이션 -->
               <linearGradient id="silhouetteBorderGrad" x1="0%" y1="100%" x2="100%" y2="0%">
                 <stop offset="0%" stop-color="#6366f1" />
                 <stop offset="45%" stop-color="#8b5cf6" />
@@ -466,14 +468,8 @@
                 <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#8b5cf6" flood-opacity="0.55" />
               </filter>
             </defs>
-            
-            <!-- 1) 대형 머리 원형 실루엣 -->
             <circle cx="250" cy="205" r="105" fill="#f8fafc" stroke="url(#silhouetteBorderGrad)" stroke-width="26" filter="url(#softGlow)" />
-
-            <!-- 2) 상반신/어깨 돔 실루엣 (하단 밀착) -->
             <path d="M 45 540 A 205 180 0 0 1 455 540 Z" fill="#f8fafc" stroke="url(#silhouetteBorderGrad)" stroke-width="26" stroke-linejoin="round" filter="url(#softGlow)" />
-
-            <!-- 3) BEST 1: 상반신 가득 네온 텍스트 -->
             <text x="250" y="618" text-anchor="middle" fill="#38bdf8" font-size="32" font-weight="900" font-family="'Pretendard', sans-serif" letter-spacing="1.5px" filter="drop-shadow(0 0 12px rgba(56, 189, 248, 0.85))">
               BEST 1: 상반신 가득
             </text>
