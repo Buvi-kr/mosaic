@@ -32,24 +32,36 @@
       background-color: #818cf8 !important;
       opacity: 0.3 !important;
     }
-    /* 8방향 리사이즈 핸들 확대 및 정확한 터치 오프셋 (-10px) */
-    .cropper-point {
-      width: 20px !important;
-      height: 20px !important;
-      background-color: #ffffff !important;
-      border: 3px solid #6366f1 !important;
-      border-radius: 50% !important;
-      box-shadow: 0 0 6px rgba(0,0,0,0.6) !important;
-      opacity: 0.95 !important;
+    .cropper-face {
+      cursor: move !important;
     }
-    .cropper-point.point-e { margin-top: -10px !important; right: -10px !important; }
-    .cropper-point.point-w { margin-top: -10px !important; left: -10px !important; }
-    .cropper-point.point-s { margin-left: -10px !important; bottom: -10px !important; }
-    .cropper-point.point-n { margin-left: -10px !important; top: -10px !important; }
-    .cropper-point.point-ne { top: -10px !important; right: -10px !important; }
-    .cropper-point.point-nw { top: -10px !important; left: -10px !important; }
-    .cropper-point.point-se { bottom: -10px !important; right: -10px !important; }
-    .cropper-point.point-sw { bottom: -10px !important; left: -10px !important; }
+    /* 8방향 리사이즈 핸들 확대(24px) 및 터치 영역 확장 */
+    .cropper-point {
+      width: 24px !important;
+      height: 24px !important;
+      background-color: #ffffff !important;
+      border: 3.5px solid #6366f1 !important;
+      border-radius: 50% !important;
+      box-shadow: 0 0 8px rgba(0,0,0,0.7) !important;
+      opacity: 1 !important;
+      z-index: 20 !important;
+    }
+    .cropper-point::after {
+      content: '';
+      position: absolute;
+      top: -12px;
+      left: -12px;
+      right: -12px;
+      bottom: -12px;
+    }
+    .cropper-point.point-e { margin-top: -12px !important; right: -12px !important; }
+    .cropper-point.point-w { margin-top: -12px !important; left: -12px !important; }
+    .cropper-point.point-s { margin-left: -12px !important; bottom: -12px !important; }
+    .cropper-point.point-n { margin-left: -12px !important; top: -12px !important; }
+    .cropper-point.point-ne { top: -12px !important; right: -12px !important; }
+    .cropper-point.point-nw { top: -12px !important; left: -12px !important; }
+    .cropper-point.point-se { bottom: -12px !important; right: -12px !important; }
+    .cropper-point.point-sw { bottom: -12px !important; left: -12px !important; }
     .progress-bar-bg {
       background: rgba(255,255,255,0.08);
       border-radius: 100px;
@@ -242,39 +254,27 @@
     </div>
 
     <!-- ============================================================== -->
-    <!-- [STATE 7] 최종 다운로드 화면 (단독 or 듀얼 저장)                    -->
+    <!-- [STATE 7] 최종 다운로드 화면 (내 사진 최우선 초대형 UI)              -->
     <!-- ============================================================== -->
-    <div id="view-download" class="hidden py-3">
-      <div class="text-center mb-3">
-        <span class="text-3xl block mb-1">🎉</span>
-        <h2 class="text-2xl font-black text-white" id="downloadTitle">모자이크 완성!</h2>
-        <p class="text-xs text-slate-300 mt-1" id="downloadSubtitle">나만의 우주 모자이크 작품을 저장하세요.</p>
+    <div id="view-download" class="hidden py-1">
+      <!-- 컴팩트 미니멀 헤더 (군더더기 배너 및 대형 타이틀 제거) -->
+      <div class="flex items-center justify-between mb-2 px-1">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-xs font-black tracking-wider text-indigo-300 uppercase">COSMIC MOSAIC</span>
+        </div>
+        <span class="text-[11px] text-slate-400 font-medium">고해상도 원본</span>
       </div>
 
-      <!-- 듀얼 or 단일 사진 컨테이너 -->
-      <div id="downloadCardsContainer" class="flex flex-col gap-3 mb-4 max-h-[48vh] overflow-y-auto pr-1">
-        <!-- 동적으로 카드 삽입 -->
-      </div>
+      <!-- 초대형 사진 & 다운로드 버튼 컨테이너 (JS에서 최대 크기로 렌더링) -->
+      <div id="downloadCardsContainer" class="w-full mb-2"></div>
 
-      <!-- 저장 전 안내 배너 (Issue 4 해결) -->
-      <div id="downloadGuideBanner" class="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-indigo-200 text-xs font-bold mb-3 leading-relaxed">
-        💾 아래 <span class="text-white underline font-extrabold">[사진 저장하기]</span> 버튼을 눌러 기기에 저장하세요.
-      </div>
-
-      <!-- 실제 다운로드 버튼 클릭 시에만 표시되는 저장 완료 배너 (Issue 4 해결) -->
-      <div id="downloadSuccessBanner" class="hidden p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-500/50 text-emerald-300 text-xs font-bold mb-3 leading-relaxed">
-        ✅ 사진 저장이 진행되었습니다!<br>
-        내 휴대폰의 <span class="text-white underline font-extrabold">[사진 / 갤러리 앱 또는 다운로드]</span>를 확인하세요.
-      </div>
-
-      <!-- iOS 사파리 롱프레스 팁 접이식 안내 -->
-      <p class="text-[11px] text-slate-400 mb-3 leading-relaxed">
-        (아이폰 안내) 저장이 안 될 경우, 사진을 2초간 길게 눌러 <span class="text-indigo-300 font-bold">[사진에 저장]</span>을 누르세요.
+      <!-- 최소 안내 -->
+      <p class="text-[10px] text-slate-500 mb-2 leading-relaxed">
+        ※ 다운로드가 되지 않을 경우 사진을 2초간 길게 눌러 저장하세요.
       </p>
 
-      <button id="finalFinishBtn" class="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-colors border border-white/10">
-        체험 마치기 (닫기)
-      </button>
+      <div id="downloadLockNotice"></div>
     </div>
 
     <!-- ============================================================== -->
@@ -542,27 +542,28 @@
 
         if (cropper) cropper.destroy();
         cropper = new Cropper(imageToCrop, {
-          viewMode: 0,
-          dragMode: 'move',
-          autoCropArea: 0.85,
+          viewMode: 1, // 배경 이미지는 컨테이너에 꽉 차게 고정 (절대 흔들리거나 빠져나가지 않음)
+          dragMode: 'none', // 배경 드래그 이동 원천 차단 (배경 고정)
+          autoCropArea: 0.9, // 사진의 90%를 초기 영역으로 설정
           restore: false,
           guides: true,
           center: true,
           highlight: false,
-          cropBoxMovable: true,
-          cropBoxResizable: true,
-          zoomable: true,
-          zoomOnTouch: true,
-          zoomOnWheel: true,
+          cropBoxMovable: true, // 가운데 영역을 잡고 드래그하여 영역 이동
+          cropBoxResizable: true, // 8개 모서리 점을 잡고 늘렸다 줄였다 영역 조절
+          toggleDragModeOnDblclick: false,
+          zoomable: true, // 확대 축소 지원
+          zoomOnTouch: true, // 핀치 줌 지원
+          zoomOnWheel: true, // 휠 줌 지원
           minCropBoxWidth: 50,
           minCropBoxHeight: 50,
         });
       }
     });
 
-    // 크롭 툴바 버튼 이벤트 (Issue 7 해결)
-    document.getElementById('cropZoomInBtn').addEventListener('click', () => { if (cropper) cropper.zoom(0.1); });
-    document.getElementById('cropZoomOutBtn').addEventListener('click', () => { if (cropper) cropper.zoom(-0.1); });
+    // 크롭 툴바 버튼 이벤트 (확대, 축소, 90도 회전, 원본 초기화)
+    document.getElementById('cropZoomInBtn').addEventListener('click', () => { if (cropper) cropper.zoom(0.15); });
+    document.getElementById('cropZoomOutBtn').addEventListener('click', () => { if (cropper) cropper.zoom(-0.15); });
     document.getElementById('cropRotateBtn').addEventListener('click', () => { if (cropper) cropper.rotate(90); });
     document.getElementById('cropResetBtn').addEventListener('click', () => { if (cropper) cropper.reset(); });
 
@@ -702,7 +703,10 @@
       }
     }
 
-    // ===== 7. 최종 다운로드 뷰 렌더링 =====
+    // ===== 7. 최종 다운로드 뷰 렌더링 (내 사진 최우선 초대형 UI) =====
+    let currentDualRecords = [];
+    let currentActiveShot = 1;
+
     function showFinalDownloadView(records, isRestored = false) {
       showView(viewDownload);
       const container = document.getElementById('downloadCardsContainer');
@@ -712,8 +716,9 @@
         records = [{ shotNumber: 1, resultUrl: document.getElementById('decisionPhotoPreview')?.src }];
       }
       allRecords = records;
+      currentDualRecords = records;
 
-      // 1) 로컬스토리지에 완성작 및 세션 영구 보존 (창을 닫아도, 5분이 지나도 다운로드 영구 허용)
+      // 1) 로컬스토리지에 완성작 및 세션 영구 보존
       try {
         localStorage.setItem('mosaic_saved_records', JSON.stringify(records));
         if (sessionToken) {
@@ -726,62 +731,111 @@
         console.warn('로컬스토리지 저장 실패:', e);
       }
 
-      // 2) 타이틀 및 안내 문구 설정
-      const titleEl = document.getElementById('downloadTitle');
-      const subEl = document.getElementById('downloadSubtitle');
-      if (isRestored) {
-        if (titleEl) titleEl.textContent = '내 우주 모자이크 🌌';
-        if (subEl) subEl.innerHTML = '완성된 모자이크 사진입니다. 언제든 기기에 다운로드하실 수 있습니다.<br><span class="text-amber-300 font-bold">🔒 현재 포토존 촬영은 완료되었습니다.</span>';
+      // 2) 1개 사진 (단독) vs 2개 사진 (듀얼) 초대형 렌더링
+      if (records.length === 1) {
+        const rec = records[0];
+        container.innerHTML = `
+          <div class="relative w-full rounded-2xl overflow-hidden bg-black border border-white/20 shadow-2xl mb-3 flex items-center justify-center" style="height: 56vh; max-height: 480px; min-height: 260px;">
+            <img src="${rec.resultUrl}" class="w-full h-full object-contain" alt="모자이크 사진">
+          </div>
+          <button onclick="downloadImage('${rec.resultUrl}', 'mosaic_shot1.jpg', 1, this)" class="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-black text-base shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+            <span class="text-xl">💾</span>
+            <span>사진 바로 다운로드 (내 폰에 저장)</span>
+          </button>
+        `;
       } else {
-        if (titleEl) titleEl.textContent = '모자이크 완성! 🎉';
-        if (subEl) subEl.textContent = '나만의 우주 모자이크 작품을 저장하세요.';
-      }
-
-      // 3) 다운로드 카드 렌더링
-      records.forEach((rec, idx) => {
-        const card = document.createElement('div');
-        card.className = 'flex items-center gap-3 p-3 rounded-2xl bg-black/60 border border-white/10';
-        card.innerHTML = `
-          <img src="${rec.resultUrl}" class="w-20 h-20 rounded-xl object-contain bg-black border border-white/10 flex-shrink-0" alt="사진">
-          <div class="flex-1 text-left">
-            <h4 class="text-sm font-black text-white">${rec.shotNumber || idx + 1}회차 모자이크</h4>
-            <p class="text-[11px] text-slate-400 mb-2">고해상도 원본 이미지</p>
-            <button onclick="downloadImage('${rec.resultUrl}', 'mosaic_${rec.shotNumber || idx + 1}.jpg', ${rec.shotNumber || idx + 1})" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md">
-              💾 사진 저장하기
+        // 2회차 보너스까지 완료된 경우: 상단 탭 + 초대형 단일 뷰어
+        currentActiveShot = 1;
+        container.innerHTML = `
+          <div class="flex gap-2 mb-2">
+            <button id="shotTab1" onclick="switchShotTab(1)" class="flex-1 py-2.5 rounded-xl font-black text-xs transition-all bg-indigo-600 text-white shadow-md">
+              1회차 사진 (20s)
+            </button>
+            <button id="shotTab2" onclick="switchShotTab(2)" class="flex-1 py-2.5 rounded-xl font-black text-xs transition-all bg-slate-800 text-slate-400 hover:bg-slate-700">
+              2회차 보너스 (8s)
             </button>
           </div>
+          <div class="relative w-full rounded-2xl overflow-hidden bg-black border border-white/20 shadow-2xl mb-3 flex items-center justify-center" style="height: 52vh; max-height: 440px; min-height: 250px;">
+            <img id="dualPreviewImg" src="${records[0].resultUrl}" class="w-full h-full object-contain" alt="모자이크 사진">
+          </div>
+          <button id="dualDownloadBtn" onclick="downloadImage('${records[0].resultUrl}', 'mosaic_shot1.jpg', 1, this)" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all mb-2">
+            <span class="text-lg">💾</span>
+            <span id="dualDownloadBtnText">1회차 사진 바로 다운로드</span>
+          </button>
+          <button onclick="downloadAllShots(this)" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center justify-center gap-1.5 transition-all">
+            <span>📦</span> <span>1회차 + 2회차 두 장 모두 다운로드</span>
+          </button>
         `;
-        container.appendChild(card);
-      });
-
-      // 4) 포토존 재진입 차단 & 안내 (Issue 6 해결: 재촬영 불가 명시하여 혼선 및 권한오류 원천 차단)
-      let lockNotice = document.getElementById('downloadLockNotice');
-      if (!lockNotice) {
-        lockNotice = document.createElement('div');
-        lockNotice.id = 'downloadLockNotice';
-        container.parentNode.insertBefore(lockNotice, container.nextSibling);
       }
 
-      lockNotice.innerHTML = `
-        <div class="p-3 mb-3 rounded-xl bg-slate-800/80 border border-slate-700 text-[11px] text-slate-300 text-center leading-relaxed">
-          🔒 <span class="text-white font-bold">포토존 셀카 촬영이 완료되었습니다.</span><br>
-          <span class="text-slate-400">새로운 촬영을 원하시면 키오스크 화면의 새 QR코드를 스캔해주세요.</span>
-        </div>
-      `;
+      // 3) 포토존 재진입 차단 & 안내
+      const lockNotice = document.getElementById('downloadLockNotice');
+      if (lockNotice) {
+        lockNotice.innerHTML = `
+          <div class="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-[11px] text-slate-400 text-center leading-relaxed">
+            🔒 포토존 촬영 완료 <span class="text-slate-500">| 재참여는 키오스크 새 QR 스캔</span>
+          </div>
+        `;
+      }
     }
 
-    // 이미지 다운로드 핸들러
-    window.downloadImage = function(url, filename, shotNumber = 1) {
-      // 안내 배너 전환 (Issue 4 해결: 다운로드 버튼 클릭 시에만 완료 배너 노출)
-      const guideBanner = document.getElementById('downloadGuideBanner');
-      const successBanner = document.getElementById('downloadSuccessBanner');
-      if (guideBanner) guideBanner.classList.add('hidden');
-      if (successBanner) successBanner.classList.remove('hidden');
+    // 듀얼 탭 전환 핸들러
+    window.switchShotTab = function(shotNum) {
+      currentActiveShot = shotNum;
+      const tab1 = document.getElementById('shotTab1');
+      const tab2 = document.getElementById('shotTab2');
+      const img = document.getElementById('dualPreviewImg');
+      const btn = document.getElementById('dualDownloadBtn');
+      const btnText = document.getElementById('dualDownloadBtnText');
 
-      const ua = navigator.userAgent.toLowerCase();
-      const isIOS = /ipad|iphone|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const rec = currentDualRecords.find(r => (r.shotNumber || 1) === shotNum) || currentDualRecords[shotNum - 1] || currentDualRecords[0];
+      if (!rec) return;
 
-      // 서버에 다운로드 감사 로그 전송 (현재 세션 토큰 또는 복원된 세션 토큰)
+      if (shotNum === 1) {
+        tab1.className = 'flex-1 py-2.5 rounded-xl font-black text-xs transition-all bg-indigo-600 text-white shadow-md';
+        tab2.className = 'flex-1 py-2.5 rounded-xl font-black text-xs transition-all bg-slate-800 text-slate-400 hover:bg-slate-700';
+        if (btnText) btnText.textContent = '1회차 사진 바로 다운로드';
+      } else {
+        tab1.className = 'flex-1 py-2.5 rounded-xl font-black text-xs transition-all bg-slate-800 text-slate-400 hover:bg-slate-700';
+        tab2.className = 'flex-1 py-2.5 rounded-xl font-black text-xs transition-all bg-indigo-600 text-white shadow-md';
+        if (btnText) btnText.textContent = '2회차 보너스 사진 바로 다운로드';
+      }
+
+      if (img) img.src = rec.resultUrl;
+      if (btn) {
+        btn.onclick = function() {
+          downloadImage(rec.resultUrl, `mosaic_shot${shotNum}.jpg`, shotNum, btn);
+        };
+      }
+    };
+
+    // 1회차 + 2회차 동시 다운로드
+    window.downloadAllShots = async function(btnEl) {
+      if (!currentDualRecords || currentDualRecords.length === 0) return;
+      if (btnEl) {
+        btnEl.innerHTML = `<span>⏳</span> <span>두 장 모두 다운로드 중...</span>`;
+        btnEl.disabled = true;
+      }
+      for (let i = 0; i < currentDualRecords.length; i++) {
+        const rec = currentDualRecords[i];
+        const shotNum = rec.shotNumber || (i + 1);
+        await downloadImage(rec.resultUrl, `mosaic_shot${shotNum}.jpg`, shotNum, null);
+        if (i < currentDualRecords.length - 1) {
+          await new Promise(r => setTimeout(r, 600)); // 모바일 브라우저 다운로드 간격
+        }
+      }
+      if (btnEl) {
+        btnEl.innerHTML = `<span>✅</span> <span>두 장 모두 다운로드 완료!</span>`;
+        setTimeout(() => {
+          btnEl.disabled = false;
+          btnEl.innerHTML = `<span>📦</span> <span>1회차 + 2회차 두 장 모두 다운로드</span>`;
+        }, 3000);
+      }
+    };
+
+    // 직접 파일 다운로드 (Web Share API 제거: 공유창 없이 즉시 기기 파일 저장)
+    window.downloadImage = async function(url, filename, shotNumber = 1, btnEl = null) {
+      // 서버에 다운로드 감사 로그 전송
       const token = sessionToken || localStorage.getItem('mosaic_saved_session') || '';
       if (token) {
         fetch('/api/upload/record-download', {
@@ -795,39 +849,55 @@
         }).catch(e => console.warn('다운로드 로깅 전송 실패:', e));
       }
 
-      // Web Share API 지원 시 우선 시도
-      if (navigator.share) {
-        fetch(url)
-          .then(res => res.blob())
-          .then(blob => {
-            const file = new File([blob], filename, { type: 'image/jpeg' });
-            return navigator.share({
-              files: [file],
-              title: '나의 우주 모자이크',
-              text: '코즈믹 모자이크 셀카 작품입니다!'
-            });
-          })
-          .catch(() => fallbackDownload(url, filename, isIOS));
-      } else {
-        fallbackDownload(url, filename, isIOS);
+      const origHtml = btnEl ? btnEl.innerHTML : '';
+      if (btnEl) {
+        btnEl.innerHTML = `<span>⏳</span> <span>저장 중...</span>`;
+        btnEl.disabled = true;
       }
-    };
 
-    function fallbackDownload(url, filename, isIOS) {
-      if (isIOS) {
-        window.open(url, '_blank');
-      } else {
+      try {
+        // Blob 직접 다운로드 (Web Share API 완전 배제하여 OS 공유창 방지)
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
+        a.href = blobUrl;
+        a.download = filename || 'my_cosmic_mosaic.jpg';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-      }
-    }
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 4000);
 
-    // [체험 마치기] 버튼
-    document.getElementById('finalFinishBtn').addEventListener('click', () => {
+        if (btnEl) {
+          btnEl.innerHTML = `<span>✅</span> <span>다운로드 완료!</span>`;
+          btnEl.classList.remove('from-indigo-600', 'to-purple-600');
+          btnEl.classList.add('from-emerald-600', 'to-teal-600');
+          setTimeout(() => {
+            btnEl.disabled = false;
+            btnEl.innerHTML = origHtml || `<span>💾</span> <span>사진 다시 다운로드</span>`;
+            btnEl.classList.remove('from-emerald-600', 'to-teal-600');
+            btnEl.classList.add('from-indigo-600', 'to-purple-600');
+          }, 3000);
+        }
+      } catch (err) {
+        console.warn('Blob 다운로드 실패, 링크 폴백:', err);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename || 'my_cosmic_mosaic.jpg';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        if (btnEl) {
+          btnEl.disabled = false;
+          btnEl.innerHTML = origHtml;
+        }
+      }
+    };
+
+    // [체험 마치기] 버튼 (존재할 경우)
+    document.getElementById('finalFinishBtn')?.addEventListener('click', () => {
       showCustomAlert('체험이 완료되었습니다.\n사진 저장은 이 화면에서 언제든 가능합니다.\n(창을 닫으셔도 됩니다)');
     });
 
