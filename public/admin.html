@@ -480,6 +480,37 @@
           </table>
         </div>
       </div>
+
+      <!-- 실시간 서버 에러 & 시스템 결함 모니터 -->
+      <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mt-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-3">
+          <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-2xl text-rose-600">bug_report</span>
+            <div>
+              <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                실시간 서버 에러 & 시스템 결함 로그
+                <span id="errorStatusBadge" class="text-xs px-2.5 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600">확인 중...</span>
+              </h3>
+              <p class="text-xs text-slate-500">Node.js 런타임 오류, 이미지 렌더링 결함, 예외 상황을 영구 기록 및 실시간 관제합니다 (logs/server.error.log)</p>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="fetchErrorLogs()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">refresh</span> 새로고침
+            </button>
+            <button onclick="clearErrorLogs()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">delete</span> 로그 비우기
+            </button>
+            <button onclick="toggleErrorLogBox()" id="toggleErrorBoxBtn" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">terminal</span> 콘솔 열기
+            </button>
+          </div>
+        </div>
+
+        <div id="errorLogTerminal" class="hidden mt-3 bg-slate-900 text-slate-200 font-mono text-xs rounded-xl p-4 max-h-80 overflow-y-auto border border-slate-800 shadow-inner">
+          <pre id="errorLogContent" class="whitespace-pre-wrap break-all leading-relaxed">로그를 불러오는 중...</pre>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -680,6 +711,63 @@
     function downloadSessionCsv() {
       window.open('/api/admin/export-csv', '_blank');
     }
+
+    // ===== 서버 에러 로그 모니터링 =====
+    let isErrorBoxOpen = false;
+
+    function toggleErrorLogBox() {
+      const box = document.getElementById('errorLogTerminal');
+      const btn = document.getElementById('toggleErrorBoxBtn');
+      isErrorBoxOpen = !isErrorBoxOpen;
+      if (isErrorBoxOpen) {
+        box.classList.remove('hidden');
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">close</span> 콘솔 닫기';
+        fetchErrorLogs();
+      } else {
+        box.classList.add('hidden');
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm">terminal</span> 콘솔 열기';
+      }
+    }
+
+    async function fetchErrorLogs() {
+      try {
+        const res = await fetch('/api/admin/error-logs?lines=100');
+        const data = await res.json();
+        const badge = document.getElementById('errorStatusBadge');
+        const pre = document.getElementById('errorLogContent');
+
+        if (!data.hasErrors || data.logs.length === 0) {
+          badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800';
+          badge.textContent = '0건 (정상)';
+          pre.textContent = '현재 기록된 서버 에러가 없습니다. 시스템이 정상 운영 중입니다.';
+        } else {
+          badge.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-rose-100 text-rose-800';
+          badge.textContent = `${data.totalLines}줄 기록됨`;
+          pre.textContent = data.logs.join('\n');
+          if (isErrorBoxOpen) {
+            const terminal = document.getElementById('errorLogTerminal');
+            terminal.scrollTop = terminal.scrollHeight;
+          }
+        }
+      } catch (e) {
+        console.error('에러 로그 조회 실패:', e);
+      }
+    }
+
+    async function clearErrorLogs() {
+      if (!confirm('서버 에러 로그를 초기화하시겠습니까?')) return;
+      try {
+        const res = await fetch('/api/admin/clear-error-logs', { method: 'POST' });
+        const data = await res.json();
+        alert(data.message);
+        fetchErrorLogs();
+      } catch (e) {
+        alert('에러 로그 초기화 실패: ' + e.message);
+      }
+    }
+
+    setInterval(fetchErrorLogs, 10000);
+    fetchErrorLogs();
 
     // ===== 테마 목록 로드 =====
     async function loadThemes() {

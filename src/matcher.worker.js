@@ -141,7 +141,7 @@ async function processJobFull(jobData, jobId) {
     if (config.opacity > 0) {
       const alphaVal = Math.max(0, Math.min(255, Math.round(255 * config.opacity)));
       
-      const originalRaw = await sharp(Buffer.from(originalBuffer))
+      const originalRaw = await sharp(Buffer.from(originalBuffer), { limitInputPixels: false })
         .resize({ width: canvasWidth, height: canvasHeight, fit: 'cover' })
         .toColorspace('srgb') // 원본의 ICC 프로필을 sRGB로 변환하여 Raw 색상 손실 방지
         .ensureAlpha()
@@ -150,7 +150,10 @@ async function processJobFull(jobData, jobId) {
         
       sendProgress(jobId, 80, 'blending', '원본 투명도 처리 중 (RAW)...');
 
-      const transparentOriginalRaw = await sharp(originalRaw, { raw: { width: canvasWidth, height: canvasHeight, channels: 4 } })
+      const transparentOriginalRaw = await sharp(originalRaw, { 
+        raw: { width: canvasWidth, height: canvasHeight, channels: 4 },
+        limitInputPixels: false 
+      })
         .composite([{
           input: Buffer.from([255, 255, 255, alphaVal]),
           raw: { width: 1, height: 1, channels: 4 },
@@ -172,7 +175,10 @@ async function processJobFull(jobData, jobId) {
         sendProgress(jobId, 85, 'blending', '이중 하이브리드 투명도 처리 중 (RAW)...');
         
         const secondAlphaVal = Math.max(0, Math.min(255, Math.round(255 * config.secondOpacity)));
-        const secondTransparentOriginalRaw = await sharp(originalRaw, { raw: { width: canvasWidth, height: canvasHeight, channels: 4 } })
+        const secondTransparentOriginalRaw = await sharp(originalRaw, { 
+          raw: { width: canvasWidth, height: canvasHeight, channels: 4 },
+          limitInputPixels: false 
+        })
           .composite([{
             input: Buffer.from([255, 255, 255, secondAlphaVal]),
             raw: { width: 1, height: 1, channels: 4 },
@@ -194,14 +200,16 @@ async function processJobFull(jobData, jobId) {
       sendProgress(jobId, 90, 'blending', '최종 캔버스 합성 중...');
 
       finalImageBuffer = await sharp(rawCanvas, {
-        raw: { width: canvasWidth, height: canvasHeight, channels: 3 }
+        raw: { width: canvasWidth, height: canvasHeight, channels: 3 },
+        limitInputPixels: false
       })
         .composite(composites)
         .jpeg({ quality: 95 })
         .toBuffer();
     } else {
       finalImageBuffer = await sharp(rawCanvas, {
-        raw: { width: canvasWidth, height: canvasHeight, channels: 3 }
+        raw: { width: canvasWidth, height: canvasHeight, channels: 3 },
+        limitInputPixels: false
       }).jpeg({ quality: 95 }).toBuffer();
     }
 
@@ -221,7 +229,7 @@ async function processJobFull(jobData, jobId) {
     });
 
   } catch (err) {
-    parentPort.postMessage({ success: false, jobId, error: err.message });
+    parentPort.postMessage({ success: false, jobId, error: err.stack || err.message });
   }
 }
 

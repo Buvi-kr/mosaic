@@ -26,7 +26,7 @@ class SessionLogger {
     this.auditMap = new Map();
 
     // 7일 지난 JSON 감사 파일 자동 정리 (매 시간)
-    setInterval(() => this.cleanupOldJsonLogs(), 60 * 60 * 1000);
+    setInterval(() => this.cleanupOldJsonLogs(), 60 * 60 * 1000).unref();
   }
 
   ensureDirectories() {
@@ -221,8 +221,11 @@ class SessionLogger {
     const targetShot = shotNumber === 2 ? audit.shot2 : audit.shot1;
     targetShot.mosaicAttempted = true;
     targetShot.mosaicSuccess = false;
+    audit.abortReason = reason;
 
     this.appendDailyStreamLog(`[${this.getKstString()}] [모자이크실패 #${shotNumber}] ID: ${sessionId} | 사유: ${reason}`);
+    this.writeOrUpdateCsvAudit(audit);
+    this.writeJsonAudit(audit);
   }
 
   // ===== 6. 추가 촬영 결정 기록 =====
@@ -573,6 +576,47 @@ class SessionLogger {
       // ignore
     }
   }
+
+  // ===== 9. 서버 에러 & 시스템 결함 영구 기록 (server.error.log) =====
+  logServerError(moduleName, err, context = {}) {
+    const kstNow = this.getKstString();
+    const errMsg = err && err.stack ? err.stack : (err ? String(err) : 'Unknown Error');
+    const ctxStr = Object.keys(context).length > 0 ? ` | Context: ${JSON.stringify(context)}` : '';
+    const logLine = `[${kstNow}] [${moduleName}] ERROR: ${errMsg}${ctxStr}\n`;
+
+    console.error(`[서버에러] [${moduleName}]`, err);
+    try {
+      const errorLogPath = path.join(this.logsDir, 'server.error.log');
+      fs.appendFileSync(errorLogPath, logLine, 'utf8');
+    } catch (e) {
+      console.error('에러 파일 기록 실패:', e.message);
+    }
+  }
+
+  // ===== 최근 서버 에러 로그 조회 (관리자 대시보드 모니터링용) =====
+  getRecentServerErrors(maxLines = 100) {
+    try {
+      const errorLogPath = path.join(this.logsDir, 'server.error.log');
+      if (!fs.existsSync(errorLogPath)) return [];
+      const content = fs.readFileSync(errorLogPath, 'utf8');
+      const lines = content.split('\n').filter(Boolean);
+      return lines.slice(-maxLines);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  // ===== 서버 에러 로그 초기화 =====
+  clearServerErrors() {
+    try {
+      const errorLogPath = path.join(this.logsDir, 'server.error.log');
+      fs.writeFileSync(errorLogPath, `[${this.getKstString()}] [SYSTEM] 로그가 관리자에 의해 초기화되었습니다.\n`, 'utf8');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }
 
 module.exports = new SessionLogger();
+

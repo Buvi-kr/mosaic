@@ -146,6 +146,23 @@ router.get('/export-csv', (req, res) => {
   }
 });
 
+// GET /api/admin/error-logs — 실시간 서버 에러 및 시스템 로그 조회
+router.get('/error-logs', (req, res) => {
+  const maxLines = parseInt(req.query.lines) || 100;
+  const logs = sessionLogger.getRecentServerErrors(maxLines);
+  res.json({
+    totalLines: logs.length,
+    hasErrors: logs.length > 0,
+    logs
+  });
+});
+
+// POST /api/admin/clear-error-logs — 서버 에러 로그 초기화
+router.post('/clear-error-logs', (req, res) => {
+  const success = sessionLogger.clearServerErrors();
+  res.json({ success, message: success ? '에러 로그가 초기화되었습니다.' : '초기화 실패' });
+});
+
 // GET /api/admin/themes — 테마 목록 조회
 router.get('/themes', (req, res) => {
   const themes = getAvailableThemes();

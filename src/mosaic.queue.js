@@ -2,6 +2,7 @@ const { Worker } = require('worker_threads');
 const path = require('path');
 const os = require('os');
 const configModule = require('./config');
+const sessionLogger = require('./session.logger');
 
 class MosaicQueue {
   constructor() {
@@ -63,13 +64,13 @@ class MosaicQueue {
       });
 
       worker.on('error', (err) => {
-        console.error(`[워커 풀] 워커 #${i} 에러:`, err.message);
+        sessionLogger.logServerError('WorkerPool', err, { workerIndex: i });
         this.handleWorkerError(i, err);
       });
 
       worker.on('exit', (code) => {
         if (code !== 0 && this.initialized) {
-          console.warn(`[워커 풀] 워커 #${i} 비정상 종료 (code: ${code}), 재생성 중...`);
+          sessionLogger.logServerError('WorkerPool', new Error(`Worker #${i} abnormal exit with code ${code}`));
           this.respawnWorker(i);
         }
       });
@@ -108,10 +109,13 @@ class MosaicQueue {
     });
 
     worker.on('message', (result) => this.handleWorkerMessage(index, result));
-    worker.on('error', (err) => this.handleWorkerError(index, err));
+    worker.on('error', (err) => {
+      sessionLogger.logServerError('WorkerPool Respawn', err, { workerIndex: index });
+      this.handleWorkerError(index, err);
+    });
     worker.on('exit', (code) => {
       if (code !== 0 && this.initialized) {
-        console.warn(`[워커 풀] 워커 #${index} 재생성 후 또 비정상 종료`);
+        sessionLogger.logServerError('WorkerPool Respawn', new Error(`Worker #${index} abnormal exit with code ${code}`));
         setTimeout(() => this.respawnWorker(index), 1000);
       }
     });

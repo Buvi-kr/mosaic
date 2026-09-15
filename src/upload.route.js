@@ -243,6 +243,11 @@ router.post('/', upload.single('photo'), async (req, res) => {
       safeRenderTileSize = Math.floor(15000 / cols);
       if (safeRenderTileSize < TILE_SIZE) safeRenderTileSize = TILE_SIZE;
       console.warn(`[저사양 안전모드] RENDER_TILE_SIZE 다운스케일: ${RENDER_TILE_SIZE}px -> ${safeRenderTileSize}px`);
+    } else if (cols * safeRenderTileSize > 19200) {
+      // 고해상도 안전가드: 19,200px (3.68억 픽셀) 초과 시 Node.js OOM 방지를 위해 safeRenderTileSize 비례 조정
+      safeRenderTileSize = Math.floor(19200 / cols);
+      if (safeRenderTileSize < TILE_SIZE) safeRenderTileSize = TILE_SIZE;
+      console.log(`[렌더링] 💎 Full-Quality 안전가드: 타일 화질 ${safeRenderTileSize}px (최종 캔버스: ${cols * safeRenderTileSize}×${rows * safeRenderTileSize}px)`);
     } else {
       console.log(`[렌더링] 💎 Full-Quality 모드: 타일 화질 ${safeRenderTileSize}px (최종 캔버스: ${cols * safeRenderTileSize}×${rows * safeRenderTileSize}px)`);
     }
@@ -326,7 +331,8 @@ router.post('/', upload.single('photo'), async (req, res) => {
       fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
     }
     
-    await sharp(result.finalImageBuffer).toFile(path.join(OUTPUTS_DIR, outputFilename));
+    // 워커가 인코딩한 고화질 JPEG 버퍼를 재디코딩 없이 다이렉트로 디스크에 저장 (CPU/RAM 제로 오버헤드 & 픽셀 제한 원천 차단)
+    await fs.promises.writeFile(path.join(OUTPUTS_DIR, outputFilename), result.finalImageBuffer);
 
     // --- 타일 사용 통계 및 로그 ---
     const usageLog = {};
@@ -445,14 +451,16 @@ router.post('/', upload.single('photo'), async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ 처리 에러:', err);
+    sessionLogger.logServerError('/api/upload', err, {
+      sessionId: req.body?.sessionId,
+      sessionToken,
+      tileSize: TILE_SIZE,
+      targetWidth, targetHeight,
+      cols, rows
+    });
     if (sessionToken) {
       sessionManager.recordUploadFailure(sessionToken, err.message);
     }
-    try {
-      const logPath = path.join(__dirname, '../logs/server.error.log');
-      fs.appendFileSync(logPath, `[${new Date().toISOString()}] ERROR in /api/upload: ${err.stack || err.message}\n`);
-    } catch (e) { }
     res.status(500).json({ error: '서버 에러가 발생했습니다. 다시 촬영해주세요.' });
   }
 });

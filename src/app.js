@@ -15,11 +15,7 @@ const sessionLogger = require('./session.logger');
 const fs = require('fs');
 
 function logGlobalError(err, type = 'Unhandled Error') {
-  console.error(`[${type}]`, err);
-  try {
-    const logPath = path.join(__dirname, '../logs/server.error.log');
-    fs.appendFileSync(logPath, `\n[${new Date().toISOString()}] ${type}: ${err.stack || err}\n`);
-  } catch(e) {}
+  sessionLogger.logServerError(type, err);
 }
 
 process.on('uncaughtException', (err) => logGlobalError(err, 'UncaughtException'));
