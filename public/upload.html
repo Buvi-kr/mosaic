@@ -1026,11 +1026,12 @@
     });
 
     // 2회차 실패 구제 버튼 핸들러
-    document.getElementById('rescueRetryBtn').addEventListener('click', () => {
+    document.getElementById('rescueRetryBtn')?.addEventListener('click', () => {
       showView(viewCapture);
-      photoInput.value = '';
+      const inputEl = document.getElementById('photoInput');
+      if (inputEl) inputEl.value = '';
     });
-    document.getElementById('rescueKeepFirstBtn').addEventListener('click', () => {
+    document.getElementById('rescueKeepFirstBtn')?.addEventListener('click', () => {
       proceedToDownloadOnly();
     });
 

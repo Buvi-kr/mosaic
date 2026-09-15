@@ -21,7 +21,7 @@ class SessionManager {
     this.io = null;
 
     // 주기적 세션 가비지 컬렉션 (5분 이상 유휴 세션 정리)
-    setInterval(() => this.cleanupStaleSessions(), 60000);
+    setInterval(() => this.cleanupStaleSessions(), 60000).unref();
   }
 
   setIo(ioInstance) {

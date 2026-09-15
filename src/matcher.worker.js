@@ -70,7 +70,7 @@ async function processJobFull(jobData, jobId) {
 
     // ── Phase 1: 타일 매칭 (0~40%) ──
     sendProgress(jobId, 0, 'matching', `그리드 ${cols}×${rows} (${totalCells.toLocaleString()}칸) 분석 시작`);
-    const { matchedTiles } = runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, totalCells);
+    const { matchedTiles } = runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, totalCells, config);
     sendProgress(jobId, 40, 'matching', '타일 매칭 완료');
 
     // ── Phase 2: 타일 캐시 로딩 (40~50%) ──
@@ -92,7 +92,7 @@ async function processJobFull(jobData, jobId) {
       const batch = missingFilenames.slice(i, i + CACHE_BATCH_SIZE);
       await Promise.all(batch.map(async (filename) => {
         try {
-          const { data: tileRaw } = await sharp(path.join(tilesDir, filename))
+          const { data: tileRaw } = await sharp(path.join(tilesDir, filename), { limitInputPixels: false })
             .resize(safeRenderTileSize, safeRenderTileSize)
             .removeAlpha()
             .raw()
@@ -241,7 +241,7 @@ function processJob(jobData, jobId) {
     const tree = jobData.kdTree || kdTree;
     const version = jobData.tileDBVersion || tileDBVersion;
 
-    const result = runMatching(rawData, info, cols, rows, tileSize, tileDB, tree);
+    const result = runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, undefined, undefined, jobData.config || currentConfig);
 
     if (jobId !== undefined) {
       parentPort.postMessage({ success: true, jobId, ...result, tileDBVersion: version });
@@ -257,7 +257,13 @@ function processJob(jobData, jobId) {
   }
 }
 
-function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, totalCells) {
+function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, totalCells, config = currentConfig) {
+  const cfg = config || currentConfig;
+  const maxUsage = cfg.maxTileUsage || MAX_USAGE;
+  const rad = cfg.banRadius !== undefined ? cfg.banRadius : RAD;
+  const candidatePool = cfg.candidatePoolSize || CANDIDATE_POOL;
+  const isTurbo = !!cfg.turboMode;
+
   const matchedTiles = [];
   const pixelData = Buffer.from(rawData);
 
@@ -323,8 +329,8 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, t
     // 1. ban radius 내에 이미 배치된 타일 ID와 Lab 색상 수집
     const bannedTiles = new Set();
     const bannedLabs = [];
-    for (let ry = Math.max(0, cy - RAD); ry <= Math.min(rows - 1, cy + RAD); ry++) {
-      for (let rx = Math.max(0, cx - RAD); rx <= Math.min(cols - 1, cx + RAD); rx++) {
+    for (let ry = Math.max(0, cy - rad); ry <= Math.min(rows - 1, cy + rad); ry++) {
+      for (let rx = Math.max(0, cx - rad); rx <= Math.min(cols - 1, cx + rad); rx++) {
         const tId = placedGrid[ry][rx];
         if (tId !== -1) {
           bannedTiles.add(tId);
@@ -337,10 +343,10 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, t
     let validCandidates = [];
     let fallbackIdx = 0;
 
-    if (currentConfig.turboMode) {
+    if (isTurbo) {
       // ===== 100% 랜덤 터보 모드 (색상 매칭 생략) =====
       const filterFn = (i) => {
-        if (usedCounts[i] >= MAX_USAGE) return false;
+        if (usedCounts[i] >= maxUsage) return false;
         if (bannedTiles.has(i)) return false;
         return true;
       };
@@ -364,7 +370,7 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, t
       // ===== ONE-PASS 매칭: k-d tree 내에서 공간/사용 제약 필터링 =====
       const filterFn = (i) => {
         // 조건 1: 사용 횟수 제한
-        if (usedCounts[i] >= MAX_USAGE) return false;
+        if (usedCounts[i] >= maxUsage) return false;
 
         // 조건 2: ban radius 내 동일 타일 금지
         if (bannedTiles.has(i)) return false;
@@ -383,12 +389,12 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, t
         return true;
       };
 
-      // tree 탐색 중 유효한 후보 60개(기존 조건)를 찾을 때까지 계속 탐색함
-      const kNearest = KDTree.kNearest(tree, [tLab.l, tLab.a, tLab.b], 60, filterFn);
+      // tree 탐색 중 유효한 후보 N개를 찾을 때까지 계속 탐색함
+      const kNearest = KDTree.kNearest(tree, [tLab.l, tLab.a, tLab.b], candidatePool, filterFn);
 
       if (kNearest.length > 0) {
         fallbackIdx = kNearest[0].idx;
-        validCandidates = kNearest.map(cand => ({ idx: cand.idx, dist: Math.sqrt(cand.distSq) }));
+        validCandidates = kNearest.map(c => ({ idx: c.idx, dist: Math.sqrt(c.distSq) }));
       } else {
         const absoluteNearest = KDTree.kNearest(tree, [tLab.l, tLab.a, tLab.b], 1);
         if (absoluteNearest.length > 0) fallbackIdx = absoluteNearest[0].idx;
@@ -396,7 +402,7 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, t
 
 
     } else {
-      // ===== 폴백: 브루트포스 (k-d tree 없는 경우) =====
+      // ===== 폴백: 브루트포스 랭킹 (k-d tree 부재 시) =====
       const candidateIndices = new Int32Array(dbSize);
       const distancesSq = new Float32Array(dbSize);
 
@@ -412,7 +418,7 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, t
       for (let j = 0; j < dbSize; j++) {
         const i = candidateIndices[j];
 
-        if (usedCounts[i] >= MAX_USAGE) continue;
+        if (usedCounts[i] >= maxUsage) continue;
         if (bannedTiles.has(i)) continue;
 
         const candLab = tileDB[i].lab;
@@ -469,7 +475,7 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, t
 if (workerData && workerData.rawData) {
   try {
     const { rawData, info, cols, rows, tileSize, globalTileDB: tDB, kdTree: tree } = workerData;
-    const result = runMatching(rawData, info, cols, rows, tileSize, tDB, tree);
+    const result = runMatching(rawData, info, cols, rows, tileSize, tDB, tree, undefined, undefined, workerData.config || currentConfig);
     parentPort.postMessage({ success: true, ...result });
   } catch (err) {
     parentPort.postMessage({ success: false, error: err.message });

@@ -96,14 +96,12 @@ function saveConfig() {
     fs.mkdirSync(path.join(__dirname, '../data'), { recursive: true });
   }
 
-  // 깃허브 추적 파일(CONFIG_FILE)에는 비밀키 URL이 노출되지 않도록 마스킹하여 저장
+  // 깃허브 추적 파일(CONFIG_FILE)에는 비밀키 URL이 절대 노출되지 않도록 마스킹하여 저장
   const publicConfig = { ...config };
-  if (fs.existsSync(LOCAL_CONFIG_FILE) || process.env.GOOGLE_SHEETS_WEBAPP_URL) {
-    publicConfig.googleSheets = {
-      enabled: false,
-      webAppUrl: ''
-    };
-  }
+  publicConfig.googleSheets = {
+    enabled: Boolean(config.googleSheets && config.googleSheets.enabled),
+    webAppUrl: ''
+  };
 
   // Windows 호환 원자적 쓰기 (write-file-atomic)
   try {

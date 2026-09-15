@@ -220,7 +220,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
     const startTime = Date.now();
 
     // 1. 원본 비율 파악 및 가상 그리드(MAX_RES) 기준으로 가상 픽셀 스케일링
-    const originalInfo = await sharp(req.file.buffer).metadata();
+    const originalInfo = await sharp(req.file.buffer, { limitInputPixels: false }).metadata();
     let targetWidth = originalInfo.width;
     let targetHeight = originalInfo.height;
 
@@ -256,12 +256,12 @@ router.post('/', upload.single('photo'), async (req, res) => {
     const CANVAS_H = rows * TILE_SIZE;
     const totalCells = cols * rows;
 
-    const originalResized = await sharp(req.file.buffer)
+    const originalResized = await sharp(req.file.buffer, { limitInputPixels: false })
       .resize({ width: CANVAS_W, height: CANVAS_H, fit: 'cover' })
       .toBuffer();
 
     // 2. 픽셀 데이터 추출
-    const { data: rawData, info } = await sharp(originalResized).raw().toBuffer({ resolveWithObject: true });
+    const { data: rawData, info } = await sharp(originalResized, { limitInputPixels: false }).raw().toBuffer({ resolveWithObject: true });
 
     // 디스플레이 상태 → processing
     io.emit('display_state', { state: 'processing', percent: 0, queueLength: mosaicQueue.getStats().queueLength });
@@ -431,7 +431,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
 
     // 디스플레이에 결과 전시 (SHOWCASE 상태 및 1회차 동적/2회차 8초 전달)
     io.emit('display_state', { state: 'showcase', duration: displayDuration });
-    socketManager.getIo().emit('new_mosaic', {
+    io.emit('new_mosaic', {
       imageUrl: `/outputs/${outputFilename}`,
       tileSize: TILE_SIZE,
       width: CANVAS_W,

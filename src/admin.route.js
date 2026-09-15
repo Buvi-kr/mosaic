@@ -323,7 +323,7 @@ router.post('/theme-upload-chunk', upload.array('images', 100), async (req, res)
       const filepath = path.join(themeDir, filename);
 
       // Sharp를 이용한 고속 리사이즈 및 WebP 압축 변환
-      await sharp(file.buffer)
+      await sharp(file.buffer, { limitInputPixels: false })
         .resize({ width: 1000, withoutEnlargement: true }) // 최대 가로 1000px 제한
         .webp({ quality: 80 }) // WebP 80% 압축 (디스크 용량 획기적 절감)
         .toFile(filepath);

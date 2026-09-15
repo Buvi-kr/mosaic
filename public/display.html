@@ -1126,7 +1126,7 @@
 
     // 시스템 상태 이벤트
     socket.on('display_state', (state) => {
-      if (state.isProcessing) {
+      if (state && (state.isProcessing || state.state === 'processing')) {
         if (qrProcessingFooter) qrProcessingFooter.classList.remove('hidden');
         if (qrProcessingMsg) qrProcessingMsg.textContent = state.message || '모자이크 렌더링 중...';
       } else {
