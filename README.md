@@ -1,15 +1,15 @@
-# 🌌 Reverse Cosmos Mosaic (V8.10 Exhibition Kiosk & Golden Frame Edition)
+# 🌌 Reverse Cosmos Mosaic (V8.11 Exhibition Kiosk & Giant Arrow Edition)
 > **로비 스크린 및 미디어아트 전시를 위한 인생네컷형 인터랙티브 스마트 모자이크 시스템**
 > *(Interactive Smart Photo Mosaic System for Kiosk Screens & Exhibitions)*
 
-![Version](https://img.shields.io/badge/Version-8.10%20Kiosk%20%26%20Golden%20Frame-blue.svg)
+![Version](https://img.shields.io/badge/Version-8.11%20Kiosk%20%26%20Giant%20Arrow-blue.svg)
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
 **최종 업데이트**: 2026-09-15  
 **개요**: 관람객이 전시장 키오스크의 스마트 게이트 QR을 스캔하여 전면 카메라로 셀카를 촬영하면, 수천 장의 우주 타일과 결합하여 **실시간 초고화질 포토모자이크**를 완성하고, **대형 스크린(3-2-1 역방향 동선)에 실시간 단독 전시**하는 전시장 전용 무인 인터랙티브 엔진입니다.  
-고령 관람객(70대 이상)도 즉시 적응하는 **3단계 직관 UI**, 1회차 완료 즉시 다음 관람객 입장을 허용하는 **파이프라인 듀얼 세션(`activeExperience` + `nextReserved`)**, 그리고 저장을 깜빡하고 다음으로 넘어가는 사고를 원천 방지하는 **"결정 후 다운로드(Decision-First)" 2단계 컨티뉴 UX**와 **전시품 특화 황금빛 프레임(Gold Frame)**, **3.5초 스마트 인체 실루엣 가이드**가 탑재되어 있습니다.
+고령 관람객(70대 이상)도 즉시 적응하는 **3단계 직관 UI**, 1회차 완료 즉시 다음 관람객 입장을 허용하는 **파이프라인 듀얼 세션(`activeExperience` + `nextReserved`)**, 그리고 저장을 깜빡하고 다음으로 넘어가는 사고를 원천 방지하는 **"결정 후 다운로드(Decision-First)" 2단계 컨티뉴 UX**, **전시품 특화 황금빛 프레임(Gold Frame)**, **2단계 10배 확대 네온 하향 안내 화살표 & 3.5초 스마트 인체 실루엣 가이드**가 탑재되어 있습니다.
 
 ---
 
@@ -604,6 +604,19 @@ Material Design 3 기반 대시보드에서 전시장 상황에 맞춰 실시간
 ---
 
 ## 10. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+
+### 📦 V8.11 Exhibition Giant Arrow & Hybrid Gallery Update (2026-09-15)
+#### 🎯 2단계 포토존 10배 확대 네온 하향 화살표 가이드 및 모던 하이브리드 갤러리 테마
+- **2단계 포토존 10배 확대 네온 하향 화살표 (글자 일체 배제) (`display.html`)**:
+  - 기존의 작은 텍스트 뱃지("HERE ⬇ 여기에 서세요")를 전면 제거하고 오직 화살표 그래픽만 남김.
+  - 기존 28px 대비 **10배 확대한 약 280px급 초대형 네온 로즈 하향 화살표(`↓`, `w-48 h-64 md:w-56 md:h-76 lg:w-64 lg:h-84`)**를 중앙 공간에 전면 배치.
+  - 리드미컬한 수직 바운스 애니메이션(`animate-bounce`, 1.6s)과 강렬한 듀얼 글로우 드롭 섀도우를 결합하여 전시장 원거리에서도 "바로 이 자리에서 촬영해야 함"을 한눈에 즉시 직관적으로 인지하도록 가이드 강화.
+- **클린 앰비언트 골드 외곽 프레임 (4개 코너 브래킷 정리)**:
+  - 4개 코너의 금속 브래킷을 정리하여 전시장 대형 스크린의 개방감과 세련된 순수 샴페인 골드 앰비언트 보더 라인을 완성.
+- **모던 하이브리드 갤러리 테마 지원 (`display.html`)**:
+  - 밝은 미술관 로비와 전시장 조명 환경에 최적화된 **화이트 갤러리 모드(외곽 부드러운 오프화이트/슬레이트 톤 + 중앙 100% 트루 블랙 셀카 스튜디오)** 지원.
+  - 우측 상단 실시간 테마 토글 버튼(`[🏛️ 갤러리 모드]` ↔ `[🌌 다크 코즈믹]`) 및 키보드 `T` 단축키 제공.
+  - 모든 텍스트의 폰트 웨이트(Bold/Black) 및 고대비 색상을 보강하여 전 연령대의 시인성 완벽 확보.
 
 ### 📦 V8.10 Exhibition Kiosk & Golden Frame Overhaul (2026-09-15)
 #### 🏛️ 키오스크 무인 F11 다중 탭 자동 기동, 골드 프레임, 디스플레이 상하 반전 & 3.5초 스마트 실루엣 가이드
