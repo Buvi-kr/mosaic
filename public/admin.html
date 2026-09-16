@@ -423,15 +423,15 @@
         </div>
       </div>
 
-      <!-- 6대 핵심 퍼널 지표 카드 -->
-      <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+      <!-- 5대 핵심 퍼널 지표 카드 (단일 촬영 체계) -->
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
         <div class="p-4 rounded-xl bg-slate-50 border border-slate-200">
           <p class="text-[11px] font-bold text-slate-500 uppercase">총 입장 세션</p>
           <p class="text-2xl font-black text-slate-800 mt-1" id="statTotalSessions">0</p>
           <p class="text-[10px] text-slate-400 mt-0.5">평균 체류: <span id="statAvgStay">0s</span></p>
         </div>
         <div class="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
-          <p class="text-[11px] font-bold text-indigo-700 uppercase">📸 1차 촬영율</p>
+          <p class="text-[11px] font-bold text-indigo-700 uppercase">📸 촬영율</p>
           <p class="text-2xl font-black text-indigo-900 mt-1" id="statCaptureRate">0%</p>
           <p class="text-[10px] text-indigo-500 mt-0.5">진입자 대비</p>
         </div>
@@ -443,12 +443,7 @@
         <div class="p-4 rounded-xl bg-purple-50 border border-purple-100">
           <p class="text-[11px] font-bold text-purple-700 uppercase">🎨 모자이크 완료</p>
           <p class="text-2xl font-black text-purple-900 mt-1" id="statMosaicRate">0%</p>
-          <p class="text-[10px] text-purple-500 mt-0.5">디스크 저장 확정</p>
-        </div>
-        <div class="p-4 rounded-xl bg-amber-50 border border-amber-100">
-          <p class="text-[11px] font-bold text-amber-700 uppercase">🔁 추가촬영률</p>
-          <p class="text-2xl font-black text-amber-900 mt-1" id="statRetryRate">0%</p>
-          <p class="text-[10px] text-amber-500 mt-0.5">2회차 재도전 선택</p>
+          <p class="text-[10px] text-purple-500 mt-0.5">완주율</p>
         </div>
         <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
           <p class="text-[11px] font-bold text-emerald-700 uppercase">💾 다운로드율</p>
@@ -470,17 +465,15 @@
                 <th class="py-2.5 px-3">세션 ID</th>
                 <th class="py-2.5 px-3">접근 일시</th>
                 <th class="py-2.5 px-3">체류시간</th>
-                <th class="py-2.5 px-3">1차촬영</th>
-                <th class="py-2.5 px-3">1차모자이크</th>
-                <th class="py-2.5 px-3">추가촬영</th>
-                <th class="py-2.5 px-3">2차모자이크</th>
+                <th class="py-2.5 px-3">촬영성공</th>
+                <th class="py-2.5 px-3">모자이크합성</th>
                 <th class="py-2.5 px-3">다운로드</th>
                 <th class="py-2.5 px-3">최종상태</th>
               </tr>
             </thead>
             <tbody id="sessionAuditTableBody" class="divide-y divide-slate-100 font-medium">
               <tr>
-                <td colspan="9" class="py-4 text-center text-slate-400">세션 데이터를 불러오는 중...</td>
+                <td colspan="7" class="py-4 text-center text-slate-400">세션 데이터를 불러오는 중...</td>
               </tr>
             </tbody>
           </table>
@@ -660,37 +653,27 @@
         document.getElementById('statCaptureRate').textContent = data.captureRate + '%';
         document.getElementById('statUploadRate').textContent = data.uploadRate + '%';
         document.getElementById('statMosaicRate').textContent = data.mosaicRate + '%';
-        document.getElementById('statRetryRate').textContent = data.retryRate + '%';
         document.getElementById('statDownloadRate').textContent = data.downloadRate + '%';
 
         const tbody = document.getElementById('sessionAuditTableBody');
         if (!data.recentSessions || data.recentSessions.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="9" class="py-4 text-center text-slate-400">아직 수집된 세션 기록이 없습니다.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-slate-400">아직 수집된 세션 기록이 없습니다.</td></tr>';
           return;
         }
 
         tbody.innerHTML = data.recentSessions.map(s => {
           let statusBadge = '';
-          if (s.finalStatus === 'COMPLETED_DUAL') {
-            statusBadge = '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold">2회완료</span>';
-          } else if (s.finalStatus === 'COMPLETED_SINGLE') {
-            statusBadge = '<span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">1회완료</span>';
+          if (s.finalStatus === 'COMPLETED_SINGLE' || s.finalStatus === 'COMPLETED' || s.finalStatus === 'COMPLETED_DUAL') {
+            statusBadge = '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold">완료</span>';
           } else if (s.finalStatus === 'IN_PROGRESS') {
             statusBadge = '<span class="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-bold animate-pulse">진행중</span>';
           } else {
             statusBadge = `<span class="px-2 py-0.5 bg-rose-100 text-rose-800 rounded-full font-bold">${(s.finalStatus || '').replace('ABORTED_', '')}</span>`;
           }
 
-          const cap1 = s.shot1Capture ? '<span class="text-emerald-600 font-bold">성공</span>' : '<span class="text-slate-400">-</span>';
-          const mos1 = s.shot1Mosaic ? `<span class="text-indigo-600 font-bold">성공 (${s.mosaic1Duration}s)</span>` : '<span class="text-slate-400">-</span>';
-          
-          let retry = '-';
-          if (s.retryChoice === 'RETRY') retry = '<span class="text-purple-600 font-bold">재도전(YES)</span>';
-          else if (s.retryChoice === 'FINISH') retry = '<span class="text-slate-500">마침(NO)</span>';
-          else if (s.retryChoice === 'TIMEOUT') retry = '<span class="text-amber-600">만료</span>';
-
-          const mos2 = s.shot2Mosaic ? '<span class="text-emerald-600 font-bold">성공</span>' : (s.retryChoice === 'RETRY' ? '<span class="text-slate-400">진행/실패</span>' : '-');
-          const down = s.downloadCount > 0 ? `<span class="text-emerald-600 font-bold">💾 ${s.downloadCount}건</span>` : '<span class="text-slate-400">미다운</span>';
+          const cap = (s.shotCapture || s.shot1Capture) ? '<span class="text-emerald-600 font-bold">성공</span>' : '<span class="text-slate-400">-</span>';
+          const mos = (s.shotMosaic || s.shot1Mosaic) ? `<span class="text-indigo-600 font-bold">성공 (${s.mosaicDuration || s.mosaic1Duration || '-'}s)</span>` : '<span class="text-slate-400">-</span>';
+          const down = (s.downloadCount > 0) ? `<span class="text-emerald-600 font-bold">💾 ${s.downloadCount}건</span>` : '<span class="text-slate-400">미다운</span>';
 
           const shortId = s.sessionId.length > 18 ? s.sessionId.substring(0, 18) + '...' : s.sessionId;
 
@@ -698,10 +681,8 @@
             <td class="py-2.5 px-3 font-mono font-bold text-slate-800" title="${s.sessionId}">${shortId}</td>
             <td class="py-2.5 px-3 text-slate-600">${s.accessTime}</td>
             <td class="py-2.5 px-3 text-slate-600">${s.staySec}s</td>
-            <td class="py-2.5 px-3">${cap1}</td>
-            <td class="py-2.5 px-3">${mos1}</td>
-            <td class="py-2.5 px-3">${retry}</td>
-            <td class="py-2.5 px-3">${mos2}</td>
+            <td class="py-2.5 px-3">${cap}</td>
+            <td class="py-2.5 px-3">${mos}</td>
             <td class="py-2.5 px-3">${down}</td>
             <td class="py-2.5 px-3">${statusBadge}</td>
           </tr>`;

@@ -427,11 +427,12 @@ blender_workspace\render_video.bat
 - **14대 현장 실패 시나리오 방어 & 황금률(Golden Rule) 준수**:
   - "디스크 저장 및 COMPLETED 확정 전까지 관람객의 촬영 기회(shotCount)는 절대 차감되지 않는다 (차감 0)" 원칙 엄격 구현.
   - `shotRecord` 멱등성 캐시, 20초 `DISCONNECTED_GRACE`, 5분 세션 GC, F5 복구용 `request_gate_state` 핸드셰이크 지원.
-- **전시장 관람객 세션 여정 & 감사 로깅 엔진 구축 (`src/session.logger.js`)**:
-  - 세션 ID, 접근 일시, 촬영 성공 여부 및 소요시간, 업로드 성공 여부 및 파일 크기, 모자이크 성공 여부 및 상세 스펙, 추가 촬영 여부 및 선택 사유, 다운로드 성공 여부 및 횟수의 7대 핵심 감사 지표 수집.
+- **전시장 관람객 단일 촬영(Single-Shot) 세션 여정 & 감사 로깅 엔진 구축 (`src/session.logger.js`)**:
+  - 세션 ID, 접근 일시, 촬영 성공 여부 및 소요시간, 업로드 성공 여부 및 파일 크기, 모자이크 완성 여부 및 상세 스펙, 다운로드 성공 여부 및 횟수의 핵심 감사 지표 수집 (과거 2회차 재촬영 레거시 필드 완전 제거).
   - Tier 1(월간 1행 감사 요약 + 실시간 다운로드 영구 보존), Tier 2(일별 분단위 스트림 타임라인), Tier 3(세션별 정밀 JSON 및 7일 자동 파기) 3계층 스토리지 완성.
   - 관람객 다운로드 버튼 클릭 시 비동기 추적 API (`POST /api/upload/record-download`) 구현.
-  - 관리자 패널(`admin.html`)에 6대 전환율 KPI 카드 및 실시간 최근 세션 여정 감사 테이블(`GET /api/admin/session-stats`) 탑재.
+  - 관리자 패널(`admin.html`)에 단일 촬영 5대 핵심 퍼널 KPI 카드(입장 ➔ 촬영 ➔ 업로드 ➔ 모자이크 ➔ 다운로드) 및 실시간 최근 세션 여정 감사 테이블 탑재.
+  - Google Sheets 실시간 동기화(`sheets.sync.js`)와 완벽 호환 보장.
 
 ---
 

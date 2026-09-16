@@ -3,16 +3,16 @@ const path = require('path');
 const sheetsSync = require('./sheets.sync');
 
 /**
- * SessionLogger (V8.8 Advanced Session Journey & Audit Logging Engine)
+ * SessionLogger (V9.0 Streamlined Single-Shot Session Journey & Audit Engine)
  * 
- * 전시장 관람객의 전체 여정을 7대 핵심 지표로 정밀 추적하여 영구 기록:
- * 1. 세션아이디 (sessionId)
- * 2. 접근일시 (KST accessTime) & 클라이언트 정보
+ * 전시장 단일 촬영(1회차) 원칙에 맞춘 관람객 전체 여정 정밀 추적 및 영구 기록:
+ * 1. 세션아이디 (sessionId) & 토큰
+ * 2. 접근일시 (KST accessTime) & 클라이언트 환경 (IP, UserAgent)
  * 3. 촬영 성공 여부 (captureSuccess, 촬영 소요시간)
- * 4. 업로드 성공 여부 (uploadSuccess, 파일 크기)
- * 5. 모자이크 성공 여부 (mosaicSuccess, 연산 시간, 해상도, 타일 수)
- * 6. 추가 촬영 여부 (retryChoice: YES/NO/TIMEOUT, 2차 촬영/모자이크 성공 여부)
- * 7. 다운로드 성공 여부 (downloadSuccess: 1회차, 2회차, 총 다운로드 수)
+ * 4. 업로드 성공 여부 (uploadSuccess, 원본 파일 크기)
+ * 5. 모자이크 완성 여부 (mosaicSuccess, 연산 시간, 해상도, 타일 수, 테마)
+ * 6. 다운로드 여부 (downloaded, 다운로드 횟수, 파일명)
+ * 7. 최종 상태 및 총 체류시간 (finalStatus, abortReason, totalStaySec)
  */
 class SessionLogger {
   constructor() {
@@ -75,8 +75,8 @@ class SessionLogger {
       accessTime: this.getKstString(now),
       accessMode: session.state === 'RESERVED' ? 'IMMEDIATE' : 'WAITING_LINE',
       
-      // 1회차 지표
-      shot1: {
+      // 단일 촬영(Single-Shot) 지표 (구버전 shot1 호환 별칭 포함)
+      shot: {
         captureStarted: false,
         captureStartedAt: null,
         captureDurationSec: null,
@@ -100,44 +100,13 @@ class SessionLogger {
         downloadFilename: null
       },
 
-      // 추가 촬영 결정 지표
-      decision: {
-        promptedAt: null,
-        answeredAt: null,
-        choice: null, // 'RETRY' | 'FINISH' | 'TIMEOUT'
-        durationSec: null,
-        hasSecondShot: false
-      },
-
-      // 2회차 지표
-      shot2: {
-        captureStarted: false,
-        captureStartedAt: null,
-        captureDurationSec: null,
-        captureSuccess: false,
-        
-        uploadAttempted: false,
-        uploadedAt: null,
-        uploadSuccess: false,
-        fileSize: null,
-        
-        mosaicAttempted: false,
-        mosaicSuccess: false,
-        mosaicDurationSec: null,
-        resultUrl: null,
-        resolution: null,
-        tilesCount: null,
-        theme: null,
-        
-        downloaded: false,
-        downloadedAt: null,
-        downloadFilename: null
+      // 구버전 및 sheetsSync 호환성을 위한 shot1 getter 연동
+      get shot1() {
+        return this.shot;
       },
 
       // 다운로드 종합
       downloads: {
-        shot1: false,
-        shot2: false,
         totalCount: 0
       },
 
@@ -162,12 +131,12 @@ class SessionLogger {
     if (!audit) return;
 
     const now = Date.now();
-    const targetShot = shotNumber === 2 ? audit.shot2 : audit.shot1;
+    const targetShot = audit.shot || audit.shot1;
     targetShot.captureStarted = true;
     targetShot.captureStartedAt = now;
 
     const elapsedFromEntry = ((now - audit.createdAt) / 1000).toFixed(1);
-    this.appendDailyStreamLog(`[${this.getKstString()}] [촬영시작 #${shotNumber}] ID: ${sessionId} (진입 후 ${elapsedFromEntry}s 경과)`);
+    this.appendDailyStreamLog(`[${this.getKstString()}] [촬영시작] ID: ${sessionId} (진입 후 ${elapsedFromEntry}s 경과)`);
   }
 
   // ===== 3. 업로드 수신 기록 =====
@@ -176,7 +145,7 @@ class SessionLogger {
     if (!audit) return;
 
     const now = Date.now();
-    const targetShot = shotNumber === 2 ? audit.shot2 : audit.shot1;
+    const targetShot = audit.shot || audit.shot1;
     targetShot.uploadAttempted = true;
     targetShot.uploadedAt = now;
     targetShot.uploadSuccess = true;
@@ -189,7 +158,7 @@ class SessionLogger {
     targetShot.captureSuccess = true; // 업로드 성공은 곧 촬영 완료를 입증
 
     const sizeMb = (targetShot.fileSize / (1024 * 1024)).toFixed(2);
-    this.appendDailyStreamLog(`[${this.getKstString()}] [업로드성공 #${shotNumber}] ID: ${sessionId} | 크기: ${sizeMb}MB | 촬영~업로드: ${targetShot.captureDurationSec || '-'}s`);
+    this.appendDailyStreamLog(`[${this.getKstString()}] [업로드성공] ID: ${sessionId} | 크기: ${sizeMb}MB | 촬영~업로드: ${targetShot.captureDurationSec || '-'}s`);
   }
 
   // ===== 4. 모자이크 렌더링 성공 기록 =====
@@ -197,7 +166,7 @@ class SessionLogger {
     const audit = this.auditMap.get(sessionId);
     if (!audit) return;
 
-    const targetShot = shotNumber === 2 ? audit.shot2 : audit.shot1;
+    const targetShot = audit.shot || audit.shot1;
     targetShot.mosaicAttempted = true;
     targetShot.mosaicSuccess = true;
     targetShot.mosaicDurationSec = stats.elapsed ? parseFloat(stats.elapsed) : null;
@@ -206,11 +175,7 @@ class SessionLogger {
     targetShot.tilesCount = stats.totalCells || null;
     targetShot.theme = stats.theme || null;
 
-    if (shotNumber === 1) {
-      audit.decision.promptedAt = Date.now();
-    }
-
-    this.appendDailyStreamLog(`[${this.getKstString()}] [모자이크성공 #${shotNumber}] ID: ${sessionId} | 소요: ${targetShot.mosaicDurationSec}s | 테마: ${targetShot.theme} | 해상도: ${targetShot.resolution}`);
+    this.appendDailyStreamLog(`[${this.getKstString()}] [모자이크성공] ID: ${sessionId} | 소요: ${targetShot.mosaicDurationSec}s | 테마: ${targetShot.theme} | 해상도: ${targetShot.resolution}`);
   }
 
   // ===== 5. 모자이크 렌더링 실패 기록 =====
@@ -218,34 +183,25 @@ class SessionLogger {
     const audit = this.auditMap.get(sessionId);
     if (!audit) return;
 
-    const targetShot = shotNumber === 2 ? audit.shot2 : audit.shot1;
+    const targetShot = audit.shot || audit.shot1;
     targetShot.mosaicAttempted = true;
     targetShot.mosaicSuccess = false;
     audit.abortReason = reason;
 
-    this.appendDailyStreamLog(`[${this.getKstString()}] [모자이크실패 #${shotNumber}] ID: ${sessionId} | 사유: ${reason}`);
+    this.appendDailyStreamLog(`[${this.getKstString()}] [모자이크실패] ID: ${sessionId} | 사유: ${reason}`);
     this.writeOrUpdateCsvAudit(audit);
     this.writeJsonAudit(audit);
   }
 
-  // ===== 6. 추가 촬영 결정 기록 =====
+  // ===== 6. (레거시 호환) 결정 기록 =====
   recordDecision(sessionId, choice, durationSec = null) {
     const audit = this.auditMap.get(sessionId);
     if (!audit) return;
 
-    const now = Date.now();
-    audit.decision.answeredAt = now;
-    audit.decision.choice = choice; // 'RETRY' | 'FINISH' | 'TIMEOUT'
-    audit.decision.hasSecondShot = (choice === 'RETRY');
-
-    if (audit.decision.promptedAt) {
-      audit.decision.durationSec = parseFloat(((now - audit.decision.promptedAt) / 1000).toFixed(1));
-    } else if (durationSec !== null) {
-      audit.decision.durationSec = parseFloat(durationSec);
+    if (audit.decision) {
+      audit.decision.answeredAt = Date.now();
+      audit.decision.choice = choice;
     }
-
-    const choiceLabel = (choice === 'RETRY') ? '재도전(YES)' : (choice === 'FINISH' ? '마칠래요(NO)' : '타임아웃(10초만료)');
-    this.appendDailyStreamLog(`[${this.getKstString()}] [추가촬영결정] ID: ${sessionId} | 선택: ${choiceLabel} (결정소요: ${audit.decision.durationSec || '-'}s)`);
   }
 
   // ===== 7. 다운로드 성공/클릭 기록 =====
@@ -254,25 +210,20 @@ class SessionLogger {
     if (!audit) return false;
 
     const now = Date.now();
-    const targetShot = (shotNumber === 2) ? audit.shot2 : audit.shot1;
+    const targetShot = audit.shot || audit.shot1;
     targetShot.downloaded = true;
     targetShot.downloadedAt = now;
     targetShot.downloadFilename = filename;
 
-    if (shotNumber === 2) {
-      audit.downloads.shot2 = true;
-    } else {
-      audit.downloads.shot1 = true;
-    }
-    audit.downloads.totalCount++;
+    audit.downloads.totalCount = (audit.downloads.totalCount || 0) + 1;
 
     const kstNow = this.getKstString(new Date(now));
-    this.appendDailyStreamLog(`[${kstNow}] [다운로드성공 #${shotNumber}] ID: ${sessionId} | 파일: ${filename}`);
+    this.appendDailyStreamLog(`[${kstNow}] [다운로드성공] ID: ${sessionId} | 파일: ${filename}`);
 
     // 월간 stats 로그에도 다운로드 즉시 기록
     try {
       const statsFile = path.join(this.logsDir, `stats_${this.getDateString(new Date(now))}.log`);
-      const downloadLogLine = `[${kstNow}] [사진 다운로드 완료] ID: ${sessionId} | ${shotNumber}회차 모자이크 저장 (${filename || 'mosaic.jpg'})\n`;
+      const downloadLogLine = `[${kstNow}] [사진 다운로드 완료] ID: ${sessionId} | 모자이크 저장 (${filename || 'mosaic.jpg'})\n`;
       fs.appendFileSync(statsFile, downloadLogLine, 'utf8');
     } catch (e) {
       console.error('[세션 로거] 다운로드 stats 로그 기록 실패:', e.message);
@@ -287,12 +238,12 @@ class SessionLogger {
     return true;
   }
 
-  // ===== 8. 세션 종료 및 종합 여정 감사 로그 발행 (핵심!) =====
+  // ===== 8. 세션 종료 및 종합 여정 감사 로그 발행 (단일 촬영 파이프라인 정렬) =====
   recordSessionEnd(sessionId, finalStatus, reason = null) {
     const audit = this.auditMap.get(sessionId);
     if (!audit) return;
 
-    if (audit.isFinishedLogged && (finalStatus === 'COMPLETED_SINGLE' || finalStatus === 'COMPLETED_DUAL')) {
+    if (audit.isFinishedLogged && (finalStatus === 'COMPLETED_SINGLE' || finalStatus === 'COMPLETED')) {
       return; // 중복 완료 로깅 방지
     }
 
@@ -303,37 +254,17 @@ class SessionLogger {
     audit.totalStaySec = parseFloat(((now - audit.createdAt) / 1000).toFixed(1));
     audit.isFinishedLogged = true;
 
-    // 통계 지표 산출
-    const shot1Cap = audit.shot1.captureSuccess ? 'O' : (audit.shot1.captureStarted ? '시도(미완)' : 'X');
-    const shot1Up = audit.shot1.uploadSuccess ? 'O' : 'X';
-    const shot1Mos = audit.shot1.mosaicSuccess ? `O(${audit.shot1.mosaicDurationSec}s)` : 'X';
+    // 단일 촬영 통계 지표 산출
+    const shotObj = audit.shot || audit.shot1;
+    const shotCap = shotObj.captureSuccess ? 'O' : (shotObj.captureStarted ? '시도(미완)' : 'X');
+    const shotUp = shotObj.uploadSuccess ? 'O' : 'X';
+    const shotMos = shotObj.mosaicSuccess ? `O(${shotObj.mosaicDurationSec}s)` : 'X';
+    const downText = (audit.downloads.totalCount > 0 || shotObj.downloaded) ? `O(${audit.downloads.totalCount || 1}건)` : 'X';
 
-    let retryText = '-';
-    if (audit.decision.choice === 'RETRY') {
-      retryText = 'O(재도전)';
-    } else if (audit.decision.choice === 'FINISH') {
-      retryText = 'X(마칠래요)';
-    } else if (audit.decision.choice === 'TIMEOUT') {
-      retryText = 'X(10s타임아웃)';
-    }
-
-    let shot2Mos = '-';
-    if (audit.decision.hasSecondShot) {
-      shot2Mos = audit.shot2.mosaicSuccess ? `O(${audit.shot2.mosaicDurationSec}s)` : 'X(실패)';
-    }
-
-    let downText = 'X';
-    if (audit.downloads.shot1 && audit.downloads.shot2) {
-      downText = 'O(1차+2차)';
-    } else if (audit.downloads.shot1) {
-      downText = 'O(1차)';
-    } else if (audit.downloads.shot2) {
-      downText = 'O(2차)';
-    }
-
-    // 1) 월간 통계 파일(logs/stats_YYYY-MM.log)에 세션 여정 종합 감사 라인 기록
+    // 1) 월간 통계 파일(logs/stats_YYYY-MM.log)에 세션 여정 종합 감사 라인 기록 (깔끔한 1회 촬영 라인)
     const kstNow = this.getKstString(new Date(now));
-    const statsLogLine = `[${kstNow}] [세션 여정 ${finalStatus.startsWith('COMPLETED') ? '완료' : '종료'}] ID: ${sessionId} | 체류: ${audit.totalStaySec}s | 촬영1: ${shot1Cap} | 업로드1: ${shot1Up} | 모자이크1: ${shot1Mos} | 추가촬영: ${retryText} | 모자이크2: ${shot2Mos} | 다운로드: ${downText} | 최종상태: ${finalStatus}${reason ? ` (${reason})` : ''}\n`;
+    const isCompleted = finalStatus.startsWith('COMPLETED');
+    const statsLogLine = `[${kstNow}] [세션 여정 ${isCompleted ? '완료' : '종료'}] ID: ${sessionId} | 체류: ${audit.totalStaySec}s | 촬영: ${shotCap} | 업로드: ${shotUp} | 모자이크: ${shotMos} | 다운로드: ${downText} | 최종상태: ${finalStatus}${reason ? ` (${reason})` : ''}\n`;
 
     try {
       const statsFile = path.join(this.logsDir, `stats_${this.getDateString(new Date(now))}.log`);
@@ -362,27 +293,19 @@ class SessionLogger {
     return str;
   }
 
-  // ===== CSV 헬퍼: 헤더 반환 (엑셀 한글 깨짐 방지 UTF-8 BOM 포함) =====
+  // ===== CSV 헬퍼: 헤더 반환 (단일 촬영 체계 / 엑셀 한글 깨짐 방지 UTF-8 BOM 포함) =====
   getCsvHeader() {
-    return '\uFEFF세션ID,접근일시(KST),접근모드,클라이언트IP,기기환경,1차촬영성공,1차촬영시간(초),1차업로드성공,1차파일크기(KB),1차모자이크성공,1차모자이크시간(초),1차타일수,1차해상도,테마,추가촬영선택,2차촬영성공,2차모자이크성공,2차모자이크시간(초),다운로드_1차,다운로드_2차,총다운로드수,최종상태,종료사유,총체류시간(초)\n';
+    return '\uFEFF세션ID,접근일시(KST),접근모드,클라이언트IP,기기환경,촬영성공,촬영시간(초),업로드성공,파일크기(KB),모자이크성공,모자이크시간(초),타일수,해상도,테마,다운로드여부,다운로드수,최종상태,종료사유,총체류시간(초)\n';
   }
 
   // ===== CSV 헬퍼: 감사 객체를 CSV 1행으로 포맷 =====
   formatAuditCsvRow(audit) {
-    const shot1Cap = audit.shot1.captureSuccess ? '성공' : (audit.shot1.captureStarted ? '시도(미완)' : '미촬영');
-    const shot1Up = audit.shot1.uploadSuccess ? '성공' : (audit.shot1.uploadAttempted ? '실패' : '미업로드');
-    const shot1Mos = audit.shot1.mosaicSuccess ? '성공' : (audit.shot1.mosaicAttempted ? '실패' : '미합성');
+    const shotObj = audit.shot || audit.shot1;
+    const shotCap = shotObj.captureSuccess ? '성공' : (shotObj.captureStarted ? '시도(미완)' : '미촬영');
+    const shotUp = shotObj.uploadSuccess ? '성공' : (shotObj.uploadAttempted ? '실패' : '미업로드');
+    const shotMos = shotObj.mosaicSuccess ? '성공' : (shotObj.mosaicAttempted ? '실패' : '미합성');
 
-    let retryChoice = audit.decision.choice || '미선택';
-    let shot2Cap = '미진행';
-    let shot2Mos = '미진행';
-    if (audit.decision.hasSecondShot) {
-      shot2Cap = audit.shot2.captureSuccess ? '성공' : (audit.shot2.captureStarted ? '시도' : '미촬영');
-      shot2Mos = audit.shot2.mosaicSuccess ? '성공' : (audit.shot2.mosaicAttempted ? '실패' : '미합성');
-    }
-
-    const down1 = audit.downloads.shot1 ? 'O' : 'X';
-    const down2 = audit.downloads.shot2 ? 'O' : 'X';
+    const isDownloaded = (audit.downloads.totalCount > 0 || shotObj.downloaded) ? 'O' : 'X';
 
     return [
       this.escapeCsv(audit.sessionId),
@@ -390,22 +313,17 @@ class SessionLogger {
       this.escapeCsv(audit.accessMode),
       this.escapeCsv(audit.clientIp),
       this.escapeCsv(audit.userAgent),
-      this.escapeCsv(shot1Cap),
-      this.escapeCsv(audit.shot1.captureDurationSec ?? ''),
-      this.escapeCsv(shot1Up),
-      this.escapeCsv(audit.shot1.fileSize ?? ''),
-      this.escapeCsv(shot1Mos),
-      this.escapeCsv(audit.shot1.mosaicDurationSec ?? ''),
-      this.escapeCsv(audit.shot1.tilesCount ?? ''),
-      this.escapeCsv(audit.shot1.resolution ?? ''),
-      this.escapeCsv(audit.shot1.theme ?? ''),
-      this.escapeCsv(retryChoice),
-      this.escapeCsv(shot2Cap),
-      this.escapeCsv(shot2Mos),
-      this.escapeCsv(audit.shot2.mosaicDurationSec ?? ''),
-      this.escapeCsv(down1),
-      this.escapeCsv(down2),
-      this.escapeCsv(audit.downloads.totalCount),
+      this.escapeCsv(shotCap),
+      this.escapeCsv(shotObj.captureDurationSec ?? ''),
+      this.escapeCsv(shotUp),
+      this.escapeCsv(shotObj.fileSize ?? ''),
+      this.escapeCsv(shotMos),
+      this.escapeCsv(shotObj.mosaicDurationSec ?? ''),
+      this.escapeCsv(shotObj.tilesCount ?? ''),
+      this.escapeCsv(shotObj.resolution ?? ''),
+      this.escapeCsv(shotObj.theme ?? ''),
+      this.escapeCsv(isDownloaded),
+      this.escapeCsv(audit.downloads.totalCount || 0),
       this.escapeCsv(audit.finalStatus || 'IN_PROGRESS'),
       this.escapeCsv(audit.abortReason || ''),
       this.escapeCsv(audit.totalStaySec ?? '')
@@ -501,24 +419,21 @@ class SessionLogger {
     const list = Array.from(this.auditMap.values());
     const totalSessions = list.length;
 
-    let capture1Count = 0;
-    let upload1Count = 0;
-    let mosaic1Count = 0;
-    let retryAttemptCount = 0;
-    let mosaic2Count = 0;
+    let captureCount = 0;
+    let uploadCount = 0;
+    let mosaicCount = 0;
     let downloadCount = 0;
     let completedCount = 0;
     let totalStaySum = 0;
     let stayCount = 0;
 
     for (const a of list) {
-      if (a.shot1.captureSuccess) capture1Count++;
-      if (a.shot1.uploadSuccess) upload1Count++;
-      if (a.shot1.mosaicSuccess) mosaic1Count++;
-      if (a.decision.hasSecondShot) retryAttemptCount++;
-      if (a.shot2.mosaicSuccess) mosaic2Count++;
-      if (a.downloads.totalCount > 0) downloadCount++;
-      if (a.finalStatus.startsWith('COMPLETED')) completedCount++;
+      const s = a.shot || a.shot1;
+      if (s.captureSuccess) captureCount++;
+      if (s.uploadSuccess) uploadCount++;
+      if (s.mosaicSuccess) mosaicCount++;
+      if (a.downloads.totalCount > 0 || s.downloaded) downloadCount++;
+      if (a.finalStatus && a.finalStatus.startsWith('COMPLETED')) completedCount++;
       if (a.totalStaySec) {
         totalStaySum += a.totalStaySec;
         stayCount++;
@@ -531,28 +446,28 @@ class SessionLogger {
       totalSessions,
       completedCount,
       completionRate: totalSessions > 0 ? ((completedCount / totalSessions) * 100).toFixed(1) : '0.0',
-      captureRate: totalSessions > 0 ? ((capture1Count / totalSessions) * 100).toFixed(1) : '0.0',
-      uploadRate: totalSessions > 0 ? ((upload1Count / totalSessions) * 100).toFixed(1) : '0.0',
-      mosaicRate: totalSessions > 0 ? ((mosaic1Count / totalSessions) * 100).toFixed(1) : '0.0',
-      retryRate: mosaic1Count > 0 ? ((retryAttemptCount / mosaic1Count) * 100).toFixed(1) : '0.0',
+      captureRate: totalSessions > 0 ? ((captureCount / totalSessions) * 100).toFixed(1) : '0.0',
+      uploadRate: totalSessions > 0 ? ((uploadCount / totalSessions) * 100).toFixed(1) : '0.0',
+      mosaicRate: totalSessions > 0 ? ((mosaicCount / totalSessions) * 100).toFixed(1) : '0.0',
       downloadRate: completedCount > 0 ? ((downloadCount / completedCount) * 100).toFixed(1) : '0.0',
       avgStaySec,
       recentSessions: list
         .slice(-20)
         .reverse()
-        .map(a => ({
-          sessionId: a.sessionId,
-          accessTime: a.accessTime,
-          staySec: a.totalStaySec || ((Date.now() - a.createdAt) / 1000).toFixed(1),
-          shot1Capture: a.shot1.captureSuccess,
-          shot1Mosaic: a.shot1.mosaicSuccess,
-          mosaic1Duration: a.shot1.mosaicDurationSec,
-          retryChoice: a.decision.choice || 'NONE',
-          shot2Mosaic: a.shot2.mosaicSuccess,
-          downloadCount: a.downloads.totalCount,
-          finalStatus: a.finalStatus,
-          abortReason: a.abortReason
-        }))
+        .map(a => {
+          const s = a.shot || a.shot1;
+          return {
+            sessionId: a.sessionId,
+            accessTime: a.accessTime,
+            staySec: a.totalStaySec || ((Date.now() - a.createdAt) / 1000).toFixed(1),
+            shotCapture: s.captureSuccess,
+            shotMosaic: s.mosaicSuccess,
+            mosaicDuration: s.mosaicDurationSec,
+            downloadCount: a.downloads.totalCount || (s.downloaded ? 1 : 0),
+            finalStatus: a.finalStatus,
+            abortReason: a.abortReason
+          };
+        })
     };
   }
 
