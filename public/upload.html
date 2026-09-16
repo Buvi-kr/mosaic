@@ -147,11 +147,11 @@
           </p>
         </div>
 
-        <!-- 전면 카메라 즉시 실행 파일 인풋 (capture="user") -->
+        <!-- 전면 카메라 즉시 실행 파일 인풋 (모바일 OS 범용 호환: capture 옵션) -->
         <input type="file" id="photoInput" accept="image/*" capture="user" class="hidden">
 
-        <!-- 초대형 원터치 카메라 버튼 (label 태그로 모바일 OS 네이티브 연결 100% 보장) -->
-        <label for="photoInput" onclick="onCameraBtnClick()" class="btn-camera-glow flex-1 my-2 cursor-pointer group relative rounded-3xl border-2 border-amber-400/80 bg-gradient-to-b from-indigo-950/70 via-purple-950/50 to-black/90 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-all p-3 select-none">
+        <!-- 초대형 원터치 카메라 버튼 (label 태그를 통한 모바일 OS 카메라 다이렉트 트리거) -->
+        <label for="photoInput" id="cameraBtnLabel" class="btn-camera-glow flex-1 my-2 cursor-pointer group relative rounded-3xl border-2 border-amber-400/80 bg-gradient-to-b from-indigo-950/70 via-purple-950/50 to-black/90 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-all p-3 select-none">
           
           <!-- 원형 셔터 아이콘 -->
           <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-rose-500 via-amber-500 to-indigo-600 border-4 border-amber-300 flex items-center justify-center shadow-[0_0_40px_rgba(244,63,94,0.7)] group-hover:scale-105 transition-transform">
@@ -308,13 +308,6 @@
 
     const isLocalKiosk = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-    // 카메라 버튼 클릭 시: 촬영 시작 신호 서버 전송 (스캔 -> 카메라오픈 트래킹)
-    function onCameraBtnClick() {
-      if (socket && sessionToken) {
-        socket.emit('start_capture', { sessionToken });
-      }
-    }
-
     // ===== 1. 소켓 및 세션 초기화 =====
     function initApp() {
       const currentUrlGateToken = urlParams.get('gateToken');
@@ -469,6 +462,16 @@
         console.error('슬롯 요청 실패:', e);
         showView(viewBusy);
       }
+    }
+
+    // 카메라 버튼 터치 시 카메라 오픈 신호 서버 전달
+    const cameraBtnLabel = document.getElementById('cameraBtnLabel');
+    if (cameraBtnLabel) {
+      cameraBtnLabel.addEventListener('click', () => {
+        if (socket && sessionToken) {
+          socket.emit('start_capture', { sessionToken });
+        }
+      });
     }
 
     // ===== 3. 카메라 촬영 즉시 크롭 없이 0초 다이렉트 전송 =====
