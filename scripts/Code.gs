@@ -19,8 +19,8 @@
 var DASHBOARD_SHEET_NAME = '대시보드';
 
 var SESSION_HEADERS = [
-  '세션ID', '접근일시(KST)', '1차촬영', '1차모자이크', '추가촬영',
-  '2차모자이크', '다운로드', '최종상태', '체류시간', '기기환경', '테마'
+  '세션ID', '접근일시(KST)', '촬영완료', '모자이크생성', '다운로드',
+  '최종상태', '체류시간', '기기환경', '테마'
 ];
 
 // GET 헬스체크
@@ -186,8 +186,8 @@ function renderAdvancedDashboard(ss, data) {
     { range: 'B4:C4', valRange: 'B5:C5', title: '오늘 입장객', val: t.total + '명', color: '#f8fafc', bg: '#1e293b' },
     { range: 'D4:E4', valRange: 'D5:E5', title: '오늘 완주', val: t.completed + '건', color: '#38bdf8', bg: '#0c4a6e' },
     { range: 'F4:G4', valRange: 'F5:G5', title: '완주율 (퍼널)', val: t.completionRate, color: '#c084fc', bg: '#581c87' },
-    { range: 'H4:I4', valRange: 'H5:I5', title: '📸 1차 촬영율', val: t.captureRate, color: '#818cf8', bg: '#312e81' },
-    { range: 'J4:K4', valRange: 'J5:K5', title: '🔁 추가촬영(2차)', val: t.retryRate, color: '#fbbf24', bg: '#78350f' },
+    { range: 'H4:I4', valRange: 'H5:I5', title: '📸 셀카 촬영율', val: t.captureRate, color: '#818cf8', bg: '#312e81' },
+    { range: 'J4:K4', valRange: 'J5:K5', title: '⚡ 모자이크 생성', val: t.completed + '건', color: '#38bdf8', bg: '#075985' },
     { range: 'L4:M4', valRange: 'L5:M5', title: '💾 다운로드율', val: t.downloadRate, color: '#34d399', bg: '#064e3b' },
     { range: 'N4:N4', valRange: 'N5:N5', title: '평균 체류', val: t.avgStay, color: '#f1f5f9', bg: '#334155' }
   ];
@@ -215,10 +215,10 @@ function renderAdvancedDashboard(ss, data) {
   dash.setRowHeight(6, 18);
 
   // ----------------------------------------------------
-  // C. 좌측: 관람객 퍼널 단계별 전환율 분석 (B7:G13)
+  // C. 좌측: 관람객 퍼널 단계별 전환율 분석 (B7:G12)
   // ----------------------------------------------------
   dash.getRange('B7:G7').merge()
-      .setValue('🔻 오늘 관람객 퍼널(Funnel) 단계별 전환율 & 이탈 분석')
+      .setValue('🔻 오늘 관람객 퍼널(Funnel) 단계별 전환율 & 이탈 분석 (1-Touch 스트림라인)')
       .setBackground('#0f172a')
       .setFontColor('#38bdf8')
       .setFontSize(11)
@@ -237,15 +237,14 @@ function renderAdvancedDashboard(ss, data) {
 
   var funnelData = [
     ['1. 스마트 QR 입장', t.total + '명', '100.0%', '100.0%', '0.0%', '🟢 시작'],
-    ['2. 1차 셀카 촬영', t.capture1 + '명', t.captureRate, t.captureRate, capDrop, parseFloat(capDrop) > 15 ? '⚠️ 이탈주의' : '✅ 양호'],
-    ['3. 모자이크 완성', t.completed + '건', t.completionRate, t.capture1 > 0 ? ((t.completed / t.capture1)*100).toFixed(1)+'%' : '0%', mosDrop, '✅ 렌더완료'],
-    ['4. 2차 추가촬영 선택', t.retry + '건', t.retryRate, t.completed > 0 ? ((t.retry / t.completed)*100).toFixed(1)+'%' : '0%', '-', '🔁 보너스컷'],
-    ['5. 최종 사진 다운로드', t.download + '건', t.downloadRate, t.completed > 0 ? ((t.download / t.completed)*100).toFixed(1)+'%' : '0%', downDrop, parseFloat(downDrop) > 30 ? '⚠️ 미저장확인' : '💾 저장확정']
+    ['2. 즉시 셀카 촬영', t.capture1 + '명', t.captureRate, t.captureRate, capDrop, parseFloat(capDrop) > 15 ? '⚠️ 이탈주의' : '✅ 양호'],
+    ['3. 모자이크 렌더링', t.completed + '건', t.completionRate, t.capture1 > 0 ? ((t.completed / t.capture1)*100).toFixed(1)+'%' : '0%', mosDrop, '✅ 완성전시'],
+    ['4. 최종 사진 다운로드', t.download + '건', t.downloadRate, t.completed > 0 ? ((t.download / t.completed)*100).toFixed(1)+'%' : '0%', downDrop, parseFloat(downDrop) > 30 ? '⚠️ 미저장확인' : '💾 저장확정']
   ];
 
-  dash.getRange('B9:G13').setValues(funnelData).setHorizontalAlignment('center').setBackground('#f8fafc');
-  dash.getRange('B9:B13').setFontWeight('bold').setBackground('#f1f5f9');
-  for (var r = 8; r <= 13; r++) dash.setRowHeight(r, 25);
+  dash.getRange('B9:G12').setValues(funnelData).setHorizontalAlignment('center').setBackground('#f8fafc');
+  dash.getRange('B9:B12').setFontWeight('bold').setBackground('#f1f5f9');
+  for (var r = 8; r <= 12; r++) dash.setRowHeight(r, 25);
 
   // ----------------------------------------------------
   // D. 우측: 오늘 시간대별 유입 피크 (I7:N13)

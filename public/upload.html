@@ -2,29 +2,40 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>코즈믹 모자이크 | 셀카 포토존</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&family=Pretendard:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;800;900&family=Pretendard:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * {
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      position: fixed;
     }
     body {
-      background: #060814;
-      background-image: radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.22), transparent 60%),
-                        radial-gradient(circle at 80% 80%, rgba(244, 63, 94, 0.15), transparent 50%),
-                        radial-gradient(circle at 20% 70%, rgba(56, 189, 248, 0.12), transparent 50%);
+      background: #050713;
+      background-image: radial-gradient(circle at 50% 15%, rgba(99, 102, 241, 0.28), transparent 60%),
+                        radial-gradient(circle at 85% 85%, rgba(244, 63, 94, 0.2), transparent 50%),
+                        radial-gradient(circle at 15% 75%, rgba(56, 189, 248, 0.15), transparent 50%);
       color: white;
-      overscroll-behavior-y: none;
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
-      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: env(safe-area-inset-top, 8px) env(safe-area-inset-right, 10px) env(safe-area-inset-bottom, 8px) env(safe-area-inset-left, 10px);
     }
     .font-outfit {
       font-family: 'Outfit', sans-serif;
@@ -33,24 +44,38 @@
       background: rgba(10, 14, 28, 0.94);
       backdrop-filter: blur(25px);
       -webkit-backdrop-filter: blur(25px);
-      border: 2.5px solid #f59e0b;
-      box-shadow: 0 0 35px rgba(245, 158, 11, 0.35), 0 25px 60px rgba(0, 0, 0, 0.95), inset 0 0 20px rgba(251, 191, 36, 0.08);
-      border-radius: 28px;
+      border: 2px solid #f59e0b;
+      box-shadow: 0 0 30px rgba(245, 158, 11, 0.35), 0 20px 50px rgba(0, 0, 0, 0.95), inset 0 0 16px rgba(251, 191, 36, 0.08);
+      border-radius: 24px;
       position: relative;
+      width: 100%;
+      max-width: 440px;
+      height: 100%;
+      max-height: 98dvh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     /* 펄스 애니메이션 */
     @keyframes pulseGlow {
-      0%, 100% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
-      50% { box-shadow: 0 0 45px rgba(244, 63, 94, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+      0%, 100% { box-shadow: 0 0 25px rgba(244, 63, 94, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3); }
+      50% { box-shadow: 0 0 45px rgba(245, 158, 11, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.6); }
     }
     .btn-camera-glow {
-      animation: pulseGlow 2.2s infinite;
+      animation: pulseGlow 2s infinite ease-in-out;
+    }
+    @keyframes pulseSave {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(245, 158, 11, 0.5); }
+      50% { transform: scale(1.02); box-shadow: 0 0 35px rgba(245, 158, 11, 0.85); }
+    }
+    .btn-save-glow {
+      animation: pulseSave 2.4s infinite ease-in-out;
     }
     .progress-bar-bg {
       background: rgba(255,255,255,0.08);
       border-radius: 100px;
       overflow: hidden;
-      height: 10px;
+      height: 12px;
     }
     .progress-bar-fill {
       height: 100%;
@@ -61,163 +86,180 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-3 sm:p-5">
+<body>
 
-  <!-- 메인 컨테이너 (전시품 특화 골드 앰비언트 프레임) -->
-  <div class="exhibition-gold-frame w-full max-w-md p-4 sm:p-6 text-center relative max-h-[96vh] overflow-y-auto">
+  <!-- 메인 컨테이너 (스크롤 방지 컴팩트 프레임) -->
+  <div class="exhibition-gold-frame p-3.5 sm:p-4 text-center">
     
     <!-- 4방향 갤러리 메탈릭 코너 브래킷 -->
-    <div class="absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 border-amber-400 pointer-events-none rounded-tl-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
-    <div class="absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 border-amber-400 pointer-events-none rounded-tr-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
-    <div class="absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 border-amber-400 pointer-events-none rounded-bl-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
-    <div class="absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 border-amber-400 pointer-events-none rounded-br-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+    <div class="absolute top-2 left-2 w-3.5 h-3.5 border-t-2 border-l-2 border-amber-400 pointer-events-none rounded-tl-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+    <div class="absolute top-2 right-2 w-3.5 h-3.5 border-t-2 border-r-2 border-amber-400 pointer-events-none rounded-tr-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+    <div class="absolute bottom-2 left-2 w-3.5 h-3.5 border-b-2 border-l-2 border-amber-400 pointer-events-none rounded-bl-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
+    <div class="absolute bottom-2 right-2 w-3.5 h-3.5 border-b-2 border-r-2 border-amber-400 pointer-events-none rounded-br-sm shadow-[0_0_8px_rgba(251,191,36,0.6)]"></div>
 
-    <!-- 상단 배너: 전시 아이덴티티 -->
-    <div class="flex items-center justify-center mb-3">
-      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 font-extrabold text-[11px] tracking-wider uppercase shadow-[0_0_15px_rgba(245,158,11,0.25)]">
+    <!-- 상단 배너: 전시 아이덴티티 (컴팩트 고정) -->
+    <header class="flex-shrink-0 flex items-center justify-between pb-2 mb-1 border-b border-amber-400/20">
+      <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-300 font-extrabold text-[11px] tracking-wider uppercase shadow-[0_0_12px_rgba(245,158,11,0.2)]">
         <span>🏛️</span>
-        <span>REVERSE COSMOS EXHIBITION</span>
+        <span>REVERSE COSMOS</span>
       </div>
-    </div>
+      <span class="text-[11px] font-bold text-slate-400">우주 모자이크 체험</span>
+    </header>
 
     <!-- 네트워크 재연결 배너 -->
-    <div id="reconnectBanner" class="hidden mb-3 py-1.5 px-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold animate-pulse">
+    <div id="reconnectBanner" class="hidden flex-shrink-0 mb-1.5 py-1 px-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold animate-pulse">
       📡 네트워크 재연결 중...
     </div>
 
-    <!-- ============================================================== -->
-    <!-- [VIEW 1] 전시장 새 QR 스캔 안내 (만료/비인가 접속 시)               -->
-    <!-- ============================================================== -->
-    <div id="view-busy" class="hidden py-8">
-      <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-indigo-500/20 border-2 border-indigo-400/60 flex items-center justify-center shadow-[0_0_25px_rgba(99,102,241,0.4)]">
-        <span class="text-3xl">📱</span>
-      </div>
-      <h2 class="text-2xl font-black mb-2 text-white">전시장 QR 스캔 안내</h2>
-      <p class="text-slate-300 text-sm leading-relaxed mb-6">
-        새로운 모자이크 체험을 시작하려면<br>
-        <span class="text-amber-300 font-bold">전시장 스크린 우측 하단의 QR 코드</span>를<br>
-        스마트폰 카메라로 스캔해 주세요! 📸
-      </p>
-      <div class="p-3.5 rounded-2xl bg-indigo-950/50 border border-indigo-500/30 text-xs text-indigo-200">
-        매 촬영마다 새로운 1회용 보안 QR 코드가 발급됩니다.
-      </div>
-    </div>
+    <!-- 메인 컨텐츠 영역 (뷰 전환용) -->
+    <main class="flex-1 min-h-0 flex flex-col justify-center">
 
-    <!-- ============================================================== -->
-    <!-- [VIEW 2] 원클릭 즉시 촬영 화면 (Step 1)                            -->
-    <!-- ============================================================== -->
-    <div id="view-capture" class="py-2">
-      <div class="mb-2">
-        <span class="text-[11px] font-black tracking-widest text-indigo-400 uppercase bg-indigo-500/10 px-3 py-0.5 rounded-full border border-indigo-500/20">
-          INSTANT PHOTOZONE
-        </span>
-      </div>
-      <h1 class="text-2xl font-black text-white tracking-tight mb-1.5">
-        얼굴 셀카를 찍어주세요 📸
-      </h1>
-      <p class="text-xs text-slate-300 mb-5 leading-relaxed">
-        앞의 2단계 포토존 스팟에 서서 찰칵!<br>
-        <span class="text-amber-300 font-bold">촬영 확인 버튼을 누르면 크롭 없이 즉시 완성됩니다.</span>
-      </p>
-
-      <!-- 전면 카메라 즉시 실행 파일 인풋 (capture="user") -->
-      <input type="file" id="photoInput" accept="image/*" capture="user" class="hidden">
-
-      <!-- 초대형 원터치 카메라 버튼 -->
-      <div onclick="triggerCamera()" class="btn-camera-glow cursor-pointer group relative p-8 rounded-3xl border-2 border-amber-400/70 bg-gradient-to-b from-indigo-950/60 via-purple-950/40 to-black/80 hover:bg-indigo-950/80 transition-all duration-300 flex flex-col items-center justify-center gap-3.5 active:scale-[0.98] mb-4">
-        <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-rose-500 to-indigo-600 border-2 border-amber-300 flex items-center justify-center shadow-[0_0_40px_rgba(244,63,94,0.6)] group-hover:scale-105 transition-transform">
-          <svg class="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
+      <!-- ============================================================== -->
+      <!-- [VIEW 1] 전시장 새 QR 스캔 안내 (만료/비인가 접속 시)               -->
+      <!-- ============================================================== -->
+      <div id="view-busy" class="hidden h-full flex flex-col items-center justify-center py-2">
+        <div class="w-16 h-16 rounded-full bg-indigo-500/20 border-2 border-indigo-400/60 flex items-center justify-center shadow-[0_0_25px_rgba(99,102,241,0.4)] mb-3">
+          <span class="text-3xl">📱</span>
         </div>
-        <div>
-          <span class="text-xl font-black text-white block tracking-tight">
-            터치하여 카메라 켜기
-          </span>
-          <span class="text-xs text-amber-300 font-bold block mt-1">
-            촬영 후 확인을 누르면 바로 전송됩니다 ⚡
-          </span>
-        </div>
-      </div>
-
-      <div class="p-3 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 text-left flex items-start gap-2.5">
-        <span class="text-lg">💡</span>
-        <p class="text-[11px] text-slate-300 leading-relaxed">
-          <strong class="text-amber-300">촬영 팁:</strong> 얼굴과 상반신이 화면 가득 차도록 가까이 서서 촬영하시면 더욱 선명하고 웅장한 모자이크가 완성됩니다.
+        <h2 class="text-2xl font-black mb-2 text-white">새 QR 코드 스캔 안내</h2>
+        <p class="text-slate-200 text-sm leading-relaxed mb-4">
+          체험을 시작하시려면<br>
+          <span class="text-amber-300 font-extrabold text-base">전시장 스크린의 QR 코드</span>를<br>
+          스마트폰으로 비춰주세요! 📸
         </p>
-      </div>
-    </div>
-
-    <!-- ============================================================== -->
-    <!-- [VIEW 3] 초고속 자동 전송 & 모자이크 연산 화면 (Step 2)            -->
-    <!-- ============================================================== -->
-    <div id="view-processing" class="hidden py-6 text-center">
-      <div class="relative w-24 h-24 mx-auto mb-4 flex items-center justify-center">
-        <!-- 회전하는 네온 링 -->
-        <div class="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-amber-400 border-r-rose-500 animate-spin"></div>
-        <span class="text-4xl animate-pulse">🛰️</span>
-      </div>
-
-      <h3 class="text-xl font-black text-white mb-1" id="procHeader">우주 모자이크 생성 중...</h3>
-      <p class="text-xs text-slate-300 mb-5" id="procSubNotice">수천 장의 우주 타일과 내 사진을 매칭하고 있습니다.</p>
-
-      <!-- 프로그레스 바 -->
-      <div class="progress-bar-bg mb-2">
-        <div id="procFill" class="progress-bar-fill" style="width: 5%;"></div>
-      </div>
-      <div class="flex justify-between text-xs font-mono font-bold text-amber-300 px-1 mb-5">
-        <span id="procPhaseText">타일 매칭 중...</span>
-        <span id="procPercentText">5%</span>
-      </div>
-
-      <div class="p-4 rounded-2xl bg-indigo-950/70 border border-indigo-400/30 text-xs text-slate-200 shadow-lg">
-        👀 앞의 <strong class="text-cyan-300 font-black text-sm">대형 스크린</strong>을 바라보세요!<br>
-        곧 화면 가득 완성된 모자이크가 전시됩니다.
-      </div>
-    </div>
-
-    <!-- ============================================================== -->
-    <!-- [VIEW 4] 최종 완성본 감상 & 폰 저장 화면 (Step 3)                  -->
-    <!-- ============================================================== -->
-    <div id="view-download" class="hidden py-1">
-      <!-- 골드 헤더 명판 -->
-      <div class="flex items-center justify-between mb-2 px-1">
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
-          <span class="text-xs font-black tracking-wider text-amber-300 uppercase">COSMIC MOSAIC PIECE</span>
-        </div>
-        <span class="text-[11px] text-amber-200/70 font-bold">🏛️ 공식 전시작</span>
-      </div>
-
-      <!-- 초대형 단일 완성본 모자이크 액자 -->
-      <div class="relative w-full rounded-2xl overflow-hidden bg-black border-[2.5px] border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.4)] mb-3 flex items-center justify-center" style="height: 54vh; max-height: 480px; min-height: 260px;">
-        <img id="resultImage" src="" class="w-full h-full object-contain" alt="모자이크 사진">
-        <div class="absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-md bg-black/80 border border-amber-400/70 text-[10px] text-amber-300 font-mono font-bold tracking-wider whitespace-nowrap backdrop-blur-sm shadow-lg">
-          🏛️ EXHIBITION PIECE 2026
+        <div class="p-3 rounded-2xl bg-indigo-950/60 border border-indigo-500/30 text-xs text-indigo-200 w-full">
+          매 촬영마다 새로운 1회용 보안 QR 코드가 발급됩니다.
         </div>
       </div>
 
-      <!-- 원클릭 직접 다운로드 버튼 -->
-      <button id="downloadBtn" onclick="downloadResultImage(this)" class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 hover:opacity-95 text-white font-black text-base shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all mb-3">
-        <span class="text-xl">💾</span>
-        <span>사진 바로 다운로드 (내 폰에 저장)</span>
-      </button>
+      <!-- ============================================================== -->
+      <!-- [VIEW 2] 원클릭 즉시 촬영 화면 (어르신도 한눈에 알기 쉬운 초대형 버튼) -->
+      <!-- ============================================================== -->
+      <div id="view-capture" class="h-full flex flex-col justify-between py-1">
+        
+        <!-- 타이틀 섹션 -->
+        <div class="flex-shrink-0 pt-1">
+          <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">
+            얼굴 사진을 찍어주세요 📸
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-300">
+            아래 큰 버튼을 누르고 <span class="text-amber-300 font-extrabold">[사진 사용]</span>을 누르면 즉시 완성!
+          </p>
+        </div>
 
-      <!-- 다시 체험하고 싶을 때 안내 카드 -->
-      <div class="p-3.5 rounded-2xl bg-indigo-950/70 border border-indigo-400/40 text-xs text-slate-200 text-center shadow-lg">
-        <span class="text-amber-300 font-black text-sm">📷 새로운 사진을 전송하시려면?</span><br>
-        전시장 화면의 <strong class="text-amber-300 font-bold">새로운 QR 코드</strong>를 스마트폰으로 다시 스캔해 주세요!
+        <!-- 전면 카메라 즉시 실행 파일 인풋 (capture="user") -->
+        <input type="file" id="photoInput" accept="image/*" capture="user" class="hidden">
+
+        <!-- 초대형 원터치 카메라 버튼 (화면 중심을 차지하는 직관적 UI) -->
+        <div onclick="triggerCamera()" class="btn-camera-glow flex-1 my-2 cursor-pointer group relative rounded-3xl border-2 border-amber-400/80 bg-gradient-to-b from-indigo-950/70 via-purple-950/50 to-black/90 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-all p-3">
+          
+          <!-- 원형 셔터 아이콘 -->
+          <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-rose-500 via-amber-500 to-indigo-600 border-4 border-amber-300 flex items-center justify-center shadow-[0_0_40px_rgba(244,63,94,0.7)] group-hover:scale-105 transition-transform">
+            <svg class="w-12 h-12 sm:w-14 sm:h-14 text-white drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+
+          <!-- 큰 글씨 안내 -->
+          <div class="text-center">
+            <span class="text-2xl sm:text-3xl font-black text-amber-300 block tracking-tight drop-shadow">
+              여기를 눌러 촬영하기
+            </span>
+            <span class="text-xs sm:text-sm text-slate-200 font-bold block mt-1">
+              터치 즉시 스마트폰 카메라가 열립니다 ⚡
+            </span>
+          </div>
+        </div>
+
+        <!-- 하단 친절 가이드 카드 -->
+        <div class="flex-shrink-0 p-2.5 rounded-2xl bg-indigo-950/60 border border-indigo-400/30 text-left flex items-center gap-2.5">
+          <span class="text-2xl flex-shrink-0">💡</span>
+          <p class="text-xs text-slate-200 leading-snug">
+            <strong class="text-amber-300 font-extrabold">촬영 팁:</strong> 얼굴을 화면 가까이 크게 담으시면 스크린에 더 웅장하게 나타납니다.
+          </p>
+        </div>
+
       </div>
-    </div>
 
+      <!-- ============================================================== -->
+      <!-- [VIEW 3] 초고속 자동 전송 & 모자이크 연산 화면 (Step 2)            -->
+      <!-- ============================================================== -->
+      <div id="view-processing" class="hidden h-full flex flex-col justify-center items-center py-2 text-center">
+        <div class="relative w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+          <!-- 회전하는 네온 링 -->
+          <div class="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-amber-400 border-r-rose-500 animate-spin"></div>
+          <span class="text-4xl animate-pulse">🛰️</span>
+        </div>
+
+        <h3 class="text-2xl font-black text-white mb-1" id="procHeader">우주 모자이크 생성 중...</h3>
+        <p class="text-xs text-slate-300 mb-4" id="procSubNotice">수천 장의 별빛 타일과 내 사진을 매칭하고 있습니다.</p>
+
+        <!-- 프로그레스 바 -->
+        <div class="w-full max-w-xs mx-auto">
+          <div class="progress-bar-bg mb-2">
+            <div id="procFill" class="progress-bar-fill" style="width: 10%;"></div>
+          </div>
+          <div class="flex justify-between text-xs font-mono font-bold text-amber-300 px-1 mb-5">
+            <span id="procPhaseText">사진 전송 중...</span>
+            <span id="procPercentText">10%</span>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-indigo-950/80 border border-indigo-400/40 text-xs text-slate-200 shadow-lg w-full max-w-xs">
+          👀 앞의 <strong class="text-cyan-300 font-black text-sm">대형 전시장 스크린</strong>을 바라보세요!<br>
+          화면 가득 내 우주 모자이크가 완성되어 전시됩니다.
+        </div>
+      </div>
+
+      <!-- ============================================================== -->
+      <!-- [VIEW 4] 최종 완성본 감상 & 폰 저장 (화면 절반 이상 초대형 모자이크) -->
+      <!-- ============================================================== -->
+      <div id="view-download" class="hidden h-full flex flex-col justify-between py-1">
+        
+        <!-- 상단 명판 -->
+        <div class="flex-shrink-0 flex items-center justify-between px-1 mb-1">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-black tracking-wider text-emerald-300 uppercase">완성된 우주 모자이크</span>
+          </div>
+          <span class="text-[11px] text-amber-300 font-extrabold">🏛️ 공식 전시작</span>
+        </div>
+
+        <!-- ★ 화면 절반 이상을 꽉 채우는 초대형 완성작 프레임 (flex-1) ★ -->
+        <div class="flex-1 w-full min-h-0 relative rounded-2xl overflow-hidden bg-black border-2 border-amber-400 shadow-[0_0_35px_rgba(245,158,11,0.45)] flex items-center justify-center p-1.5 my-1">
+          <img id="resultImage" src="" class="w-full h-full object-contain rounded-xl" alt="완성된 우주 모자이크">
+          
+          <!-- 하단 골드 워터마크 라벨 -->
+          <div class="absolute bottom-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-black/80 border border-amber-400/70 text-[10px] text-amber-300 font-mono font-bold tracking-wider whitespace-nowrap backdrop-blur-sm shadow-md pointer-events-none">
+            🏛️ REVERSE COSMOS 2026
+          </div>
+        </div>
+
+        <!-- 하단 액션 섹션: 큰 다운로드 버튼 + 재참여 안내 -->
+        <div class="flex-shrink-0 pt-1">
+          <!-- 원클릭 직접 다운로드 버튼 (초대형 황금빛 강조) -->
+          <button id="downloadBtn" onclick="downloadResultImage(this)" class="btn-save-glow w-full py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 hover:opacity-95 text-white font-black text-lg shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all mb-1.5">
+            <span class="text-2xl">💾</span>
+            <span class="tracking-tight">내 스마트폰에 사진 저장</span>
+          </button>
+
+          <!-- 새로운 QR 스캔 안내 -->
+          <div class="py-1.5 px-3 rounded-xl bg-indigo-950/60 border border-indigo-400/30 text-[11px] text-slate-300 text-center">
+            새로운 사진을 찍으시려면 <strong class="text-amber-300 font-bold">스크린의 새 QR</strong>을 다시 찍어주세요! 📸
+          </div>
+        </div>
+
+      </div>
+
+    </main>
   </div>
 
   <!-- 커스텀 알림 모달 -->
-  <div id="customAlertModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+  <div id="customAlertModal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
     <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl p-6 w-full max-w-xs text-center">
-      <p id="customAlertMessage" class="text-white text-sm leading-relaxed mb-5 whitespace-pre-line"></p>
-      <button onclick="closeCustomAlert()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl text-sm">
+      <p id="customAlertMessage" class="text-white text-base font-bold leading-relaxed mb-5 whitespace-pre-line"></p>
+      <button onclick="closeCustomAlert()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-black py-3.5 rounded-xl text-base">
         확인
       </button>
     </div>
@@ -416,10 +458,9 @@
 
         showView(viewCapture);
 
-        // 안드로이드/일부 모바일 브라우저에서 자동 카메라 오픈 시도
+        // 모바일 브라우저 카메라 자동 오픈 시도
         setTimeout(() => {
           try {
-            // 사용자 제스처 컨텍스트가 아니면 브라우저가 무시할 수 있으므로 안전 호출
             photoInput.click();
           } catch (e) {}
         }, 300);

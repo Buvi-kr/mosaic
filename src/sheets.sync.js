@@ -85,10 +85,8 @@ class SheetsSync {
       const data = {
         세션ID: audit.sessionId,
         '접근일시(KST)': audit.accessTime || new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
-        '1차촬영': shot1Cap,
-        '1차모자이크': shot1Mos,
-        추가촬영: retryChoice,
-        '2차모자이크': shot2Mos,
+        촬영완료: shot1Cap,
+        모자이크생성: shot1Mos,
         다운로드: downloadStr,
         최종상태: audit.finalStatus || 'IN_PROGRESS',
         체류시간: staySecStr,
