@@ -245,6 +245,7 @@ blender_workspace\render_video.bat
 │   ├── render_video.bat          # 🎥 [1클릭 MP4 렌더러]
 │   └── scenes/                   # 5개 씬별 데이터 보관소
 ├── start.bat                     # Windows 원클릭 종합 구동 런처 (Node.js 무인 자동 설치 내장)
+├── open_display_fullscreen.bat   # 🖥️ 엣지(Edge) 자동 감지 F11 전체화면 독립 실행기
 └── README.md                     # 프로젝트 마스터 문서
 ```
 
@@ -253,6 +254,21 @@ blender_workspace\render_video.bat
 <a id="patch-notes"></a>
 
 ## 10. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+
+### 📦 V8.15 Edge Kiosk Fullscreen Engine & Hardware Screen Shield (2026-09-16)
+#### 🖥️ 엣지(Edge) 1순위 자동 감지, OS 레벨 F11 전체화면 새 창 강제 및 3중 전체화면 보호 체계
+- **Microsoft Edge 1순위 자동 탐색 엔진 (`src/app.js`, `open_display_fullscreen.bat`)**:
+  - 기존 크롬 우선 정책을 개편하여, 윈도우 10/11 전시장 권장 표준인 **Microsoft Edge (`msedge.exe`)를 1순위로 자동 감지** (`Program Files (x86)`, `Program Files`, `LOCALAPPDATA` 전수 검사).
+  - 엣지가 미설치된 특수 환경일 경우 구글 크롬 ➔ 기본 브라우저 순으로 부드러운 자동 폴백.
+- **OS 레벨 `--new-window --start-fullscreen` 완벽 적용**:
+  - 기존에 브라우저 창이 이미 열려 있어도 새로운 독립 창(`--new-window`)으로 분리하여 웹 보안 제스처 제한 없이 **윈도우 OS 레벨에서 즉시 F11 하드웨어 전체화면을 강제 적용**.
+  - Node.js 부모-자식 핸들을 분리(`detached: true`, `stdio: 'ignore'`, `unref()`)하여 서버 상태와 무관하게 브라우저가 논블로킹으로 기동.
+- **전시장 전용 1클릭 독립 실행기 신설 (`open_display_fullscreen.bat`)**:
+  - 전시 운영 중 브라우저가 실수로 닫히거나 창 모드로 빠졌을 때, Node.js 서버를 재시작할 필요 없이 더블클릭 한 번으로 엣지 전체화면을 즉시 복구하는 독립형 런처 제공.
+- **웹 디스플레이 3중 전체화면 보호 체계 (`display.html`, `simple_display.html`)**:
+  - **상단 퀵 버튼**: 헤더 우측 `[⛶ 전체화면 [F]]` 원클릭 토글 버튼 제공 (현재 상태에 따라 `창모드 [F]` 실시간 전환).
+  - **키보드 단축키**: 키보드 `F` 키를 누르면 어디서든 즉시 브라우저 전체화면 진입/해제.
+  - **배경 더블클릭**: 마우스나 터치스크린 빈 공간 더블클릭 시 즉시 전체화면 토글.
 
 ### 📦 V8.14 Zero-Delay Pipeline & Ironclad Session Shield (2026-09-16)
 #### ⚡ 무지연 즉시 촬영 파이프라인, 세션스토리지 F5 복구 및 전수 QA 보안 강화

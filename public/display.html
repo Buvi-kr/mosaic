@@ -361,11 +361,15 @@
           </span>
         </div>
       </div>
-      <div class="absolute right-6 flex items-center gap-3">
+      <div class="absolute right-6 flex items-center gap-2.5">
         <span class="badge-live px-3.5 py-1.5 rounded-full text-xs font-black tracking-wider uppercase flex items-center gap-1.5 shadow-sm">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
           LIVE EXHIBITION
         </span>
+        <button id="btnFullscreen" onclick="toggleFullScreen()" title="전체화면 전환 (단축키: F)" class="cursor-pointer px-3 py-1.5 rounded-full text-xs font-bold text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border border-white/25 transition-all flex items-center gap-1.5 backdrop-blur shadow-sm">
+          <span class="text-sm">⛶</span>
+          <span id="fullscreenBtnText">전체화면 [F]</span>
+        </button>
       </div>
     </header>
 
@@ -1039,10 +1043,41 @@
       }
     });
 
-    // 백그라운드 관리자 설정 변경 수신
-    socket.on('config_updated', (newCfg) => {
-      if (newCfg.displayShowcaseDuration) {
-        DISPLAY_CONFIG.SHOWCASE_DURATION_SEC = newCfg.displayShowcaseDuration;
+    // ================================================================
+    // 🖥️ 전체화면 제어 헬퍼 (F키 단축키, 상단 버튼, 배경 더블클릭)
+    // ================================================================
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.warn('[디스플레이] 전체화면 요청 알림:', err.message);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      const btnText = document.getElementById('fullscreenBtnText');
+      if (btnText) {
+        btnText.textContent = document.fullscreenElement ? '창모드 [F]' : '전체화면 [F]';
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        if (!['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+          toggleFullScreen();
+        }
+      }
+    });
+
+    // 헤더 또는 배경 여백 더블클릭 시 간편 전체화면 토글
+    document.addEventListener('dblclick', (e) => {
+      const header = document.getElementById('exhibitionMainHeader');
+      if (e.target === document.body || e.target.id === 'exhibitionOuterFrame' || (header && header.contains(e.target))) {
+        toggleFullScreen();
       }
     });
   </script>

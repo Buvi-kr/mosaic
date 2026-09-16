@@ -209,39 +209,76 @@ server.listen(PORT, '0.0.0.0', () => {
     }, 10 * 60 * 1000);
   }
 
-  // 전시장 대형 디스플레이 자동 실행: 전체화면(F11) 다중 탭 (1번 탭: display.html 전면 메인, 2번 탭: admin.html 백그라운드)
+  // 전시장 대형 디스플레이 자동 실행: Microsoft Edge 1순위 감지 + 전체화면(F11) 새 창 분리
+  // 1번 탭: display.html 전면 메인 전시, 2번 탭: admin.html 백그라운드 관리자 제어
   function launchExhibitionBrowser(port) {
+    if (process.argv.includes('--no-browser') || process.env.NO_BROWSER === 'true') {
+      console.log('[시스템] --no-browser 옵션으로 브라우저 자동 실행을 건너뜁니다.');
+      return;
+    }
+
     const displayUrl = `http://localhost:${port}/display.html`;
     const adminUrl = `http://localhost:${port}/admin.html`;
 
-    const chromeCandidates = [
-      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-      path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
-    ];
+    // 1순위: Microsoft Edge (윈도우 10/11 전시장 권장 표준)
     const edgeCandidates = [
       'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
       'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+      path.join(process.env['ProgramFiles(x86)'] || '', 'Microsoft\\Edge\\Application\\msedge.exe'),
+      path.join(process.env.ProgramFiles || '', 'Microsoft\\Edge\\Application\\msedge.exe'),
+      path.join(process.env.LOCALAPPDATA || '', 'Microsoft\\Edge\\Application\\msedge.exe'),
+    ];
+
+    // 2순위: Google Chrome (대체 브라우저)
+    const chromeCandidates = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      path.join(process.env.ProgramFiles || '', 'Google\\Chrome\\Application\\chrome.exe'),
+      path.join(process.env['ProgramFiles(x86)'] || '', 'Google\\Chrome\\Application\\chrome.exe'),
+      path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
     ];
 
     let browserPath = null;
-    for (const p of chromeCandidates) {
-      if (fs.existsSync(p)) { browserPath = p; break; }
+    let browserName = '';
+
+    for (const p of edgeCandidates) {
+      if (p && fs.existsSync(p)) {
+        browserPath = p;
+        browserName = 'Microsoft Edge';
+        break;
+      }
     }
+
     if (!browserPath) {
-      for (const p of edgeCandidates) {
-        if (fs.existsSync(p)) { browserPath = p; break; }
+      for (const p of chromeCandidates) {
+        if (p && fs.existsSync(p)) {
+          browserPath = p;
+          browserName = 'Google Chrome';
+          break;
+        }
       }
     }
 
     if (browserPath) {
-      console.log(`[시스템] 전시장 대형 디스플레이 전체화면(F11) 브라우저 기동: ${browserPath}`);
-      // displayUrl(1번 탭: 전면 메인)과 adminUrl(2번 탭: 백그라운드)을 순서대로 전달하여 display.html이 활성화되도록 실행
-      exec(`"${browserPath}" --start-fullscreen "${displayUrl}" "${adminUrl}"`, (err) => {
-        if (err) console.error('[시스템] 브라우저 실행 실패:', err.message);
-      });
+      console.log(`[시스템] 전시장 ${browserName} 전체화면(F11) 브라우저 자동 기동: ${browserPath}`);
+      try {
+        // --new-window: 기존에 열린 엣지 창이 있어도 독립된 새 창으로 분리
+        // --start-fullscreen: 윈도우 OS 레벨에서 즉시 F11 전체화면 적용 (보안 팝업/제스처 제한 우회)
+        const child = spawn(browserPath, [
+          '--new-window',
+          '--start-fullscreen',
+          displayUrl,
+          adminUrl
+        ], {
+          detached: true,
+          stdio: 'ignore'
+        });
+        child.unref();
+      } catch (err) {
+        console.error('[시스템] 브라우저 프로세스 실행 에러:', err.message);
+      }
     } else {
-      console.log('[시스템] 기본 브라우저 순차 탭 실행 (display.html 전면 활성화)...');
+      console.log('[시스템] 전용 브라우저 미발견, 기본 브라우저 순차 탭 실행...');
       exec(`start "" "${adminUrl}"`, () => {
         setTimeout(() => {
           exec(`start "" "${displayUrl}"`);

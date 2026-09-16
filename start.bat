@@ -113,7 +113,10 @@ if not exist "node_modules" (
 echo ==============================================
 echo [START] Starting Reverse Cosmos Mosaic Server...
 echo ==============================================
-echo [INFO] Exhibition Mode: Chrome/Edge F11 Fullscreen with Display (Main) & Admin (Background) Tabs.
+echo [INFO] Exhibition Mode: Microsoft Edge Auto-Detection + Fullscreen [F11]
+echo        - Main Window: 3-Split Interactive Display [display.html]
+echo        - Background Tab: Realtime Admin Panel [admin.html]
+echo [TIP]  If browser was closed, run 'open_display_fullscreen.bat' to reopen anytime.
 echo [TIP]  To start automatically on Windows boot:
 echo        1. Press Win + R, type 'shell:startup' and press Enter.
 echo        2. Create a shortcut to this start.bat in the startup folder.

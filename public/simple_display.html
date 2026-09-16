@@ -608,6 +608,13 @@
       if (e.key === 'h' || e.key === 'H') toggleHud();
     });
 
+    // 화면 더블클릭 시 전체화면 토글
+    document.addEventListener('dblclick', (e) => {
+      if (!e.target.closest('#floatingQrHud') && !e.target.closest('button')) {
+        toggleFullscreen();
+      }
+    });
+
     // 초기화 기동
     fetchGalleryList().then(() => {
       const playlist = getCombinedPlaylist();
