@@ -463,14 +463,30 @@
       idleCycleTimer = setInterval(stepIdleCycle, 8000);
     }
 
-    // 신규 모자이크 완성 수신 시 극적인 연출
-    socket.on('new_mosaic', (data) => {
-      console.log('🎉 [신규 모자이크 완성 수신]:', data);
-      if (!data || !data.imageUrl) return;
+    // ================================================================
+    // 모자이크 완성 쇼케이스 큐 (FIFO: 시간순 순차 전시 보장)
+    // ================================================================
+    let showcaseQueue = [];
+
+    function queueUserShowcase(data) {
+      showcaseQueue.push(data);
+      if (!isShowingNewMosaic) {
+        processNextShowcase();
+      }
+    }
+
+    function processNextShowcase() {
+      if (showcaseQueue.length === 0) {
+        isShowingNewMosaic = false;
+        fetchGalleryList().then(() => startIdleCycle());
+        return;
+      }
 
       isShowingNewMosaic = true;
       if (idleCycleTimer) clearInterval(idleCycleTimer);
       if (showcaseCountdownTimer) clearInterval(showcaseCountdownTimer);
+
+      const data = showcaseQueue.shift();
 
       // 1. 빛 플래시 파티클 연출
       const flash = document.getElementById('revealFlash');
@@ -506,10 +522,17 @@
         } else {
           clearInterval(showcaseCountdownTimer);
           badge.classList.add('hidden');
-          isShowingNewMosaic = false;
-          fetchGalleryList().then(() => startIdleCycle());
+          // 다음 순번 사진 순차 전시
+          processNextShowcase();
         }
       }, 1000);
+    }
+
+    // 신규 모자이크 완성 수신 시 쇼케이스 큐에 적재
+    socket.on('new_mosaic', (data) => {
+      console.log('🎉 [신규 모자이크 완성 수신]:', data);
+      if (!data || !data.imageUrl) return;
+      queueUserShowcase(data);
     });
 
     // ================================================================
