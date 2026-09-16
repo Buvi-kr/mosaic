@@ -266,17 +266,17 @@
       font-weight: 900 !important;
     }
 
-    /* 아래로 부드럽게 바운스되는 화살표 (글자 절대 안 가림) */
+    /* 아래로 부드럽게 안내하는 화살표 (거의 안 움직이게 미세한 모션) */
     @keyframes arrowBounceDown {
       0%, 100% {
         transform: translateY(0);
       }
       50% {
-        transform: translateY(15px);
+        transform: translateY(2px);
       }
     }
     .arrow-bounce-down {
-      animation: arrowBounceDown 1.8s ease-in-out infinite;
+      animation: arrowBounceDown 3s ease-in-out infinite;
     }
 
     /* 모자이크 뷰포트 배경: 캐릭터를 감싸는 은은한 코즈믹 스포트라이트 앰비언스 */
@@ -486,6 +486,11 @@
             <path d="M 80 120 L 80 188" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.85" />
           </svg>
         </div>
+
+        <!-- 🪐 포천아트밸리 천문과학관 공식 로고 (화살표 바로 아래) -->
+        <div class="mt-4 lg:mt-5 flex items-center justify-center pointer-events-none">
+          <img src="/pocheon_logo.png" alt="포천아트밸리 천문과학관" class="h-10 sm:h-12 md:h-14 lg:h-16 w-auto object-contain filter drop-shadow-[0_0_12px_rgba(255,255,255,0.4)] drop-shadow-[0_4px_18px_rgba(245,158,11,0.35)]">
+        </div>
       </div>
 
       <!-- 중앙 및 하단: 100% 완전 무결 트루 블랙 빔 차단 구역 (관람객 셀카 백드롭) -->
@@ -551,14 +556,14 @@
 
       <!-- 중앙: OPEN 시 QR 코드, BUSY 시 대기 안내 (가시거리 극대화된 초대형 QR 박스) -->
       <div class="relative z-10 my-auto flex flex-col items-center justify-center w-full">
-        <!-- QR 코드 박스 (OPEN 상태 - 2~3미터 밖에서도 즉시 인식되는 초대형 규격) -->
+        <!-- QR 코드 박스 (컴팩트 최적 규격 - 손쉽고 빠른 스캔 지원) -->
         <div id="qrcode-box" class="flex flex-col items-center justify-center">
-          <div class="cursor-pointer p-3 rounded-2xl bg-white shadow-[0_0_40px_rgba(99,102,241,0.55)] border-2 border-indigo-400">
-            <div id="qrcode" class="w-52 h-52 lg:w-60 lg:h-60 xl:w-64 xl:h-64 flex items-center justify-center">
+          <div class="cursor-pointer p-2 sm:p-2.5 rounded-2xl bg-white shadow-[0_0_25px_rgba(99,102,241,0.45)] border-2 border-indigo-400">
+            <div id="qrcode" class="w-36 h-36 sm:w-40 sm:h-40 lg:w-44 lg:h-44 flex items-center justify-center">
               <span class="text-xs text-slate-400">QR 로딩 중...</span>
             </div>
           </div>
-          <p id="qrSubtext" class="text-sm lg:text-base font-black mt-2.5">
+          <p id="qrSubtext" class="text-xs lg:text-sm font-black mt-2">
             기본 카메라 앱으로 비추면 즉시 열립니다
           </p>
         </div>
@@ -618,7 +623,7 @@
     function drawQR(url) {
       const qrEl = document.getElementById('qrcode');
       QRCode.toCanvas(document.createElement('canvas'), url, {
-        width: 360,
+        width: 240,
         margin: 1,
         color: { dark: '#000000', light: '#ffffff' },
         errorCorrectionLevel: 'M'
