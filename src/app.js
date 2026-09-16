@@ -260,20 +260,32 @@ server.listen(PORT, '0.0.0.0', () => {
     }
 
     if (browserPath) {
-      console.log(`[시스템] 전시장 ${browserName} 전체화면(F11) 브라우저 자동 기동: ${browserPath}`);
+      console.log(`[시스템] 전시장 ${browserName} 키오스크 전체화면 브라우저 자동 기동: ${browserPath}`);
       try {
-        // 1순위: Windows 쉘(start "")을 통해 데스크톱 최전면 F11 전체화면 독립 새 창 기동
-        // --new-window: 기존에 열린 엣지/크롬 창이 있어도 완전히 독립된 새 창으로 분리
-        // --start-fullscreen: 윈도우 OS 레벨에서 즉시 F11 전체화면 적용 (웹 보안 팝업/제스처 제한 원천 우회)
-        const winCmd = `start "" "${browserPath}" --new-window --start-fullscreen "${displayUrl}" "${adminUrl}"`;
+        const kioskDir = path.join(process.env.TEMP || 'C:\\Windows\\Temp', 'mosaic_kiosk_profile');
+        if (!fs.existsSync(kioskDir)) fs.mkdirSync(kioskDir, { recursive: true });
+
+        // 1. 기존 실행 중인 일반 창과 세션을 완전히 분리하기 위해 독립 profile 지정
+        // 2. --kiosk 옵션: 윈도우 제목 표시줄, 주소창, 탭바, 작업표시줄 일체 없는 100% 리얼 풀스크린 강제
+        const kioskArgs = [
+          `--user-data-dir="${kioskDir}"`,
+          '--kiosk',
+          `"${displayUrl}"`,
+          '--edge-kiosk-type=fullscreen',
+          '--no-first-run',
+          '--no-default-browser-check'
+        ];
+
+        const winCmd = `start "" "${browserPath}" ${kioskArgs.join(' ')}`;
         exec(winCmd, (err) => {
           if (err) {
-            // 2순위 폴백: 직접 spawn 프로세스 분리 기동
             const child = spawn(browserPath, [
-              '--new-window',
-              '--start-fullscreen',
+              `--user-data-dir=${kioskDir}`,
+              '--kiosk',
               displayUrl,
-              adminUrl
+              '--edge-kiosk-type=fullscreen',
+              '--no-first-run',
+              '--no-default-browser-check'
             ], {
               detached: true,
               stdio: 'ignore'

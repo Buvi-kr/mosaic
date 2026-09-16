@@ -19,17 +19,16 @@ if "%EDGE_EXE%"=="" if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.ex
 
 if not "%EDGE_EXE%"=="" (
     echo [OK] Browser Detected: "%EDGE_EXE%"
-    echo [INFO] Launching New Window in Fullscreen Mode [F11]...
-    echo        - Tab 1: Main Display [Foreground]
-    echo        - Tab 2: Admin Panel [Background]
+    echo [INFO] Launching in True Exhibition KIOSK Fullscreen Mode...
     echo.
-    start "" "%EDGE_EXE%" --new-window --start-fullscreen "http://localhost:3000/display.html" "http://localhost:3000/admin.html"
-    echo [SUCCESS] Edge Fullscreen Launched!
+    set "KIOSK_DIR=%TEMP%\mosaic_kiosk_profile"
+    if not exist "%KIOSK_DIR%" mkdir "%KIOSK_DIR%"
+    start "" "%EDGE_EXE%" --user-data-dir="%KIOSK_DIR%" --kiosk "http://localhost:3000/display.html" --edge-kiosk-type=fullscreen --no-first-run --no-default-browser-check
+    echo [SUCCESS] Edge Kiosk Fullscreen Launched!
 ) else (
     echo [WARN] Dedicated browser not found, launching default browser...
     echo        (Press [F] or [F11] on screen to toggle fullscreen)
     start http://localhost:3000/display.html
-    start http://localhost:3000/admin.html
 )
 
 echo.
