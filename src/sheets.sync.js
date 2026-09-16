@@ -40,7 +40,7 @@ class SheetsSync {
         },
         body: JSON.stringify(payload),
         redirect: 'follow', // Google Apps Script 302 리다이렉트 자동 추적
-        signal: AbortSignal.timeout(10000) // 최대 10초 타임아웃
+        signal: AbortSignal.timeout(25000) // 구글 콜드스타트 및 대시보드 렌더링 고려 (25초 비동기 여유)
       });
 
       return { status: res.status, ok: res.ok };
