@@ -1,13 +1,13 @@
-# 🌌 Reverse Cosmos Mosaic (V8.13 Beam Projector & Exhibition Studio Edition)
+# 🌌 Reverse Cosmos Mosaic (V8.14 Zero-Delay Pipeline & Studio Edition)
 > **로비 스크린 및 미디어아트 전시를 위한 인생네컷형 인터랙티브 스마트 모자이크 시스템**
 > *(Interactive Smart Photo Mosaic System for Kiosk Screens & Exhibitions)*
 
-![Version](https://img.shields.io/badge/Version-8.13%20Beam%20Projector%20Studio-rose.svg)
+![Version](https://img.shields.io/badge/Version-8.14%20Zero--Delay%20Studio-rose.svg)
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
 
-**최종 업데이트**: 2026-09-15  
+**최종 업데이트**: 2026-09-16  
 **개요**: 관람객이 전시장 키오스크의 스마트 게이트 QR을 스캔하여 전면 카메라로 셀카를 촬영하면, 수천 장의 우주 타일과 결합하여 **실시간 초고화질 포토모자이크**를 완성하고, **대형 스크린(3-2-1 역방향 동선)에 실시간 단독 전시**하는 전시장 전용 무인 인터랙티브 엔진입니다.  
 빔프로젝터 대형 투사에 최적화된 **최상단 가로형 전시관 타이틀 배너(🪐 우주 한 컷 사진관)**, 글자를 가리지 않는 **하향 바운스 네온 화살표**, 고대비 **전시 타이머 배지**, **이용 방법 안내 대형 타이포그래피**, 그리고 귀여운 캐릭터 3종(강아지, 우주곰, 고양이) **5초 데모 순환 & 스포트라이트 앰비언스**가 탑재되어 있습니다.
 
@@ -253,6 +253,29 @@ blender_workspace\render_video.bat
 <a id="patch-notes"></a>
 
 ## 10. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+
+### 📦 V8.14 Zero-Delay Pipeline & Ironclad Session Shield (2026-09-16)
+#### ⚡ 무지연 즉시 촬영 파이프라인, 세션스토리지 F5 복구 및 전수 QA 보안 강화
+- **무지연 즉시 촬영 파이프라인 탑재 (`src/session.manager.js`)**:
+  - 뒷사람 B가 QR을 스캔했을 때 더 이상 지루한 "앞사람 촬영 중 대기" 화면으로 가로막지 않고, QR 스캔 즉시 `isImmediate: true`로 B의 카메라를 즉시 가동.
+  - 백엔드 워커 스레드는 A의 사진과 B의 사진을 독립된 멀티스레드로 동시 병렬 합성.
+  - 대형 디스플레이는 FIFO 쇼케이스 큐(`showcaseQueue`)로 먼저 도착한 작품을 20초간 단독 전시하고, 뒷사람 사진은 순서대로 안전하게 다음 순서에 20초 단독 전시.
+- **사진 업로드 수신 즉시 0.01초 게이트 조기 개방 (`openGateEarly`)**:
+  - 관람객이 사진을 업로드하는 찰나(0.01초)에 키오스크 QR을 즉시 재개방하여 다음 대기자의 진입 회전율을 최대치로 극대화.
+- **1회차 완료 후 강제 결정 카운트다운 타이머 제거**:
+  - 1회차 완료 후 돌아가던 20초/60초 강제 마감 타이머를 완전 삭제하여, 관람객이 대형 스크린에 전시되는 본인 작품을 여유롭게 감상하며 [한 번 더 찍기] or [다운로드]를 자율적으로 결정.
+- **15분 인위적 차단 락 폐지 & 키오스크 실시간 새 QR 재스캔 필수화**:
+  - 인위적인 15분 로컬스토리지 락(`mosaic_lock_until`)을 제거하고, 체험 완료 시 키오스크의 새로운 실시간 QR 코드를 스캔해야만 새 세션이 열리도록 개편하여 집/원격에서의 무한 반복 루프 원천 차단.
+- **`sessionStorage` 기반 모바일 F5 새로고침 및 화면 꺼짐 0.1초 자동 복구**:
+  - 관람객이 촬영 중 또는 합성 대기 중 스마트폰을 껐다 켜거나 브라우저를 새로고침(F5)해도 `sessionStorage`와 소켓 `reconnect_session`을 통해 즉시 이전 단계로 100% 매끄럽게 자동 복구.
+- **비인가 업로드 차단 (`403 Forbidden`) 및 파일 유효성 강화**:
+  - 유효한 세션 토큰이 없는 외부의 비인가 업로드를 원천 차단하고, 2회 완료 후 추가 업로드 시도 거부.
+  - 비이미지/손상 파일 사전 차단 및 업로드 중 네트워크 순단 시 크롭 데이터 보존 & 원클릭 재전송 지원.
+- **신규 보조 페이지 2종 (`simple_display.html`, `simple_upload.html`) 완벽 보안 연동**:
+  - 95%+ 화면 점유율 초대형 단일 모자이크 디스플레이 및 1-터치 간편 업로드 웹앱에 실시간 게이트 토큰 검증, 세션 복구 및 무한 반복 방지 체계 적용.
+- **README.md 시각화 및 구조 개편**:
+  - 아키텍처 다이어그램을 GitHub Markdown 표준 `flowchart TD`로 개편하여 완벽한 시각 렌더링 지원.
+  - 메인 디스플레이 실제 구동 스크린샷(`display_overview.png`) 삽입 및 14대 QA 체크리스트 제거로 가독성 대폭 향상.
 
 ### 📦 V8.13 Beam Projector & Exhibition Studio Edition (2026-09-15)
 #### 📽️ 빔프로젝터 전시장 특화 배너, 하향 바운스 화살표 여백 확보 및 데모 3종 5초 순환
