@@ -59,12 +59,8 @@ class SheetsSync {
     if (!this.isEnabled() || !audit || !audit.sessionId) return;
 
     try {
-      const shot1Cap = audit.shot1?.captureSuccess ? '성공' : (audit.shot1?.captureStarted ? '시도' : '미촬영');
-      const shot1Mos = audit.shot1?.mosaicSuccess ? '성공' : (audit.shot1?.mosaicAttempted ? '실패' : '미합성');
-
-      // 1샷 즉시 파이프라인 (2회차 선택 제거됨)
-      const retryChoice = audit.decision?.choice ? audit.decision.choice : '1회완료(단일)';
-      const shot2Mos = audit.shot2?.mosaicSuccess ? '성공' : '-';
+      const camStatus = audit.shot1?.captureSuccess ? '성공' : (audit.shot1?.captureStarted ? '열림(시도)' : '미실행');
+      const mosStatus = audit.shot1?.mosaicSuccess ? '성공' : (audit.shot1?.mosaicAttempted ? '실패' : '대기');
 
       const downloadCount = audit.downloads?.totalCount || 0;
       const downloadStr = downloadCount > 0 ? `완료 (${downloadCount}회)` : '미다운로드';
@@ -84,9 +80,9 @@ class SheetsSync {
 
       const data = {
         세션ID: audit.sessionId,
-        '접근일시(KST)': audit.accessTime || new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
-        촬영완료: shot1Cap,
-        모자이크생성: shot1Mos,
+        '스캔일시(KST)': audit.accessTime || new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+        카메라오픈: camStatus,
+        모자이크완성: mosStatus,
         다운로드: downloadStr,
         최종상태: audit.finalStatus || 'IN_PROGRESS',
         체류시간: staySecStr,
@@ -129,10 +125,7 @@ class SheetsSync {
         총참여자: stats.totalSessions || 0,
         완주수: stats.completedCount || 0,
         완주율: stats.completionRate ? `${stats.completionRate}%` : '0.0%',
-        촬영율: stats.captureRate ? `${stats.captureRate}%` : '0.0%',
-        업로드율: stats.uploadRate ? `${stats.uploadRate}%` : '0.0%',
-        모자이크율: stats.mosaicRate ? `${stats.mosaicRate}%` : '0.0%',
-        재도전율: stats.retryRate ? `${stats.retryRate}%` : '0.0%',
+        카메라오픈율: stats.captureRate ? `${stats.captureRate}%` : '0.0%',
         다운로드율: stats.downloadRate ? `${stats.downloadRate}%` : '0.0%',
         평균체류시간: stats.avgStaySec ? `${stats.avgStaySec}s` : '0.0s',
         monthKey: monthKey
