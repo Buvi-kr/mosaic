@@ -1,8 +1,8 @@
-# 🌌 Reverse Cosmos Mosaic (V8.14 Zero-Delay Pipeline & Studio Edition)
+# 🌌 Reverse Cosmos Mosaic (V8.16 Zero-Defect Studio Edition)
 > **로비 스크린 및 미디어아트 전시를 위한 인생네컷형 인터랙티브 스마트 모자이크 시스템**
 > *(Interactive Smart Photo Mosaic System for Kiosk Screens & Exhibitions)*
 
-![Version](https://img.shields.io/badge/Version-8.14%20Zero--Delay%20Studio-rose.svg)
+![Version](https://img.shields.io/badge/Version-8.16%20Zero--Defect%20Studio-rose.svg)
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
@@ -254,6 +254,23 @@ blender_workspace\render_video.bat
 <a id="patch-notes"></a>
 
 ## 10. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+
+### 📦 V8.16 Mobile Native Intent & Anti-Spam Shield (2026-09-16)
+#### 📸 모바일 카메라 권한 복귀 튕김 원천 차단, 1.5초 연타 방지 쓰로틀 및 완주자 순수 체류시간 정밀화
+- **모바일 카메라 권한/촬영 후 복귀 시 화면 튕김(Reset) 원천 차단 (`public/upload.html`)**:
+  - 스마트폰(iOS Safari, Android Chrome)에서 카메라 권한 팝업이 뜨거나 촬영 후 `[사진 사용]`을 눌러 브라우저로 복귀할 때 발생하는 소켓 재연결(`connect`) 시그널을 정밀 분석.
+  - 기존에 사진 업로드 직전 소켓 재연결 응답이 화면을 다시 `viewCapture`로 밀어버리던 버그를 완벽히 해결하여, 업로드 진행 중(`isUploading`)이거나 처리 중일 때는 재연결 응답이 뷰를 절대 되돌리지 못하도록 락(Lock) 가드 탑재.
+- **HTML 네이티브 `<label for="photoInput">` 카메라 인텐트 100% 보장**:
+  - 모바일 OS의 보안 제스처(User Gesture) 제한과 충돌하던 비인가 자동 `photoInput.click()` 스크립트를 완전 제거.
+  - 셔터 버튼을 네이티브 `<label>`로 감싸고 인라인 이벤트 충돌을 제거하여, 관람객이 터치하는 즉시 스마트폰 전면 카메라가 100%의 신뢰성으로 활성화되도록 구조 개선.
+- **전 구간 연타 방지(Anti-Spam) 및 동시 다발 요청 방어 체계**:
+  - **카메라 셔터 1.5초 쓰로틀(Throttle)**: 어르신이나 관람객이 실수로 셔터 버튼을 빠르게 연타(`Double-tap`)하더라도 1.5초 이내 추가 입력을 OS 레벨(`e.preventDefault()`)에서 원천 차단.
+  - **사진 업로드 원천 1회 보장**: 사진 선택 완료 즉시 `isUploading = true` 잠금을 걸어 중복 전송 차단.
+  - **서버 멱등성(Idempotency) 및 429 락 (`upload.route.js`)**: 중복 전송 시 `429 Too Many Requests`로 워커 과부하를 방어하고, 완성된 이미지는 캐시 URL을 즉시 반환.
+  - **다운로드 버튼 비활성화**: 사진 저장 버튼 클릭 즉시 `disabled = true` 및 `⏳ 저장 중...` 전환 후 2.5초간 연타 차단.
+- **구글 시트 관람객 평균 체류시간 집계 정밀화 (`scripts/Code.gs`)**:
+  - QR 스캔 후 아무것도 안 하고 1~3초 만에 닫아버린 단순 이탈자(`ABORTED`)의 체류시간이 평균에 섞여 전시장 통계가 왜곡(5~10초)되던 문제를 해결.
+  - 모자이크 완성까지 진행한 실제 참여 관람객(`isCompleted === true`)의 체류시간만 선별 집계하여 순수 작품 체험 시간을 정확히 산출하도록 수식 개선.
 
 ### 📦 V8.15 Edge Kiosk Fullscreen Engine & Hardware Screen Shield (2026-09-16)
 #### 🖥️ 엣지(Edge) 1순위 자동 감지, OS 레벨 F11 전체화면 새 창 강제 및 3중 전체화면 보호 체계
