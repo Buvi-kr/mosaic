@@ -464,10 +464,22 @@
       }
     }
 
-    // 카메라 버튼 터치 시 카메라 오픈 신호 서버 전달
+    // 카메라 버튼 터치 시 카메라 오픈 신호 서버 전달 (연타 방지 쓰로틀링)
+    let lastCameraClickTime = 0;
     const cameraBtnLabel = document.getElementById('cameraBtnLabel');
     if (cameraBtnLabel) {
-      cameraBtnLabel.addEventListener('click', () => {
+      cameraBtnLabel.addEventListener('click', (e) => {
+        if (isUploading) {
+          e.preventDefault();
+          return;
+        }
+        const now = Date.now();
+        if (now - lastCameraClickTime < 1500) {
+          // 1.5초 이내 다중 연타 방지
+          e.preventDefault();
+          return;
+        }
+        lastCameraClickTime = now;
         if (socket && sessionToken) {
           socket.emit('start_capture', { sessionToken });
         }
