@@ -150,8 +150,8 @@
         <!-- 전면 카메라 즉시 실행 파일 인풋 (capture="user") -->
         <input type="file" id="photoInput" accept="image/*" capture="user" class="hidden">
 
-        <!-- 초대형 원터치 카메라 버튼 (화면 중심을 차지하는 직관적 UI) -->
-        <div onclick="triggerCamera()" class="btn-camera-glow flex-1 my-2 cursor-pointer group relative rounded-3xl border-2 border-amber-400/80 bg-gradient-to-b from-indigo-950/70 via-purple-950/50 to-black/90 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-all p-3">
+        <!-- 초대형 원터치 카메라 버튼 (label 태그로 모바일 OS 네이티브 연결 100% 보장) -->
+        <label for="photoInput" onclick="onCameraBtnClick()" class="btn-camera-glow flex-1 my-2 cursor-pointer group relative rounded-3xl border-2 border-amber-400/80 bg-gradient-to-b from-indigo-950/70 via-purple-950/50 to-black/90 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-all p-3 select-none">
           
           <!-- 원형 셔터 아이콘 -->
           <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-rose-500 via-amber-500 to-indigo-600 border-4 border-amber-300 flex items-center justify-center shadow-[0_0_40px_rgba(244,63,94,0.7)] group-hover:scale-105 transition-transform">
@@ -170,7 +170,7 @@
               터치 즉시 스마트폰 카메라가 열립니다 ⚡
             </span>
           </div>
-        </div>
+        </label>
 
         <!-- 하단 친절 가이드 카드 -->
         <div class="flex-shrink-0 p-2.5 rounded-2xl bg-indigo-950/60 border border-indigo-400/30 text-left flex items-center gap-2.5">
@@ -308,10 +308,10 @@
 
     const isLocalKiosk = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-    // 카메라 파일 선택창 트리거
-    function triggerCamera() {
-      if (photoInput) {
-        photoInput.click();
+    // 카메라 버튼 클릭 시: 촬영 시작 신호 서버 전송 (스캔 -> 카메라오픈 트래킹)
+    function onCameraBtnClick() {
+      if (socket && sessionToken) {
+        socket.emit('start_capture', { sessionToken });
       }
     }
 
@@ -355,14 +355,21 @@
 
               if (res.completedResult) {
                 showFinalResult(res.completedResult);
-              } else if (res.state === 'PROCESSING') {
+              } else if (res.state === 'PROCESSING' || isUploading || !viewProcessing.classList.contains('hidden')) {
+                // 업로드 중이거나 처리 중이면 화면을 덮어쓰지 않고 유지
                 showView(viewProcessing);
               } else if (res.state === 'DOWNLOAD_1' || res.state === 'COMPLETED_1') {
                 showFinalResult(res.completedResult || (res.allRecords && res.allRecords[0]?.resultUrl));
-              } else {
+              } else if (!isUploading && viewProcessing.classList.contains('hidden')) {
+                // 업로드 중이 아닐 때만 캡처 뷰 유지
                 showView(viewCapture);
               }
             } else {
+              // 현재 이미 업로드 중이거나 완성본 화면이면 세션을 날리지 않음
+              if (isUploading || !viewProcessing.classList.contains('hidden')) {
+                console.warn('업로드 진행 중 재연결 실패 - 세션 초기화 보류');
+                return;
+              }
               sessionToken = null;
               sessionId = null;
               sessionStorage.removeItem('mosaic_active_session_token');
@@ -457,13 +464,6 @@
         }
 
         showView(viewCapture);
-
-        // 모바일 브라우저 카메라 자동 오픈 시도
-        setTimeout(() => {
-          try {
-            photoInput.click();
-          } catch (e) {}
-        }, 300);
 
       } catch (e) {
         console.error('슬롯 요청 실패:', e);

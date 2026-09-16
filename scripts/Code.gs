@@ -369,7 +369,8 @@ function analyzeMonthlyLog(ss, monthSheetName, todayStr) {
       if (isCam) dObj.cameraOpen++;
       if (isCompleted) dObj.completed++;
       if (isDown) dObj.download++;
-      if (staySec > 0) { dObj.staySum += staySec; dObj.stayCount++; }
+      // 모자이크 완성까지 진행한 관람객의 유효 체류시간만 집계 (미촬영 이탈자의 0~3초 왜곡 방지)
+      if (isCompleted && staySec > 0) { dObj.staySum += staySec; dObj.stayCount++; }
 
       // 2. 오늘 데이터 및 시간대별 적재
       if (accessTime.indexOf(todayStr) !== -1) {
@@ -377,7 +378,7 @@ function analyzeMonthlyLog(ss, monthSheetName, todayStr) {
         if (isCam) today.cameraOpen++;
         if (isCompleted) today.completed++;
         if (isDown) today.download++;
-        if (staySec > 0) { today.staySum += staySec; today.stayCount++; }
+        if (isCompleted && staySec > 0) { today.staySum += staySec; today.stayCount++; }
 
         if (hourPart >= 9 && hourPart < 12) { hourly.m9_12++; if (isCompleted) hourly.c9_12++; }
         else if (hourPart >= 12 && hourPart < 14) { hourly.m12_14++; if (isCompleted) hourly.c12_14++; }
