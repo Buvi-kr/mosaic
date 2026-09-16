@@ -131,8 +131,8 @@
         <span class="text-amber-300 font-bold">키오스크 화면에 새 QR이 나타나면</span><br>
         다시 스캔해주세요!
       </p>
-      <button onclick="location.reload()" class="w-full py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm transition-colors border border-white/10">
-        새로고침
+      <button type="button" onclick="promptKioskScan()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-indigo-600 text-white font-black text-sm transition-transform active:scale-95 shadow-lg border border-amber-400/30">
+        📷 전시장 새 QR 찍기
       </button>
     </div>
 
@@ -406,6 +406,10 @@
       }
     }, { once: true });
 
+    function promptKioskScan() {
+      showCustomAlert('전시장 키오스크 화면에 새로 뜬 QR 코드를 스마트폰 기본 카메라로 비춰주세요! 📸');
+    }
+
     // ===== 1. 소켓 및 세션 초기화 =====
     function initApp() {
       const currentUrlGateToken = urlParams.get('gateToken');
@@ -428,8 +432,15 @@
         }
       }
 
-      // 2) 신규 QR을 스캔하지 않고 단순 URL 직접 접속 시 -> 전시장 화면 QR 재스캔 필수 안내 (무한 루프 방지)
-      if (!currentUrlGateToken && !isLocalKiosk) {
+      // 2) 브라우저 F5 새로고침 복구: sessionStorage에 진행 중이던 활성 세션 토큰 확인
+      const activeStoredToken = sessionStorage.getItem('mosaic_active_session_token');
+      if (activeStoredToken) {
+        sessionToken = activeStoredToken;
+        sessionId = sessionStorage.getItem('mosaic_active_session_id') || null;
+      }
+
+      // 3) 신규 QR도 없고 진행 중 세션도 없는데 URL 직접 접속 시 -> 전시장 화면 QR 재스캔 필수 안내 (무한 루프 방지)
+      if (!currentUrlGateToken && !sessionToken && !isLocalKiosk) {
         showView(viewBusy);
         viewBusy.querySelector('h2').textContent = '전시장 QR 스캔 안내';
         viewBusy.querySelector('p').innerHTML = `새로운 모자이크 체험을 시작하려면<br><strong class="text-amber-300 font-bold">전시장 화면의 QR 코드</strong>를 스마트폰으로 스캔해 주세요! 📸`;
@@ -442,16 +453,39 @@
         console.log('🔌 소켓 연결 완료:', socket.id);
         if (reconnectBanner) reconnectBanner.classList.add('hidden');
 
-        // 기존 sessionToken이 있으면 재연결 시도
+        // 기존 sessionToken이 있으면 재연결 시도 (F5 새로고침 자동 복구)
         if (sessionToken) {
           socket.emit('reconnect_session', { sessionToken }, (res) => {
             if (res && res.success) {
               console.log('🔄 세션 복원 성공:', res);
+              if (res.allRecords) allRecords = res.allRecords;
+              if (res.shotCount !== undefined) shotCount = res.shotCount;
+              if (res.currentShot !== undefined) currentShot = res.currentShot;
+              if (sessionId) socket.emit('join_session', sessionId);
+
               if (res.completedResult) {
                 renderCompletedResult(res.completedResult, res.allRecords);
+              } else if (res.state === 'PROCESSING') {
+                showView(viewProcessing);
+              } else if (res.state === 'DECISION_1') {
+                const recs = res.allRecords || [];
+                const latest = recs.length > 0 ? recs[0].resultUrl : null;
+                if (latest) {
+                  renderCompletedResult(latest, recs);
+                } else {
+                  showView(viewCapture);
+                }
+              } else if (res.state === 'DOWNLOAD_1' || res.state === 'DOWNLOAD_DUAL') {
+                showFinalDownloadView(res.allRecords || allRecords);
+              } else {
+                showView(viewCapture);
               }
             } else {
+              console.log('세션 복원 실패 (만료됨) -> 세션 정리');
               sessionToken = null;
+              sessionId = null;
+              sessionStorage.removeItem('mosaic_active_session_token');
+              sessionStorage.removeItem('mosaic_active_session_id');
               initSlotClaim();
             }
           });
@@ -557,6 +591,8 @@
       if (pInput) pInput.value = '';
       stopEntryTimer();
       stopDecisionTimer();
+      sessionStorage.removeItem('mosaic_active_session_token');
+      sessionStorage.removeItem('mosaic_active_session_id');
       console.log('🔄 키오스크: 다음 관람객 세션 준비');
       initSlotClaim();
     }
@@ -572,11 +608,17 @@
 
         if (!data.success) {
           showView(viewBusy);
+          viewBusy.querySelector('h2').textContent = '새로운 QR 스캔 필요';
+          viewBusy.querySelector('p').innerHTML = `QR 코드가 만료되었거나 이미 사용되었습니다.<br><strong class="text-amber-300 font-bold">키오스크 화면의 새로운 QR 코드</strong>를 다시 스캔해 주세요! 📸`;
           return;
         }
 
         sessionToken = data.sessionToken;
         sessionId = data.sessionId;
+        try {
+          sessionStorage.setItem('mosaic_active_session_token', sessionToken);
+          sessionStorage.setItem('mosaic_active_session_id', sessionId);
+        } catch (e) {}
 
         if (socket && sessionId) {
           socket.emit('join_session', sessionId);
@@ -616,35 +658,46 @@
 
     photoInput.addEventListener('change', (e) => {
       const files = e.target.files;
-      if (files && files.length > 0) {
-        stopEntryTimer();
-        if (socket && sessionToken) {
-          socket.emit('start_capture', { sessionToken });
-        }
+      if (!files || files.length === 0) return;
 
-        const file = files[0];
-        imageToCrop.src = URL.createObjectURL(file);
-        showView(viewCrop);
-
-        if (cropper) cropper.destroy();
-        cropper = new Cropper(imageToCrop, {
-          viewMode: 1,
-          dragMode: 'none',
-          autoCropArea: 0.9,
-          restore: false,
-          guides: true,
-          center: true,
-          highlight: false,
-          cropBoxMovable: true,
-          cropBoxResizable: true,
-          toggleDragModeOnDblclick: false,
-          zoomable: true,
-          zoomOnTouch: true,
-          zoomOnWheel: true,
-          minCropBoxWidth: 50,
-          minCropBoxHeight: 50,
-        });
+      const file = files[0];
+      if (!file.type || !file.type.startsWith('image/')) {
+        showCustomAlert('이미지 파일(JPG, PNG 등)만 등록 가능합니다.');
+        photoInput.value = '';
+        return;
       }
+      if (file.size <= 0) {
+        showCustomAlert('파일 내용이 올바르지 않습니다. 다시 선택해주세요.');
+        photoInput.value = '';
+        return;
+      }
+
+      stopEntryTimer();
+      if (socket && sessionToken) {
+        socket.emit('start_capture', { sessionToken });
+      }
+
+      imageToCrop.src = URL.createObjectURL(file);
+      showView(viewCrop);
+
+      if (cropper) cropper.destroy();
+      cropper = new Cropper(imageToCrop, {
+        viewMode: 1,
+        dragMode: 'none',
+        autoCropArea: 0.9,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false,
+        zoomable: true,
+        zoomOnTouch: true,
+        zoomOnWheel: true,
+        minCropBoxWidth: 50,
+        minCropBoxHeight: 50,
+      });
     });
 
     document.getElementById('cropZoomInBtn').addEventListener('click', () => { if (cropper) cropper.zoom(0.15); });
@@ -683,7 +736,7 @@
 
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 35000);
+          const timeoutId = setTimeout(() => controller.abort(), 45000);
 
           const res = await fetch(`/api/upload?sessionToken=${encodeURIComponent(sessionToken)}`, {
             method: 'POST',
@@ -700,14 +753,14 @@
             allRecords = data.allRecords || [];
             renderCompletedResult(data.imageUrl, allRecords);
           } else {
-            showCustomAlert('오류: ' + (data.error || '처리에 실패했습니다.'));
-            showView(viewCapture);
+            showCustomAlert('오류: ' + (data.error || data.message || '처리에 실패했습니다.'));
+            showView(viewCrop);
           }
         } catch (err) {
           submitCropBtn.disabled = false;
           console.error('업로드 실패:', err);
-          showCustomAlert('전송에 실패했습니다. 네트워크 상태를 확인 후 다시 시도해주세요.');
-          showView(viewCapture);
+          showCustomAlert('전송 중 네트워크 통신 문제가 발생했습니다. 네트워크 상태 확인 후 다시 [전송]을 눌러주세요.');
+          showView(viewCrop);
         }
       }, 'image/jpeg', 0.9);
     });
@@ -814,6 +867,8 @@
         if (sessionToken) {
           localStorage.setItem('mosaic_saved_session', sessionToken);
         }
+        sessionStorage.removeItem('mosaic_active_session_token');
+        sessionStorage.removeItem('mosaic_active_session_id');
       } catch (e) {
         console.warn('로컬스토리지 저장 실패:', e);
       }

@@ -131,12 +131,19 @@ class SessionManager {
 
   // ===== 1. 슬롯 점유 요청 (QR 스캔 시점) =====
   claimSlot(gateToken, socketId, reqMeta = {}) {
-    // 게이트가 닫혀있거나 토큰 불일치 시 거절
-    if (!this.isGateOpen || gateToken !== this.currentGateToken) {
+    if (!this.isGateOpen) {
       return {
         success: false,
         code: 'SLOT_BUSY',
         message: '현재 다른 관람객이 체험 중입니다. 키오스크의 새 QR을 확인해주세요.'
+      };
+    }
+
+    if (gateToken !== this.currentGateToken) {
+      return {
+        success: false,
+        code: 'INVALID_GATE_TOKEN',
+        message: '유효하지 않거나 이미 만료된 QR 코드입니다. 키오스크의 새 QR을 다시 스캔해주세요.'
       };
     }
 

@@ -211,7 +211,22 @@
     </div>
 
     <!-- ------------------------------------------------------------ -->
-    <!-- 4단계: 완료 및 전시 성공 (다운로드 & 재참여)                   -->
+    <!-- 게이트 차단 안내 (QR 미스캔 또는 만료 시)                       -->
+    <!-- ------------------------------------------------------------ -->
+    <div id="viewGateRequired" class="hidden py-8 space-y-4">
+      <div class="w-16 h-16 mx-auto rounded-full bg-indigo-500/20 border-2 border-indigo-400 flex items-center justify-center shadow-[0_0_25px_rgba(99,102,241,0.5)]">
+        <span class="text-3xl">📱</span>
+      </div>
+      <h2 id="gateRequiredTitle" class="text-xl font-black text-white">전시장 QR 스캔 안내</h2>
+      <p id="gateRequiredDesc" class="text-xs text-slate-300 leading-relaxed">
+        새로운 모자이크 체험을 시작하려면<br>
+        <strong class="text-amber-300 font-bold">전시장 화면 우측 하단의 QR 코드</strong>를<br>
+        스마트폰 기본 카메라로 스캔해 주세요! 📸
+      </p>
+    </div>
+
+    <!-- ------------------------------------------------------------ -->
+    <!-- 4단계: 완료 및 전시 성공 (다운로드)                           -->
     <!-- ------------------------------------------------------------ -->
     <div id="stepDone" class="hidden space-y-4">
       <div>
@@ -228,16 +243,17 @@
         <img id="resultImage" src="" alt="완성된 모자이크" class="w-full h-full object-contain">
       </div>
 
-      <!-- 다운로드 & 다시하기 버튼 -->
+      <!-- 다운로드 & 새 참여 안내 -->
       <div class="space-y-2.5 pt-1">
         <a id="downloadBtn" href="#" download="reverse_cosmos_mosaic.jpg" class="btn-cosmic w-full py-3.5 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 cursor-pointer shadow-xl">
           <span>💾</span>
           <span>완성된 사진 내 폰에 저장</span>
         </a>
 
-        <button onclick="resetToNewPhoto()" class="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer border border-white/10">
-          ➕ 다른 사진으로 또 만들기
-        </button>
+        <div class="p-3.5 rounded-2xl bg-indigo-950/70 border border-indigo-400/40 text-xs text-slate-200 mt-2 text-center shadow-lg">
+          <span class="text-amber-300 font-black text-sm">📷 새로운 사진을 전송하시려면?</span><br>
+          전시장 화면의 새로운 QR 코드를 스마트폰으로 다시 스캔해 주세요!
+        </div>
       </div>
     </div>
 
@@ -259,78 +275,32 @@
     const socket = io();
     const urlParams = new URLSearchParams(window.location.search);
     const gateToken = urlParams.get('gateToken') || '';
+    const isLocalKiosk = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
     let sessionToken = null;
     let sessionId = null;
     let selectedFile = null;
 
-    // 소켓 연결 상태 업데이트
-    socket.on('connect', () => {
-      console.log('✅ 소켓 서버 연결됨:', socket.id);
-      document.getElementById('connectionBadge').innerHTML = `
-        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-        전시장 연결됨
-      `;
-      // 게이트 토큰이 있으면 슬롯 점유 시도
-      claimExhibitionSlot();
-    });
-
-    socket.on('disconnect', () => {
-      document.getElementById('connectionBadge').innerHTML = `
-        <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-        재연결 중...
-      `;
-    });
-
-    async function claimExhibitionSlot() {
-      if (!gateToken) return;
-      try {
-        const res = await fetch('/api/upload/claim-slot', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gateToken, socketId: socket.id })
-        });
-        const data = await res.json();
-        if (data.success) {
-          sessionToken = data.sessionToken;
-          sessionId = data.sessionId;
-          console.log('🎟️ 슬롯 점유 성공:', sessionToken);
-        } else {
-          console.warn('⚠️ 슬롯 점유 결과:', data.message);
-        }
-      } catch (e) {
-        console.error('슬롯 점유 통신 에러:', e);
-      }
-    }
-
-    // ================================================================
-    // 사진 선택 & 파일 프리뷰 (1단계 -> 2단계)
-    // ================================================================
     const photoInput = document.getElementById('photoInput');
     const stepSelect = document.getElementById('stepSelect');
     const stepPreview = document.getElementById('stepPreview');
     const stepProcessing = document.getElementById('stepProcessing');
     const stepDone = document.getElementById('stepDone');
+    const viewGateRequired = document.getElementById('viewGateRequired');
     const previewImage = document.getElementById('previewImage');
 
-    function openFilePicker() {
-      photoInput.click();
+    function showGateBlock(title, desc) {
+      stepSelect.classList.add('hidden');
+      stepPreview.classList.add('hidden');
+      stepProcessing.classList.add('hidden');
+      stepDone.classList.add('hidden');
+      viewGateRequired.classList.remove('hidden');
+      if (title) document.getElementById('gateRequiredTitle').textContent = title;
+      if (desc) document.getElementById('gateRequiredDesc').innerHTML = desc;
     }
 
-    photoInput.addEventListener('change', (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-
-      selectedFile = file;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        previewImage.src = ev.target.result;
-        showStep('preview');
-      };
-      reader.readAsDataURL(file);
-    });
-
     function showStep(stepName) {
+      viewGateRequired.classList.add('hidden');
       stepSelect.classList.add('hidden');
       stepPreview.classList.add('hidden');
       stepProcessing.classList.add('hidden');
@@ -341,6 +311,137 @@
       else if (stepName === 'processing') stepProcessing.classList.remove('hidden');
       else if (stepName === 'done') stepDone.classList.remove('hidden');
     }
+
+    // F5 새로고침 복구용 세션 확인
+    const activeStoredSimpleToken = sessionStorage.getItem('mosaic_simple_active_token');
+    if (activeStoredSimpleToken) {
+      sessionToken = activeStoredSimpleToken;
+      sessionId = sessionStorage.getItem('mosaic_simple_active_id') || null;
+    }
+
+    // QR 없이 직접 접속 시 차단 안내 (비로컬 환경)
+    if (!gateToken && !sessionToken && !isLocalKiosk) {
+      showGateBlock(
+        '전시장 QR 스캔 안내',
+        '새로운 모자이크 체험을 시작하려면<br><strong class="text-amber-300 font-bold">전시장 화면 우측 하단의 QR 코드</strong>를<br>스마트폰 기본 카메라로 스캔해 주세요! 📸'
+      );
+    }
+
+    // 소켓 연결 상태 업데이트
+    socket.on('connect', () => {
+      console.log('✅ 소켓 서버 연결됨:', socket.id);
+      document.getElementById('connectionBadge').innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        전시장 연결됨
+      `;
+
+      if (sessionToken) {
+        socket.emit('reconnect_session', { sessionToken }, (res) => {
+          if (res && res.success) {
+            console.log('🔄 심플 세션 복원 성공:', res);
+            if (sessionId) socket.emit('join_session', sessionId);
+            if (res.completedResult) {
+              onMosaicComplete(res.completedResult);
+            } else if (res.state === 'PROCESSING') {
+              showStep('processing');
+            }
+          } else {
+            console.log('심플 세션 복원 실패 (만료됨) -> 세션 정리');
+            sessionToken = null;
+            sessionId = null;
+            sessionStorage.removeItem('mosaic_simple_active_token');
+            sessionStorage.removeItem('mosaic_simple_active_id');
+            if (gateToken) {
+              claimExhibitionSlot();
+            } else if (!isLocalKiosk) {
+              showGateBlock(
+                '전시장 QR 스캔 안내',
+                '새로운 모자이크 체험을 시작하려면<br><strong class="text-amber-300 font-bold">전시장 화면 우측 하단의 QR 코드</strong>를<br>스마트폰 기본 카메라로 스캔해 주세요! 📸'
+              );
+            }
+          }
+        });
+      } else {
+        claimExhibitionSlot();
+      }
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('connectionBadge').innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+        재연결 중...
+      `;
+    });
+
+    async function claimExhibitionSlot() {
+      if (sessionToken) return;
+      if (!gateToken) {
+        if (!isLocalKiosk) {
+          showGateBlock(
+            '전시장 QR 스캔 안내',
+            '새로운 모자이크 체험을 시작하려면<br><strong class="text-amber-300 font-bold">전시장 화면 우측 하단의 QR 코드</strong>를<br>스마트폰 기본 카메라로 스캔해 주세요! 📸'
+          );
+        }
+        return;
+      }
+      try {
+        const res = await fetch('/api/upload/claim-slot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gateToken, socketId: socket.id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          sessionToken = data.sessionToken;
+          sessionId = data.sessionId;
+          sessionStorage.setItem('mosaic_simple_active_token', sessionToken);
+          sessionStorage.setItem('mosaic_simple_active_id', sessionId);
+          console.log('🎟️ 슬롯 점유 성공:', sessionToken);
+          showStep('select');
+        } else {
+          console.warn('⚠️ 슬롯 점유 결과:', data.message);
+          if (!isLocalKiosk) {
+            showGateBlock(
+              '새로운 QR 스캔 필요',
+              'QR 코드가 만료되었거나 이미 사용되었습니다.<br><strong class="text-amber-300 font-bold">전시장 화면의 새로운 QR 코드</strong>를 다시 스캔해 주세요! 📸'
+            );
+          }
+        }
+      } catch (e) {
+        console.error('슬롯 점유 통신 에러:', e);
+      }
+    }
+
+    // ================================================================
+    // 사진 선택 & 파일 프리뷰 (1단계 -> 2단계)
+    // ================================================================
+    function openFilePicker() {
+      photoInput.click();
+    }
+
+    photoInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      if (!file.type || !file.type.startsWith('image/')) {
+        alert('이미지 파일(JPG, PNG 등)만 등록 가능합니다.');
+        photoInput.value = '';
+        return;
+      }
+      if (file.size <= 0) {
+        alert('파일 내용이 올바르지 않습니다.');
+        photoInput.value = '';
+        return;
+      }
+
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        previewImage.src = ev.target.result;
+        showStep('preview');
+      };
+      reader.readAsDataURL(file);
+    });
 
     // ================================================================
     // 모자이크 업로드 & 백엔드 생성 (2단계 -> 3단계)
@@ -394,7 +495,7 @@
           // 완료 성공
           onMosaicComplete(result.imageUrl);
         } else {
-          alert(result.error || '모자이크 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+          alert(result.error || result.message || '모자이크 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
           showStep('preview');
           submitBtn.disabled = false;
         }
@@ -412,6 +513,10 @@
     function onMosaicComplete(imageUrl) {
       progressBarFill.style.width = '100%';
       processPercentText.textContent = '100%';
+
+      // 활성 세션 토큰 소거 (새 참여 시 QR 재스캔 강제)
+      sessionStorage.removeItem('mosaic_simple_active_token');
+      sessionStorage.removeItem('mosaic_simple_active_id');
 
       setTimeout(() => {
         showStep('done');
@@ -441,13 +546,6 @@
           }
         };
       }, 600);
-    }
-
-    function resetToNewPhoto() {
-      selectedFile = null;
-      photoInput.value = '';
-      submitBtn.disabled = false;
-      showStep('select');
     }
   </script>
 </body>

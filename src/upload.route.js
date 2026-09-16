@@ -165,8 +165,8 @@ router.post('/', upload.single('photo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '사진 누락' });
   if (globalTileDB.length === 0) return res.status(500).json({ error: '타일 데이터(DB)가 존재하지 않습니다.' });
 
-  // ★ 관람객 사진 업로드 수신 즉시 키오스크 QR 조기 개방 (다음 대기 관람객 진입 가속)
-  sessionManager.openGateEarly('photo_uploaded');
+  const clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket?.remoteAddress || '';
+  const isLocal = clientIp === '127.0.0.1' || clientIp === '::1' || clientIp.includes('127.0.0.1') || clientIp.includes('localhost');
 
   const sessionToken = req.query.sessionToken || req.body.sessionToken || req.headers['x-session-token'] || null;
   const requestId = req.body?.requestId || req.query?.requestId || null;
@@ -174,30 +174,26 @@ router.post('/', upload.single('photo'), async (req, res) => {
   let session = null;
   if (sessionToken) {
     session = sessionManager.getSession(sessionToken);
-    // 세션이 만료되었거나 메모리에서 정리된 경우에도 관람객 사진을 버리지 않고 안전하게 처리
-    if (!session) {
-      console.log(`[Upload] 만료된 세션 토큰 복구 생성: ${sessionToken}`);
-      session = {
-        sessionId: `sess_${Date.now()}`,
-        sessionToken,
-        state: 'CAPTURING_1',
-        shotCount: 0,
-        currentShot: 1,
-        shotRecords: new Map(),
-        createdAt: Date.now(),
-        lastActiveAt: Date.now()
-      };
-      sessionManager.sessions.set(sessionToken, session);
-    }
+  }
 
-    if (session.shotCount >= 2) {
-      return res.json({
-        success: true,
-        message: '체험 횟수(2회)를 모두 완료했습니다.',
-        shotCount: session.shotCount,
-        allRecords: sessionManager.getAllRecords(session)
-      });
-    }
+  // 로컬 키오스크가 아니면서 유효한 세션이 없는 경우 차단 (무단 업로드 및 무한 루프 원천 방어)
+  if (!isLocal && !session) {
+    return res.status(403).json({
+      error: '유효하지 않거나 만료된 세션입니다. 전시장 키오스크의 QR 코드를 다시 스캔해 주세요.'
+    });
+  }
+
+  if (session && session.shotCount >= 2) {
+    return res.json({
+      success: true,
+      message: '체험 횟수(2회)를 모두 완료했습니다. 새로운 체험을 원하시면 키오스크의 새 QR 코드를 스캔해 주세요.',
+      shotCount: session.shotCount,
+      allRecords: sessionManager.getAllRecords(session)
+    });
+  }
+
+  // ★ 정당한 관람객 사진 업로드 수신 즉시 키오스크 QR 조기 개방 (다음 대기 관람객 진입 가속)
+  sessionManager.openGateEarly('photo_uploaded');
 
     // 멱등성 검사 (Idempotency)
     const currentShot = session.currentShot;
