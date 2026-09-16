@@ -262,18 +262,25 @@ server.listen(PORT, '0.0.0.0', () => {
     if (browserPath) {
       console.log(`[시스템] 전시장 ${browserName} 전체화면(F11) 브라우저 자동 기동: ${browserPath}`);
       try {
-        // --new-window: 기존에 열린 엣지 창이 있어도 독립된 새 창으로 분리
-        // --start-fullscreen: 윈도우 OS 레벨에서 즉시 F11 전체화면 적용 (보안 팝업/제스처 제한 우회)
-        const child = spawn(browserPath, [
-          '--new-window',
-          '--start-fullscreen',
-          displayUrl,
-          adminUrl
-        ], {
-          detached: true,
-          stdio: 'ignore'
+        // 1순위: Windows 쉘(start "")을 통해 데스크톱 최전면 F11 전체화면 독립 새 창 기동
+        // --new-window: 기존에 열린 엣지/크롬 창이 있어도 완전히 독립된 새 창으로 분리
+        // --start-fullscreen: 윈도우 OS 레벨에서 즉시 F11 전체화면 적용 (웹 보안 팝업/제스처 제한 원천 우회)
+        const winCmd = `start "" "${browserPath}" --new-window --start-fullscreen "${displayUrl}" "${adminUrl}"`;
+        exec(winCmd, (err) => {
+          if (err) {
+            // 2순위 폴백: 직접 spawn 프로세스 분리 기동
+            const child = spawn(browserPath, [
+              '--new-window',
+              '--start-fullscreen',
+              displayUrl,
+              adminUrl
+            ], {
+              detached: true,
+              stdio: 'ignore'
+            });
+            child.unref();
+          }
         });
-        child.unref();
       } catch (err) {
         console.error('[시스템] 브라우저 프로세스 실행 에러:', err.message);
       }

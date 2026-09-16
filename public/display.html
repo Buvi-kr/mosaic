@@ -361,15 +361,11 @@
           </span>
         </div>
       </div>
-      <div class="absolute right-6 flex items-center gap-2.5">
+      <div class="absolute right-6 flex items-center gap-3">
         <span class="badge-live px-3.5 py-1.5 rounded-full text-xs font-black tracking-wider uppercase flex items-center gap-1.5 shadow-sm">
           <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
           LIVE EXHIBITION
         </span>
-        <button id="btnFullscreen" onclick="toggleFullScreen()" title="전체화면 전환 (단축키: F)" class="cursor-pointer px-3 py-1.5 rounded-full text-xs font-bold text-white/90 hover:text-white bg-white/10 hover:bg-white/20 border border-white/25 transition-all flex items-center gap-1.5 backdrop-blur shadow-sm">
-          <span class="text-sm">⛶</span>
-          <span id="fullscreenBtnText">전체화면 [F]</span>
-        </button>
       </div>
     </header>
 
@@ -1058,12 +1054,6 @@
       }
     }
 
-    document.addEventListener('fullscreenchange', () => {
-      const btnText = document.getElementById('fullscreenBtnText');
-      if (btnText) {
-        btnText.textContent = document.fullscreenElement ? '창모드 [F]' : '전체화면 [F]';
-      }
-    });
 
     window.addEventListener('keydown', (e) => {
       if (e.key === 'f' || e.key === 'F') {
