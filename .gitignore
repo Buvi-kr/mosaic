@@ -25,6 +25,7 @@ public/raw_tiles/*
 public/guides/*
 !public/guides/.gitkeep
 !public/guides/guide_*.*
+!public/guides/display_overview.png
 
 # 3. 개인 사진 테마 제외 (유출 방지)
 public/tiles/*/

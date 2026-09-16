@@ -263,11 +263,7 @@
 
       <div class="p-3 rounded-xl bg-indigo-950/50 border border-indigo-500/30 mb-3">
         <h3 class="text-base font-black text-white mb-0.5">한 번 더 찍으시겠어요?</h3>
-        <p class="text-xs text-indigo-200 mb-1.5">마지막 1회 보너스 기회가 남아있습니다.</p>
-        <div class="flex justify-between items-center text-xs font-bold text-amber-300">
-          <span>⏱ 미응답 시 자동 저장 이동</span>
-          <span id="decisionTimerText" class="font-mono text-base font-black">20s</span>
-        </div>
+        <p class="text-xs text-indigo-200">앞의 대형 스크린에 내 사진이 전시 중입니다.<br>감상 후 원하는 버튼을 편안하게 선택해 주세요.</p>
       </div>
 
       <div class="flex flex-col gap-2">
@@ -412,15 +408,11 @@
 
     // ===== 1. 소켓 및 세션 초기화 =====
     function initApp() {
-      // 1) 키오스크의 신규 QR을 찍고 들어온 경우 (URL에 gateToken 포함 시) 이전 잠금 해제 & 신규 참여 허용
       const currentUrlGateToken = urlParams.get('gateToken');
-      if (currentUrlGateToken || isLocalKiosk) {
-        localStorage.removeItem('mosaic_lock_until');
-      }
+      localStorage.removeItem('mosaic_lock_until'); // 15분 강제 차단 락 영구 삭제
 
-      // 2) 신규 QR 스캔이 아닌 브라우저 단순 재방문인 경우에만 이전 완성본 복원
+      // 1) 신규 QR 스캔이 아닌 브라우저 단순 재방문이고 이전에 완성한 사진이 있는 경우 -> 다운로드 복원
       const savedRecordsJson = (!isLocalKiosk && !currentUrlGateToken) ? localStorage.getItem('mosaic_saved_records') : null;
-      const lockUntil = (!isLocalKiosk && !currentUrlGateToken) ? localStorage.getItem('mosaic_lock_until') : null;
 
       if (savedRecordsJson) {
         try {
@@ -436,12 +428,11 @@
         }
       }
 
-      // 2) 완성된 사진이 없는데 락만 걸려 있는 경우
-      if (lockUntil && Date.now() < parseInt(lockUntil, 10)) {
-        const remainingMin = Math.ceil((parseInt(lockUntil, 10) - Date.now()) / 60000);
+      // 2) 신규 QR을 스캔하지 않고 단순 URL 직접 접속 시 -> 전시장 화면 QR 재스캔 필수 안내 (무한 루프 방지)
+      if (!currentUrlGateToken && !isLocalKiosk) {
         showView(viewBusy);
-        viewBusy.querySelector('h2').textContent = '체험 완료 안내';
-        viewBusy.querySelector('p').innerHTML = `체험 횟수를 모두 사용했습니다.<br><span class="text-amber-300 font-bold">${remainingMin}분 후</span> 다시 참여할 수 있습니다.`;
+        viewBusy.querySelector('h2').textContent = '전시장 QR 스캔 안내';
+        viewBusy.querySelector('p').innerHTML = `새로운 모자이크 체험을 시작하려면<br><strong class="text-amber-300 font-bold">전시장 화면의 QR 코드</strong>를 스마트폰으로 스캔해 주세요! 📸`;
         return;
       }
 
@@ -526,15 +517,22 @@
     async function initSlotClaim() {
       let token = gateTokenFromUrl;
       if (!token) {
-        try {
-          const res = await fetch('/api/upload/gate-state');
-          const state = await res.json();
-          if (state && state.isOpen && state.gateToken) {
-            token = state.gateToken;
-            console.log('🚪 활성 게이트 토큰 자동 취득:', token);
+        if (isLocalKiosk) {
+          try {
+            const res = await fetch('/api/upload/gate-state');
+            const state = await res.json();
+            if (state && state.isOpen && state.gateToken) {
+              token = state.gateToken;
+              console.log('🚪 키오스크: 활성 게이트 토큰 자동 취득:', token);
+            }
+          } catch (e) {
+            console.warn('게이트 상태 확인 실패:', e);
           }
-        } catch (e) {
-          console.warn('게이트 상태 확인 실패:', e);
+        } else {
+          showView(viewBusy);
+          viewBusy.querySelector('h2').textContent = '전시장 QR 스캔 안내';
+          viewBusy.querySelector('p').innerHTML = `새로운 모자이크 체험을 시작하려면<br><strong class="text-amber-300 font-bold">전시장 화면의 QR 코드</strong>를 스마트폰으로 스캔해 주세요! 📸`;
+          return;
         }
       }
       claimSlot(token);
@@ -599,7 +597,6 @@
     // ===== 3. 진입 타이머 (관람객 편의를 위해 카운트다운 강제 종료 해제) =====
     function startEntryTimer() {
       stopEntryTimer();
-      // 카운트다운 압박 없이 편안하게 촬영할 수 있도록 타이머 바 숨김 유지
       if (entryTimerContainer) entryTimerContainer.classList.add('hidden');
     }
 
@@ -620,7 +617,6 @@
     photoInput.addEventListener('change', (e) => {
       const files = e.target.files;
       if (files && files.length > 0) {
-        // 촬영 시작 신호 -> 서버의 30초 진입 타이머 즉시 취소!
         stopEntryTimer();
         if (socket && sessionToken) {
           socket.emit('start_capture', { sessionToken });
@@ -632,26 +628,25 @@
 
         if (cropper) cropper.destroy();
         cropper = new Cropper(imageToCrop, {
-          viewMode: 1, // 배경 이미지는 컨테이너에 꽉 차게 고정 (절대 흔들리거나 빠져나가지 않음)
-          dragMode: 'none', // 배경 드래그 이동 원천 차단 (배경 고정)
-          autoCropArea: 0.9, // 사진의 90%를 초기 영역으로 설정
+          viewMode: 1,
+          dragMode: 'none',
+          autoCropArea: 0.9,
           restore: false,
           guides: true,
           center: true,
           highlight: false,
-          cropBoxMovable: true, // 가운데 영역을 잡고 드래그하여 영역 이동
-          cropBoxResizable: true, // 8개 모서리 점을 잡고 늘렸다 줄였다 영역 조절
+          cropBoxMovable: true,
+          cropBoxResizable: true,
           toggleDragModeOnDblclick: false,
-          zoomable: true, // 확대 축소 지원
-          zoomOnTouch: true, // 핀치 줌 지원
-          zoomOnWheel: true, // 휠 줌 지원
+          zoomable: true,
+          zoomOnTouch: true,
+          zoomOnWheel: true,
           minCropBoxWidth: 50,
           minCropBoxHeight: 50,
         });
       }
     });
 
-    // 크롭 툴바 버튼 이벤트 (확대, 축소, 90도 회전, 원본 초기화)
     document.getElementById('cropZoomInBtn').addEventListener('click', () => { if (cropper) cropper.zoom(0.15); });
     document.getElementById('cropZoomOutBtn').addEventListener('click', () => { if (cropper) cropper.zoom(-0.15); });
     document.getElementById('cropRotateBtn').addEventListener('click', () => { if (cropper) cropper.rotate(90); });
@@ -666,7 +661,7 @@
     // ===== 5. 크롭 확인 및 모자이크 생성 요청 =====
     submitCropBtn.addEventListener('click', () => {
       if (!cropper) return;
-      submitCropBtn.disabled = true; // 더블클릭 연타 방지
+      submitCropBtn.disabled = true;
 
       showView(viewProcessing);
       const procFill = document.getElementById('procFill');
@@ -688,7 +683,7 @@
 
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 35000); // 35초 클라이언트 타임아웃
+          const timeoutId = setTimeout(() => controller.abort(), 35000);
 
           const res = await fetch(`/api/upload?sessionToken=${encodeURIComponent(sessionToken)}`, {
             method: 'POST',
@@ -719,11 +714,8 @@
 
     // ===== 6. 결과 렌더링 & 컨티뉴 분기 =====
     function renderCompletedResult(latestUrl, records) {
-      // 1회차 성공 시 -> DECISION 화면 (다운로드 버튼 숨기고 선택 집중)
       if (shotCount === 1) {
         document.getElementById('decisionPhotoPreview').src = latestUrl;
-        
-        // ★ 1차 사진 완성 즉시 로컬스토리지에 안전 백업 (도중 이탈/종료 시에도 100% 보존)
         try {
           const rec = [{ shotNumber: 1, resultUrl: latestUrl }];
           localStorage.setItem('mosaic_saved_records', JSON.stringify(rec));
@@ -735,27 +727,13 @@
         showView(viewDecision);
         startDecisionTimer();
       } else {
-        // 2회차까지 완료 -> DOWNLOAD_DUAL 화면
         showFinalDownloadView(records);
       }
     }
 
-    // 20초 컨티뉴 카운트다운
+    // ⚠️ 1회차 완료 결정 타이머 제거: 관람객이 편안하게 스크린을 보고 원하는 버튼 선택
     function startDecisionTimer() {
-      let remaining = 20;
-      const decisionTimerText = document.getElementById('decisionTimerText');
-      if (decisionTimerText) decisionTimerText.textContent = remaining + 's';
-
-      decisionTimerInterval = setInterval(() => {
-        remaining--;
-        if (decisionTimerText) decisionTimerText.textContent = remaining + 's';
-
-        if (remaining <= 0) {
-          clearInterval(decisionTimerInterval);
-          // 20초 미응답 -> 1회차 다운로드 화면으로 자동 전환
-          proceedToDownloadOnly();
-        }
-      }, 1000);
+      stopDecisionTimer();
     }
 
     function stopDecisionTimer() {
@@ -830,19 +808,14 @@
       allRecords = records;
       currentDualRecords = records;
 
-      // 1) 로컬스토리지 보존 (일반 모바일 관람객만 15분 잠금)
-      if (!isLocalKiosk) {
-        try {
-          localStorage.setItem('mosaic_saved_records', JSON.stringify(records));
-          if (sessionToken) {
-            localStorage.setItem('mosaic_saved_session', sessionToken);
-          }
-          if (!localStorage.getItem('mosaic_lock_until')) {
-            localStorage.setItem('mosaic_lock_until', Date.now() + 15 * 60 * 1000);
-          }
-        } catch (e) {
-          console.warn('로컬스토리지 저장 실패:', e);
+      // 1) 로컬스토리지 보존 (완성본 다운로드 복원용)
+      try {
+        localStorage.setItem('mosaic_saved_records', JSON.stringify(records));
+        if (sessionToken) {
+          localStorage.setItem('mosaic_saved_session', sessionToken);
         }
+      } catch (e) {
+        console.warn('로컬스토리지 저장 실패:', e);
       }
 
       // 2) 1개 사진 (단독) vs 2개 사진 (듀얼) 미술관 골드 액자 렌더링
@@ -859,10 +832,17 @@
             <span class="text-xl">💾</span>
             <span>사진 바로 다운로드 (내 기기에 저장)</span>
           </button>
+          ${isLocalKiosk ? `
           <button id="nextVisitorBtn" onclick="startNextVisitorKiosk()" class="w-full mt-2.5 py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-400/50 font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]">
             <span class="text-base">✨</span>
             <span>다음 관람객 촬영 시작 (새 세션)</span>
           </button>
+          ` : `
+          <div class="p-3 rounded-2xl bg-indigo-950/70 border border-indigo-400/40 text-xs text-slate-200 mt-2.5 text-center shadow-lg">
+            <span class="text-amber-300 font-black text-sm">📷 새로운 촬영을 원하시나요?</span><br>
+            전시장 화면의 새로운 QR 코드를 스마트폰으로 스캔해 주세요!
+          </div>
+          `}
         `;
       } else {
         // 2회차 보너스까지 완료된 경우: 상단 탭 + 골드 액자 단일 뷰어
@@ -889,10 +869,17 @@
           <button onclick="downloadAllShots(this)" class="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-white/10 flex items-center justify-center gap-1.5 transition-all mb-2">
             <span>📦</span> <span>1회차 + 2회차 두 장 모두 다운로드</span>
           </button>
+          ${isLocalKiosk ? `
           <button id="nextVisitorBtn" onclick="startNextVisitorKiosk()" class="w-full py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-amber-300 border border-amber-400/50 font-black text-xs flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]">
             <span class="text-base">✨</span>
             <span>다음 관람객 촬영 시작 (새 세션)</span>
           </button>
+          ` : `
+          <div class="p-3 rounded-2xl bg-indigo-950/70 border border-indigo-400/40 text-xs text-slate-200 mt-2 text-center shadow-lg">
+            <span class="text-amber-300 font-black text-sm">📷 새로운 촬영을 원하시나요?</span><br>
+            전시장 화면의 새로운 QR 코드를 스마트폰으로 스캔해 주세요!
+          </div>
+          `}
         `;
       }
 

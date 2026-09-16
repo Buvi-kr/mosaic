@@ -161,71 +161,44 @@ class SessionManager {
     this.sessions.set(sessionToken, session);
     sessionLogger.recordAccess(session, reqMeta);
 
-    // 포토존이 비어 있는 경우 -> 즉시 activePhotozone 진입
-    if (!this.activePhotozoneToken) {
-      this.activePhotozoneToken = sessionToken;
-      session.state = 'RESERVED';
-      this.isGateOpen = false; // 촬영 시작 시 게이트 닫음
-      this.rotateGateToken();
-      this.broadcastGateState();
-      this.broadcastStandGuide(3.5);
+    // 포토존 즉시 진입: QR을 스캔한 모든 관람객에게 즉시 촬영 권한 부여 (isImmediate: true)
+    this.activePhotozoneToken = sessionToken;
+    session.state = 'RESERVED';
+    this.isGateOpen = false; // 촬영 시작 시 키오스크 QR 일시 숨김 (관리자 설정 타이머 동안)
+    this.rotateGateToken();
+    this.broadcastGateState();
+    this.broadcastStandGuide(3.5);
 
-      // 관람객이 촬영 중이어도 관리자가 설정한 대기 시간(10~120초, 기본 20초) 후 다음 대기자를 위해 신규 QR 자동 개방
-      const currentConfig = configModule.getConfig();
-      const gateTimeoutSec = Math.max(10, Math.min(120, currentConfig.visitorGateTimeout || 20));
-      if (this.gateTimer) {
-        clearTimeout(this.gateTimer);
-        this.gateTimer = null;
+    // 관람객이 촬영 중이어도 관리자가 설정한 대기 시간(10~120초, 기본 20초) 후 다음 대기자를 위해 신규 QR 자동 개방
+    // (또는 사진 업로드 즉시 openGateEarly로 0.01초 만에 자동 개방됨)
+    const currentConfig = configModule.getConfig();
+    const gateTimeoutSec = Math.max(10, Math.min(120, currentConfig.visitorGateTimeout || 20));
+    if (this.gateTimer) {
+      clearTimeout(this.gateTimer);
+      this.gateTimer = null;
+    }
+    this.gateTimer = setTimeout(() => {
+      if (!this.isGateOpen) {
+        console.log(`[게이트] QR 재개방 대기 시간(${gateTimeoutSec}초) 경과: 다음 관람객을 위해 신규 QR 자동 개방`);
+        this.isGateOpen = true;
+        this.rotateGateToken();
+        this.broadcastGateState();
       }
-      this.gateTimer = setTimeout(() => {
-        if (!this.isGateOpen) {
-          console.log(`[게이트] 잠수 방지 대기 시간(${gateTimeoutSec}초) 경과: 다음 관람객을 위해 신규 QR 자동 개방`);
-          this.isGateOpen = true;
-          this.rotateGateToken();
-          this.broadcastGateState();
-        }
-        this.gateTimer = null;
-      }, gateTimeoutSec * 1000);
+      this.gateTimer = null;
+    }, gateTimeoutSec * 1000);
 
-      // 3분 유휴 타이머 가동 (어르신/가족 관람객이 여유롭게 촬영할 수 있도록 배려)
-      this.setSessionTimer(session, 180000, () => {
-        console.log(`[세션] 유휴 시간(3분) 초과 정리: ${sessionId}`);
-        this.handleTimeout(session, 'INACTIVITY_TIMEOUT');
-      });
+    // 3분 유휴 타이머 가동 (어르신/가족 관람객이 여유롭게 촬영할 수 있도록 배려)
+    this.setSessionTimer(session, 180000, () => {
+      console.log(`[세션] 유휴 시간(3분) 초과 정리: ${sessionId}`);
+      this.handleTimeout(session, 'INACTIVITY_TIMEOUT');
+    });
 
-      return {
-        success: true,
-        sessionToken,
-        sessionId,
-        state: 'RESERVED',
-        isImmediate: true
-      };
-    }
-
-    // 포토존에 이미 A가 있는 경우 -> B는 nextReserved로 대기
-    if (!this.nextReservedToken) {
-      this.nextReservedToken = sessionToken;
-      session.state = 'WAITING_IN_LINE';
-      this.isGateOpen = false; // 예약자까지 찼으므로 게이트 닫음
-      this.rotateGateToken();
-      this.broadcastGateState();
-
-      // ※ 대기 중에는 30초 타이머를 켜지 않음 (승격 시점에 시작)
-      return {
-        success: true,
-        sessionToken,
-        sessionId,
-        state: 'WAITING_IN_LINE',
-        isImmediate: false
-      };
-    }
-
-    // 대기자까지 꽉 찬 경우
-    this.sessions.delete(sessionToken);
     return {
-      success: false,
-      code: 'SLOT_BUSY',
-      message: '체험 대기열이 가득 찼습니다. 잠시 후 다시 시도해주세요.'
+      success: true,
+      sessionToken,
+      sessionId,
+      state: 'RESERVED',
+      isImmediate: true
     };
   }
 
@@ -233,11 +206,6 @@ class SessionManager {
   startCapture(sessionToken) {
     const session = this.getSession(sessionToken);
     if (!session) return { success: false, code: 'INVALID_SESSION' };
-
-    // 권한 검증: 현재 포토존 권한자만 가능
-    if (this.activePhotozoneToken !== sessionToken) {
-      return { success: false, code: 'NOT_ACTIVE_PHOTOZONE' };
-    }
 
     // 원자적 상태 검증: RESERVED 또는 CAPTURING_2 상태에서만 진입 가능
     if (session.state !== 'RESERVED' && session.state !== 'CAPTURING_2') {
@@ -248,9 +216,9 @@ class SessionManager {
     session.lastActiveAt = Date.now();
     sessionLogger.recordCaptureStart(session.sessionId, session.currentShot);
 
-    // 30초 진입 타이머 취소 & 60초 촬영 타이머 설정
-    this.setSessionTimer(session, 60000, () => {
-      console.log(`[세션] 촬영 시간(60초) 초과: ${session.sessionId}`);
+    // 180초(3분) 촬영 타이머 설정 (포즈 잡기 및 조명 조절 넉넉히 보장)
+    this.setSessionTimer(session, 180000, () => {
+      console.log(`[세션] 촬영 시간(180초) 초과: ${session.sessionId}`);
       this.handleTimeout(session, 'CAPTURE_TIMEOUT');
     });
 
@@ -324,15 +292,10 @@ class SessionManager {
       this.rotateGateToken();
       this.broadcastGateState();
 
-      // 모바일 즉시 DECISION_1 진입: 20초 컨티뉴 카운트다운 가동 (사진 로딩 및 어르신 관람객 2배 여유 시간 보장)
+      // 모바일 즉시 DECISION_1 진입: 강제 타임아웃 없이 관람객이 원하는 만큼 화면을 보고 자유롭게 선택
       session.state = 'DECISION_1';
-      this.setDecisionTimer(session, 20000, () => {
-        console.log(`[세션] 20초 컨티뉴 결정 미응답 -> 1회차 다운로드로 자동 전환: ${session.sessionId}`);
-        sessionLogger.recordDecision(session.sessionId, 'TIMEOUT', 20);
-        this.finishExperience(sessionToken, 'TIMEOUT');
-      });
     } else {
-      // 2회차 완료 -> A는 포토존 점유를 끝마침 -> 2.5초 후 B 승격 트리거
+      // 2회차 완료 -> A는 다운로드 화면 전환
       session.state = 'DOWNLOAD_DUAL';
       sessionLogger.recordSessionEnd(session.sessionId, 'COMPLETED_DUAL');
       this.promoteNextReserved();
@@ -496,12 +459,12 @@ class SessionManager {
     session.previousState = session.state;
     session.state = 'DISCONNECTED_GRACE';
 
-    // 20초 유예 타이머 시작
+    // 60초 유예 타이머 시작 (화면 슬립 및 Wi-Fi 순시 전환 방어)
     if (session.graceTimer) clearTimeout(session.graceTimer);
     session.graceTimer = setTimeout(() => {
-      console.log(`[세션] 재연결 유예(20초) 초과 - 슬롯 자동 회수: ${session.sessionId}`);
+      console.log(`[세션] 재연결 유예(60초) 초과 - 세션 정리: ${session.sessionId}`);
       this.handleTimeout(session, 'DISCONNECT_TIMEOUT');
-    }, 20000);
+    }, 60000);
   }
 
   // ===== 10. 소켓 재연결 처리 =====
