@@ -58,29 +58,53 @@
 
 ## 2. 🚪 V8.8 스마트 게이트 & 세션 파이프라인 아키텍처
 
-V8.8은 전시 현장의 물리적 병목을 해소하고 관람객 회전율을 최대 70%까지 압축하면서도, 단 1곳뿐인 셀카 포토존에서 관람객 간 신체적 충돌을 원천 차단하는 **스마트 게이트 및 파이프라인 듀얼 세션 엔진**을 탑재했습니다.
+V8.13은 전시 현장의 물리적 병목을 해소하고 관람객 회전율을 최대 70%까지 압축하면서도, 단 1곳뿐인 셀카 포토존에서 관람객 간 신체적 충돌을 원천 차단하고 FIFO 쇼케이스 큐로 무누락 전시를 보장하는 **스마트 게이트 및 파이프라인 듀얼 세션 엔진**을 탑재했습니다.
 
 ```mermaid
-graph TD
-    subgraph "물리적 전시장 3-2-1 레이아웃"
-        D1["[우측 1열] STEP 1<br/>스마트 게이트 QR<br/>(동적 토큰 / 펄스 알림)"]
-        D2["[중앙 2열] STEP 2<br/>포토스팟 스크린<br/>(트루 블랙 백드롭)"]
-        D3["[좌측 3열] STEP 3<br/>결과 감상 뷰어<br/>(1회차 20s / 2회차 8s)"]
+sequenceDiagram
+    autonumber
+    actor A as 🙋 관람객 A
+    participant K as 📱 키오스크 화면 (QR)
+    actor B as 🙋 관람객 B (뒷사람)
+    participant S as 🖥️ 백엔드 서버
+    participant D as 🪐 대형 디스플레이 (전시)
+
+    Note over A,K: [1단계: A의 촬영]
+    A->>K: QR 스캔 (activePhotozoneToken 획득)
+    K->>K: 게이트 닫힘 (Busy 펄스 표시)
+    A->>A: 셀카 촬영 & 크롭 후 [전송(업로드)] 클릭
+    
+    Note over A,K: [2단계: 즉시 조기 개방 (회전율 극대화)]
+    A->>S: 사진 업로드 수신 (0.01초)
+    S->>K: ⚡ 게이트 즉시 OPEN! 신규 QR 생성
+    Note right of K: A의 사진이 합성되는 동안<br/>키오스크에 새 QR이 이미 열림!
+    
+    Note over B,K: [3단계: 뒷사람 B의 사전 스캔]
+    B->>K: 새로 열린 QR 즉시 스캔!
+    S-->>B: B는 예약자(nextReservedToken)로 접수<br/>"앞 사람 마무리 중, 잠시 대기" 안내
+    
+    Note over A,D: [4단계: A의 1회차 전시 시작 & 고민 시간]
+    S->>D: new_mosaic (A 사진, 20초)
+    D->>D: 🎬 A 사진 시네마틱 6.0배 줌 & 20초 카운트다운 전시
+    A->>A: 스마트폰에 결과 미리보기 & [한 번 더 찍기] vs [완료] 모달
+    
+    alt Case 1: A가 [완료] 클릭 (또는 고민 시간 만료)
+        A->>S: 1회차 다운로드 화면으로 이동 & 포토존 반납
+        S->>B: 2.5초 인계 완충 후 B의 카메라 즉시 오픈! (photozone_ready)
+        B->>B: B 셀카 촬영 및 업로드
+    else Case 2: A가 [한 번 더 찍기] 클릭 (2회차)
+        A->>A: A 스마트폰에서 2회차 셀카 촬영 & 업로드
+        S->>D: new_mosaic (A 2회차, 8초)
+        Note over D: 큐(Queue)에 쌓여 A 1회차 끝나자마자 8초 추가 전시
+        A->>S: 2회차 완료 후 다운로드 이동 & 포토존 반납
+        S->>B: 2.5초 인계 완충 후 B의 카메라 즉시 오픈! (photozone_ready)
+        B->>B: B 셀카 촬영 및 업로드
     end
 
-    subgraph "파이프라인 듀얼 세션 (session.manager.js)"
-        S1["관람객 A (activePhotozoneToken)<br/>셀카 촬영 & 렌더링"]
-        S1 -->|"1회차 렌더링 완료 즉시"| G_OPEN["게이트 OPEN 브로드캐스트"]
-        G_OPEN --> S2["관람객 B (nextReservedToken)<br/>QR 스캔 & 대기 진입"]
-        
-        S1 -->|"10초 결정 모달"| DEC{"A의 선택"}
-        DEC -->|"Case A: 마칠래요 / 타임아웃"| FIN["A 퇴장 & 다운로드 이동"]
-        DEC -->|"Case B: 한 번 더 찍기"| RETRY["A 2회차 재도전<br/>(B에게 '잠시 대기' 안내)"]
-        
-        FIN --> DELAY["2.5초 물리적 인계 완충 (Handoff Delay)"]
-        RETRY -->|"2회차 완성 후 퇴장"| DELAY
-        DELAY --> PROMOTE["B ➔ activePhotozoneToken 승격<br/>30초 진입 카운트다운 시작!"]
-    end
+    Note over B,D: [5단계: 뒷사람 B의 모자이크 전시 (절대 누락 없음)]
+    S->>D: new_mosaic (B 사진, 20초)
+    Note over D: 📥 A 전시가 아직 남아있다면 B 사진은 FIFO 대기열(Queue)에 안전하게 적재!
+    D->>D: A 전시 끝나자마자 B 사진 20초 시네마틱 단독 전시 시작!
 ```
 
 ### 2-1. 3 ➔ 2 ➔ 1 전시장 물리 동선 (우측에서 좌측으로의 자연스러운 흐름)
