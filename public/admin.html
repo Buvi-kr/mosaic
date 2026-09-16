@@ -67,16 +67,22 @@
     </div>
 
     <!-- 퀵 네비게이션 패널 -->
-    <div class="bg-indigo-50 p-4 rounded-2xl shadow-sm border border-indigo-100 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+    <div class="bg-indigo-50 p-4 rounded-2xl shadow-sm border border-indigo-100 mb-6 flex flex-col lg:flex-row gap-4 items-center justify-between">
       <div class="flex items-center gap-2 text-indigo-800 font-bold">
         <span class="material-symbols-outlined">public</span> 외부 접속 주소 (자동 연동)
       </div>
-      <div class="flex gap-3 w-full md:w-auto">
-        <a id="displayLink" href="/display.html" target="_blank" class="flex-1 bg-white hover:bg-indigo-600 text-slate-700 hover:text-white border border-slate-200 hover:border-indigo-600 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm">
-          <span class="material-symbols-outlined text-base">desktop_windows</span> 디스플레이 열기
+      <div class="grid grid-cols-2 md:flex gap-2 w-full lg:w-auto">
+        <a id="displayLink" href="/display.html" target="_blank" class="bg-white hover:bg-indigo-600 text-slate-700 hover:text-white border border-slate-200 hover:border-indigo-600 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+          <span class="material-symbols-outlined text-base">desktop_windows</span> 3분할 디스플레이
         </a>
-        <a id="uploadLink" href="/upload.html" target="_blank" class="flex-1 bg-white hover:bg-indigo-600 text-slate-700 hover:text-white border border-slate-200 hover:border-indigo-600 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm">
-          <span class="material-symbols-outlined text-base">smartphone</span> 모바일 업로드 열기
+        <a id="simpleDisplayLink" href="/simple_display.html" target="_blank" class="bg-white hover:bg-emerald-600 text-slate-700 hover:text-white border border-emerald-200 hover:border-emerald-600 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm text-emerald-700">
+          <span class="material-symbols-outlined text-base">fullscreen</span> ✨ 심플 대형 디스플레이
+        </a>
+        <a id="uploadLink" href="/upload.html" target="_blank" class="bg-white hover:bg-indigo-600 text-slate-700 hover:text-white border border-slate-200 hover:border-indigo-600 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm">
+          <span class="material-symbols-outlined text-base">smartphone</span> 셀카 업로드
+        </a>
+        <a id="simpleUploadLink" href="/simple_upload.html" target="_blank" class="bg-white hover:bg-cyan-600 text-slate-700 hover:text-white border border-cyan-200 hover:border-cyan-600 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm text-cyan-700">
+          <span class="material-symbols-outlined text-base">add_photo_alternate</span> 🚀 심플 모바일 업로드
         </a>
       </div>
     </div>
@@ -379,6 +385,16 @@
               <input type="range" id="retryDurSlider" min="5" max="20" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
             </div>
 
+            <!-- QR 자동 개방 및 잠수 방지 대기 시간 슬라이더 (NEW) -->
+            <div>
+              <label class="flex justify-between mb-2">
+                <span class="font-bold text-slate-700">QR 자동 개방 및 잠수 방지 대기 시간 (10초~120초)</span>
+                <span id="gateTimeoutVal" class="text-indigo-600 font-bold">20초</span>
+              </label>
+              <p class="text-sm text-slate-500 mb-2">관람객이 QR을 스캔한 후 사진을 찍지 않고 방치(잠수)할 경우, 대기열 정체를 막기 위해 다음 관람객용 새 QR을 자동 개방하는 시간입니다 (기본 20초, 어르신/가족 전시 시 30~45초 권장, 사진 업로드 시 즉시 조기 개방됨).</p>
+              <input type="range" id="gateTimeoutSlider" min="10" max="120" step="5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
             <!-- 촬영 꿀팁 슬라이드 주기 -->
             <div>
               <label class="flex justify-between mb-2">
@@ -521,12 +537,12 @@
       // 퀵 네비게이션 외부 접속 주소 자동 갱신
       const displayLink = document.getElementById('displayLink');
       const uploadLink = document.getElementById('uploadLink');
-      if(displayLink && uploadLink) {
-        displayLink.href = `${url}/display.html`;
-        uploadLink.href = `${url}/upload.html`;
-        displayLink.classList.replace('text-slate-700', 'text-indigo-600');
-        uploadLink.classList.replace('text-slate-700', 'text-indigo-600');
-      }
+      const simpleDisplayLink = document.getElementById('simpleDisplayLink');
+      const simpleUploadLink = document.getElementById('simpleUploadLink');
+      if (displayLink) displayLink.href = `${url}/display.html`;
+      if (uploadLink) uploadLink.href = `${url}/upload.html`;
+      if (simpleDisplayLink) simpleDisplayLink.href = `${url}/simple_display.html`;
+      if (simpleUploadLink) simpleUploadLink.href = `${url}/simple_upload.html`;
     });
     // 상세 설명 토글 함수
     function toggleDetail(id) {
@@ -608,6 +624,8 @@
           document.getElementById('showcaseDurVal').textContent = (currentConfig.displayShowcaseDuration || 20) + '초';
           document.getElementById('retryDurSlider').value = currentConfig.displayRetryDuration || 8;
           document.getElementById('retryDurVal').textContent = (currentConfig.displayRetryDuration || 8) + '초';
+          document.getElementById('gateTimeoutSlider').value = currentConfig.visitorGateTimeout || 20;
+          document.getElementById('gateTimeoutVal').textContent = (currentConfig.visitorGateTimeout || 20) + '초';
           document.getElementById('guideIntSlider').value = currentConfig.displayGuideInterval || 5;
           document.getElementById('guideIntVal').textContent = (currentConfig.displayGuideInterval || 5) + '초';
           
@@ -915,6 +933,9 @@
     document.getElementById('retryDurSlider').addEventListener('input', (e) => {
       document.getElementById('retryDurVal').textContent = e.target.value + '초';
     });
+    document.getElementById('gateTimeoutSlider').addEventListener('input', (e) => {
+      document.getElementById('gateTimeoutVal').textContent = e.target.value + '초';
+    });
     document.getElementById('guideIntSlider').addEventListener('input', (e) => {
       document.getElementById('guideIntVal').textContent = e.target.value + '초';
     });
@@ -955,6 +976,7 @@
         lowMemoryMode: document.getElementById('lowMemoryModeToggle').checked,
         displayShowcaseDuration: parseInt(document.getElementById('showcaseDurSlider').value, 10),
         displayRetryDuration: parseInt(document.getElementById('retryDurSlider').value, 10),
+        visitorGateTimeout: parseInt(document.getElementById('gateTimeoutSlider').value, 10),
         displayGuideInterval: parseInt(document.getElementById('guideIntSlider').value, 10)
       };
 

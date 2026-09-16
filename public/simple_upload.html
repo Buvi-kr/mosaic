@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>REVERSE COSMOS | 간편 모바일 모자이크</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.6.0/confetti.browser.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&family=Pretendard:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background: #060814;
+      background-image: 
+        radial-gradient(circle at 50% 15%, rgba(99, 102, 241, 0.25), transparent 55%),
+        radial-gradient(circle at 80% 85%, rgba(236, 72, 153, 0.15), transparent 50%),
+        radial-gradient(circle at 20% 75%, rgba(56, 189, 248, 0.15), transparent 50%);
+      color: #ffffff;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .font-outfit {
+      font-family: 'Outfit', sans-serif;
+    }
+
+    /* 사이버 글래스모피즘 카드 */
+    .glass-card {
+      background: rgba(13, 17, 34, 0.88);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border: 1.5px solid rgba(129, 140, 248, 0.35);
+      border-radius: 28px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(99, 102, 241, 0.2);
+    }
+
+    /* 대형 글로우 버튼 */
+    .btn-cosmic {
+      background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #06b6d4 100%);
+      box-shadow: 0 10px 30px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-cosmic:active {
+      transform: scale(0.97);
+      box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+    }
+
+    /* 펄스 애니메이션 */
+    @keyframes pulseSoft {
+      0%, 100% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.4); }
+      50% { box-shadow: 0 0 45px rgba(168, 85, 247, 0.7); }
+    }
+    .glow-pulse {
+      animation: pulseSoft 2.5s infinite;
+    }
+
+    /* 프리뷰 이미지 컨테이너 */
+    .preview-box {
+      border: 2px dashed rgba(168, 85, 247, 0.5);
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 22px;
+      overflow: hidden;
+      position: relative;
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-between p-4 sm:p-6 min-h-screen">
+
+  <!-- ============================================================== -->
+  <!-- 상단 네비게이션 헤더                                              -->
+  <!-- ============================================================== -->
+  <header class="w-full max-w-md flex items-center justify-between py-2 mb-2">
+    <div class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.5)]">
+        <span class="text-lg">🌌</span>
+      </div>
+      <div>
+        <h1 class="text-sm font-black font-outfit tracking-wider text-white uppercase leading-none">
+          REVERSE COSMOS
+        </h1>
+        <p class="text-[10px] text-indigo-300 font-semibold tracking-tight mt-0.5">인터랙티브 전시 포토존</p>
+      </div>
+    </div>
+
+    <!-- 상태 뱃지 -->
+    <div id="connectionBadge" class="px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[11px] font-bold flex items-center gap-1.5">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      연결 완료
+    </div>
+  </header>
+
+  <!-- ============================================================== -->
+  <!-- 메인 인터랙션 카드                                                -->
+  <!-- ============================================================== -->
+  <main class="w-full max-w-md glass-card p-6 my-auto text-center relative overflow-hidden">
+
+    <!-- 히든 파일 인풋: accept="image/*"로 사진첩/카메라 네이티브 선택창 즉시 실행 -->
+    <input type="file" id="photoInput" accept="image/*" class="hidden">
+
+    <!-- ------------------------------------------------------------ -->
+    <!-- 1단계: 사진 선택 전 (초기 상태)                                 -->
+    <!-- ------------------------------------------------------------ -->
+    <div id="stepSelect" class="space-y-5">
+      <!-- 헤더 안내 -->
+      <div>
+        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 text-xs font-black mb-2 border border-indigo-400/30">
+          <span>✨</span>
+          <span>1-TOUCH UPLOAD</span>
+        </div>
+        <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight leading-snug">
+          내 사진으로 완성되는<br>
+          <span class="bg-gradient-to-r from-cyan-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+            초대형 우주 모자이크
+          </span>
+        </h2>
+        <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+          휴대폰의 앨범 사진을 고르거나 즉석에서 촬영하세요.<br>
+          버튼 한 번으로 앞의 대형 스크린에 즉시 전시됩니다!
+        </p>
+      </div>
+
+      <!-- 사진 업로드 터치 영역 -->
+      <div onclick="openFilePicker()" class="cursor-pointer group relative p-7 rounded-2xl border-2 border-dashed border-indigo-400/40 hover:border-indigo-400 bg-indigo-950/20 hover:bg-indigo-950/40 transition-all duration-300 flex flex-col items-center justify-center gap-3">
+        <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-600/30 to-purple-600/30 border border-indigo-400/50 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_30px_rgba(99,102,241,0.35)]">
+          <span class="text-4xl">📸</span>
+        </div>
+        <div>
+          <span class="text-base font-black text-white block group-hover:text-indigo-200 transition-colors">
+            사진 선택 또는 즉석 촬영
+          </span>
+          <span class="text-xs text-slate-400 block mt-1">
+            터치하여 사진첩에서 고르거나 카메라 켜기
+          </span>
+        </div>
+      </div>
+
+      <!-- 추천 팁 안내 카드 -->
+      <div class="p-3.5 rounded-xl bg-slate-900/60 border border-white/10 text-left flex items-center gap-3">
+        <span class="text-2xl">💡</span>
+        <div class="text-xs text-slate-300">
+          <span class="font-bold text-amber-300">더 멋진 모자이크를 위한 팁:</span><br>
+          얼굴이 화면에 꽉 찬 클로즈업 사진일수록 모자이크가 선명하고 아름답게 완성됩니다!
+        </div>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------------------ -->
+    <!-- 2단계: 사진 선택 완료 (미리보기 & 전송 확정)                    -->
+    <!-- ------------------------------------------------------------ -->
+    <div id="stepPreview" class="hidden space-y-4">
+      <div>
+        <span class="text-xs font-bold text-indigo-300">선택한 사진 미리보기</span>
+        <h3 class="text-lg font-black text-white mt-0.5">이 사진으로 모자이크를 만들까요?</h3>
+      </div>
+
+      <!-- 이미지 미리보기 창 -->
+      <div class="preview-box w-full aspect-square max-h-[42vh] flex items-center justify-center bg-black/50 shadow-inner">
+        <img id="previewImage" src="" alt="선택한 사진" class="w-full h-full object-contain">
+      </div>
+
+      <!-- 액션 버튼 그룹 -->
+      <div class="space-y-2.5 pt-1">
+        <button id="submitBtn" onclick="startMosaicUpload()" class="btn-cosmic glow-pulse w-full py-4 rounded-2xl text-base font-black text-white flex items-center justify-center gap-2 cursor-pointer shadow-xl">
+          <span>🚀</span>
+          <span>지금 바로 대형 스크린에 띄우기</span>
+        </button>
+
+        <button onclick="openFilePicker()" class="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer border border-white/10">
+          🔄 다른 사진 다시 선택하기
+        </button>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------------------ -->
+    <!-- 3단계: 생성 진행 중 (실시간 프로그레스 모달)                     -->
+    <!-- ------------------------------------------------------------ -->
+    <div id="stepProcessing" class="hidden py-6 space-y-6">
+      <div class="relative w-24 h-24 mx-auto flex items-center justify-center">
+        <!-- 회전하는 네온 링 -->
+        <div class="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-cyan-400 border-r-purple-500 animate-spin"></div>
+        <span class="text-4xl animate-pulse">🛰️</span>
+      </div>
+
+      <div>
+        <h3 class="text-xl font-black text-white" id="processTitle">우주 모자이크 생성 중</h3>
+        <p class="text-xs text-slate-300 mt-1" id="processDetail">수천 장의 우주 타일과 사진 색상을 매칭하고 있습니다...</p>
+      </div>
+
+      <!-- 진행률 바 -->
+      <div class="space-y-1.5 px-2">
+        <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-white/10 p-0.5">
+          <div id="progressBarFill" class="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.6)]" style="width: 5%;"></div>
+        </div>
+        <div class="flex justify-between text-xs font-mono font-bold text-indigo-300">
+          <span id="processPhaseText">타일 매칭 중</span>
+          <span id="processPercentText">5%</span>
+        </div>
+      </div>
+
+      <div class="p-3 rounded-xl bg-indigo-950/40 border border-indigo-500/20 text-xs text-slate-300 text-center">
+        👀 앞의 <strong class="text-cyan-300">대형 스크린</strong>을 바라보세요!<br>
+        곧 화면 전체에 내 사진이 나타납니다.
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------------------ -->
+    <!-- 4단계: 완료 및 전시 성공 (다운로드 & 재참여)                   -->
+    <!-- ------------------------------------------------------------ -->
+    <div id="stepDone" class="hidden space-y-4">
+      <div>
+        <div class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black mb-1 border border-emerald-400/30">
+          <span>🎉</span>
+          <span>전시 성공!</span>
+        </div>
+        <h3 class="text-xl font-black text-white">대형 스크린에 내 사진이 떴습니다!</h3>
+        <p class="text-xs text-slate-300 mt-0.5">전시장 앞의 초대형 화면을 바라보며 멋진 기념 사진을 남겨보세요.</p>
+      </div>
+
+      <!-- 완성된 모자이크 결과 이미지 -->
+      <div class="preview-box w-full aspect-square max-h-[38vh] flex items-center justify-center bg-black/60 shadow-xl">
+        <img id="resultImage" src="" alt="완성된 모자이크" class="w-full h-full object-contain">
+      </div>
+
+      <!-- 다운로드 & 다시하기 버튼 -->
+      <div class="space-y-2.5 pt-1">
+        <a id="downloadBtn" href="#" download="reverse_cosmos_mosaic.jpg" class="btn-cosmic w-full py-3.5 rounded-2xl text-sm font-black text-white flex items-center justify-center gap-2 cursor-pointer shadow-xl">
+          <span>💾</span>
+          <span>완성된 사진 내 폰에 저장</span>
+        </a>
+
+        <button onclick="resetToNewPhoto()" class="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer border border-white/10">
+          ➕ 다른 사진으로 또 만들기
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- 하단 안내 푸터                                                   -->
+  <!-- ============================================================== -->
+  <footer class="w-full max-w-md text-center py-2">
+    <p class="text-[11px] text-slate-400">
+      REVERSE COSMOS INTERACTIVE EXHIBITION &copy; 2026
+    </p>
+  </footer>
+
+  <script>
+    // ================================================================
+    // 초기화 및 세션 / 게이트 토큰 처리
+    // ================================================================
+    const socket = io();
+    const urlParams = new URLSearchParams(window.location.search);
+    const gateToken = urlParams.get('gateToken') || '';
+
+    let sessionToken = null;
+    let sessionId = null;
+    let selectedFile = null;
+
+    // 소켓 연결 상태 업데이트
+    socket.on('connect', () => {
+      console.log('✅ 소켓 서버 연결됨:', socket.id);
+      document.getElementById('connectionBadge').innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        전시장 연결됨
+      `;
+      // 게이트 토큰이 있으면 슬롯 점유 시도
+      claimExhibitionSlot();
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('connectionBadge').innerHTML = `
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+        재연결 중...
+      `;
+    });
+
+    async function claimExhibitionSlot() {
+      if (!gateToken) return;
+      try {
+        const res = await fetch('/api/upload/claim-slot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gateToken, socketId: socket.id })
+        });
+        const data = await res.json();
+        if (data.success) {
+          sessionToken = data.sessionToken;
+          sessionId = data.sessionId;
+          console.log('🎟️ 슬롯 점유 성공:', sessionToken);
+        } else {
+          console.warn('⚠️ 슬롯 점유 결과:', data.message);
+        }
+      } catch (e) {
+        console.error('슬롯 점유 통신 에러:', e);
+      }
+    }
+
+    // ================================================================
+    // 사진 선택 & 파일 프리뷰 (1단계 -> 2단계)
+    // ================================================================
+    const photoInput = document.getElementById('photoInput');
+    const stepSelect = document.getElementById('stepSelect');
+    const stepPreview = document.getElementById('stepPreview');
+    const stepProcessing = document.getElementById('stepProcessing');
+    const stepDone = document.getElementById('stepDone');
+    const previewImage = document.getElementById('previewImage');
+
+    function openFilePicker() {
+      photoInput.click();
+    }
+
+    photoInput.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        previewImage.src = ev.target.result;
+        showStep('preview');
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function showStep(stepName) {
+      stepSelect.classList.add('hidden');
+      stepPreview.classList.add('hidden');
+      stepProcessing.classList.add('hidden');
+      stepDone.classList.add('hidden');
+
+      if (stepName === 'select') stepSelect.classList.remove('hidden');
+      else if (stepName === 'preview') stepPreview.classList.remove('hidden');
+      else if (stepName === 'processing') stepProcessing.classList.remove('hidden');
+      else if (stepName === 'done') stepDone.classList.remove('hidden');
+    }
+
+    // ================================================================
+    // 모자이크 업로드 & 백엔드 생성 (2단계 -> 3단계)
+    // ================================================================
+    const progressBarFill = document.getElementById('progressBarFill');
+    const processPercentText = document.getElementById('processPercentText');
+    const processDetail = document.getElementById('processDetail');
+    const processPhaseText = document.getElementById('processPhaseText');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // 실시간 진행률 수신
+    socket.on('mosaic_progress', (data) => {
+      if (!data) return;
+      if (data.percent !== undefined) {
+        const p = Math.min(100, Math.max(5, Math.round(data.percent)));
+        progressBarFill.style.width = `${p}%`;
+        processPercentText.textContent = `${p}%`;
+      }
+      if (data.message) {
+        processDetail.textContent = data.message;
+      }
+      if (data.phase) {
+        processPhaseText.textContent = data.phase === 'matching' ? '우주 타일 매칭' : '고화질 렌더링';
+      }
+    });
+
+    async function startMosaicUpload() {
+      if (!selectedFile) return;
+
+      submitBtn.disabled = true;
+      showStep('processing');
+      progressBarFill.style.width = '10%';
+      processPercentText.textContent = '10%';
+      processDetail.textContent = '사진을 안전하게 서버로 전송하고 있습니다...';
+
+      const formData = new FormData();
+      formData.append('photo', selectedFile);
+      if (sessionToken) formData.append('sessionToken', sessionToken);
+      if (sessionId) formData.append('sessionId', sessionId);
+
+      try {
+        const uploadUrl = '/api/upload' + (sessionToken ? `?sessionToken=${sessionToken}` : '');
+        const res = await fetch(uploadUrl, {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await res.json();
+
+        if (result.success && result.imageUrl) {
+          // 완료 성공
+          onMosaicComplete(result.imageUrl);
+        } else {
+          alert(result.error || '모자이크 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+          showStep('preview');
+          submitBtn.disabled = false;
+        }
+      } catch (err) {
+        console.error('업로드 실패:', err);
+        alert('서버와의 통신이 원활하지 않습니다. 다시 시도해주세요.');
+        showStep('preview');
+        submitBtn.disabled = false;
+      }
+    }
+
+    // ================================================================
+    // 완료 성공 (3단계 -> 4단계)
+    // ================================================================
+    function onMosaicComplete(imageUrl) {
+      progressBarFill.style.width = '100%';
+      processPercentText.textContent = '100%';
+
+      setTimeout(() => {
+        showStep('done');
+        const resultImage = document.getElementById('resultImage');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        resultImage.src = imageUrl;
+        downloadBtn.href = imageUrl;
+
+        // 축하 컨페티 팡파레 효과!
+        try {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        } catch (e) {}
+
+        // 다운로드 감사 통계 로깅 연결
+        downloadBtn.onclick = () => {
+          if (sessionToken) {
+            fetch('/api/upload/record-download', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sessionToken, shotNumber: 1, filename: imageUrl })
+            }).catch(() => {});
+          }
+        };
+      }, 600);
+    }
+
+    function resetToNewPhoto() {
+      selectedFile = null;
+      photoInput.value = '';
+      submitBtn.disabled = false;
+      showStep('select');
+    }
+  </script>
+</body>
+</html>

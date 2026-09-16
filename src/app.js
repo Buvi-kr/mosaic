@@ -39,6 +39,14 @@ app.use(express.json());
 app.use('/api/upload', uploadRouter);
 app.use('/api/admin', adminRouter);
 
+// 심플 디스플레이 & 심플 업로드 라우트 별칭
+app.get(['/simple-display', '/simple_display'], (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/simple_display.html'));
+});
+app.get(['/simple-upload', '/simple_upload'], (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/simple_upload.html'));
+});
+
 // 최근 완성된 모자이크 결과물 목록 (디스플레이 유휴 갤러리용)
 app.get('/api/outputs/recent', (req, res) => {
   const outputsDir = path.join(__dirname, '../public/outputs');
@@ -183,9 +191,10 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`   - CPU 코어: ${os.cpus().length} 스레드`);
   console.log(`   - 시스템 RAM: ${totalMemGB} GB (가용: ${freeMemGB} GB) ${isLowMemory ? '⚠️ [저사양 감지]' : '✅ [충분함]'}`);
   console.log(`   - 모자이크 렌더 모드: ${renderModeText}`);
-  console.log(`======================================================`);
-  console.log(`- 대형 디스플레이: http://localhost:${PORT}/display.html`);
-  console.log(`- 모바일 업로드: http://localhost:${PORT}/upload.html`);
+  console.log(`- 3분할 디스플레이: http://localhost:${PORT}/display.html`);
+  console.log(`- ✨ 심플 대형 디스플레이: http://localhost:${PORT}/simple_display.html`);
+  console.log(`- 셀카 모바일 업로드: http://localhost:${PORT}/upload.html`);
+  console.log(`- 🚀 심플 모바일 업로드: http://localhost:${PORT}/simple_upload.html`);
   console.log(`- 관리자 패널: http://localhost:${PORT}/admin.html\n`);
 
   // Google Sheets 원격 관제 요약 통계 동기화 (부팅 5초 후 최초 1회 + 10분 주기 스냅샷)
@@ -264,9 +273,10 @@ server.listen(PORT, '0.0.0.0', () => {
         console.log(`\n======================================================`);
         console.log(`🌍 Cloudflare Public URLs Ready!`);
         console.log(`======================================================`);
-        console.log(`- 대형 디스플레이: ${tunnelUrl}/display.html`);
-        console.log(`- 모바일 업로드: ${tunnelUrl}/upload.html`);
-        console.log(`  (↑ 위 주소가 모바일 QR코드 접속용 주소입니다)`);
+        console.log(`- 3분할 디스플레이: ${tunnelUrl}/display.html`);
+        console.log(`- ✨ 심플 대형 디스플레이: ${tunnelUrl}/simple_display.html`);
+        console.log(`- 셀카 모바일 업로드: ${tunnelUrl}/upload.html`);
+        console.log(`- 🚀 심플 모바일 업로드: ${tunnelUrl}/simple_upload.html`);
         console.log(`- 관리자 패널: ${tunnelUrl}/admin.html\n`);
         
         socketManager.setTunnelUrl(tunnelUrl);

@@ -25,6 +25,7 @@ const defaultConfig = {
   displayGuideInterval: 5,     // 촬영 예시 슬라이드 주기 (초)
   displayPhotozoneTheme: 'nebula', // 포토존 테마 ('nebula', 'galaxy', 'aurora', 'minimal')
   displayShowTimer: true,      // 결과물 잔여 전시 시간 타이머 표시 여부
+  visitorGateTimeout: 20,      // QR 자동 개방 및 잠수 방지 대기 시간 (10초~120초, 기본값 20초)
   googleSheets: {
     enabled: false,
     webAppUrl: ''
@@ -86,9 +87,10 @@ function loadConfig() {
     config.googleSheets.enabled = process.env.GOOGLE_SHEETS_ENABLED !== 'false';
   }
 
-  // 전시 시간 범위 안전 클램핑
+  // 전시 시간 및 게이트 타임아웃 범위 안전 클램핑
   config.displayShowcaseDuration = Math.max(10, Math.min(60, config.displayShowcaseDuration || 20));
   config.displayRetryDuration = Math.max(5, Math.min(20, config.displayRetryDuration || 8));
+  config.visitorGateTimeout = Math.max(10, Math.min(120, Number(config.visitorGateTimeout) || 20));
 }
 
 function saveConfig() {
@@ -123,6 +125,9 @@ function updateConfig(newConfig) {
   }
   if (sanitized.displayRetryDuration !== undefined) {
     sanitized.displayRetryDuration = Math.max(5, Math.min(20, Number(sanitized.displayRetryDuration) || 8));
+  }
+  if (sanitized.visitorGateTimeout !== undefined) {
+    sanitized.visitorGateTimeout = Math.max(10, Math.min(120, Number(sanitized.visitorGateTimeout) || 20));
   }
   config = { ...config, ...sanitized };
   saveConfig();

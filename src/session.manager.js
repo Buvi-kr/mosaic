@@ -18,6 +18,7 @@ class SessionManager {
     this.nextReservedToken = null;
     this.isGateOpen = true;
     this.currentGateToken = crypto.randomUUID();
+    this.gateTimer = null;
     this.io = null;
 
     // 주기적 세션 가비지 컬렉션 (5분 이상 유휴 세션 정리)
@@ -101,6 +102,19 @@ class SessionManager {
     };
   }
 
+  openGateEarly(reason = 'photo_uploaded') {
+    if (this.gateTimer) {
+      clearTimeout(this.gateTimer);
+      this.gateTimer = null;
+    }
+    if (!this.isGateOpen) {
+      console.log(`[게이트] 즉시 조기 개방 (원인: ${reason}): 다음 관람객을 위해 신규 QR 즉시 개방`);
+      this.isGateOpen = true;
+      this.rotateGateToken();
+      this.broadcastGateState();
+    }
+  }
+
   // ===== 세션 조회 =====
   getSession(sessionToken) {
     if (!sessionToken) return null;
@@ -156,15 +170,22 @@ class SessionManager {
       this.broadcastGateState();
       this.broadcastStandGuide(3.5);
 
-      // 관람객이 촬영 중이어도 20초 후 다음 대기자를 위해 신규 QR 자동 개방
-      setTimeout(() => {
+      // 관람객이 촬영 중이어도 관리자가 설정한 대기 시간(10~120초, 기본 20초) 후 다음 대기자를 위해 신규 QR 자동 개방
+      const currentConfig = configModule.getConfig();
+      const gateTimeoutSec = Math.max(10, Math.min(120, currentConfig.visitorGateTimeout || 20));
+      if (this.gateTimer) {
+        clearTimeout(this.gateTimer);
+        this.gateTimer = null;
+      }
+      this.gateTimer = setTimeout(() => {
         if (!this.isGateOpen) {
-          console.log(`[게이트] 20초 경과: 다음 관람객을 위해 신규 QR 자동 개방`);
+          console.log(`[게이트] 잠수 방지 대기 시간(${gateTimeoutSec}초) 경과: 다음 관람객을 위해 신규 QR 자동 개방`);
           this.isGateOpen = true;
           this.rotateGateToken();
           this.broadcastGateState();
         }
-      }, 20000);
+        this.gateTimer = null;
+      }, gateTimeoutSec * 1000);
 
       // 3분 유휴 타이머 가동 (어르신/가족 관람객이 여유롭게 촬영할 수 있도록 배려)
       this.setSessionTimer(session, 180000, () => {
@@ -295,6 +316,10 @@ class SessionManager {
 
     // ★ 1회차 성공 즉시 게이트 OPEN (다음 사람 QR 스캔 허용)
     if (shotNumber === 1) {
+      if (this.gateTimer) {
+        clearTimeout(this.gateTimer);
+        this.gateTimer = null;
+      }
       this.isGateOpen = true;
       this.rotateGateToken();
       this.broadcastGateState();
@@ -516,6 +541,10 @@ class SessionManager {
   // ===== 11. 타임아웃 공통 처리 =====
   handleTimeout(session, reason) {
     this.clearAllTimers(session);
+    if (this.gateTimer) {
+      clearTimeout(this.gateTimer);
+      this.gateTimer = null;
+    }
     session.state = 'ABORTED';
     session.abortReason = reason;
 

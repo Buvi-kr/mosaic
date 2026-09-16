@@ -165,6 +165,9 @@ router.post('/', upload.single('photo'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: '사진 누락' });
   if (globalTileDB.length === 0) return res.status(500).json({ error: '타일 데이터(DB)가 존재하지 않습니다.' });
 
+  // ★ 관람객 사진 업로드 수신 즉시 키오스크 QR 조기 개방 (다음 대기 관람객 진입 가속)
+  sessionManager.openGateEarly('photo_uploaded');
+
   const sessionToken = req.query.sessionToken || req.body.sessionToken || req.headers['x-session-token'] || null;
   const requestId = req.body?.requestId || req.query?.requestId || null;
 

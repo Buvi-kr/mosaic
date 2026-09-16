@@ -18,8 +18,9 @@
   "displayGuideInterval": 5,
   "displayPhotozoneTheme": "nebula",
   "displayShowTimer": true,
+  "visitorGateTimeout": 20,
   "googleSheets": {
-    "enabled": false,
+    "enabled": true,
     "webAppUrl": ""
   },
   "turboMode": false

@@ -208,6 +208,7 @@ router.post('/config', async (req, res) => {
   console.log(` - Ban Radius: ${newConfig.banRadius}`);
   console.log(` - 1차 전시 시간: ${newConfig.displayShowcaseDuration}초`);
   console.log(` - 2차 재도전 전시 시간: ${newConfig.displayRetryDuration}초`);
+  console.log(` - QR 자동 개방 및 잠수 방지 대기 시간: ${newConfig.visitorGateTimeout}초`);
   console.log('======================================================\n');
 
   // Socket.io로 설정 변경 알림
