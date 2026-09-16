@@ -142,6 +142,7 @@ async function processJobFull(jobData, jobId) {
       const alphaVal = Math.max(0, Math.min(255, Math.round(255 * config.opacity)));
       
       const originalRaw = await sharp(Buffer.from(originalBuffer), { limitInputPixels: false })
+        .rotate() // EXIF 스마트폰 회전값 자동 정규화
         .resize({ width: canvasWidth, height: canvasHeight, fit: 'cover' })
         .toColorspace('srgb') // 원본의 ICC 프로필을 sRGB로 변환하여 Raw 색상 손실 방지
         .ensureAlpha()

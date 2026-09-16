@@ -234,8 +234,14 @@ router.post('/', upload.single('photo'), async (req, res) => {
   try {
     const startTime = Date.now();
 
-    // 1. 원본 비율 파악 및 가상 그리드(MAX_RES) 기준으로 가상 픽셀 스케일링
-    const originalInfo = await sharp(req.file.buffer, { limitInputPixels: false }).metadata();
+    // ★ 모바일 스마트폰 EXIF 회전값(Orientation 6: 90도 회전 등)을 정규화
+    // Cropper 제거 후 원본을 바로 전송하므로, sharp().rotate()로 스마트폰 가로/세로 방향을 자동 보정해야 함
+    const normalizedBuffer = await sharp(req.file.buffer, { limitInputPixels: false })
+      .rotate() // EXIF Orientation 태그를 읽어 0도로 자동 회전 보정
+      .toBuffer();
+
+    // 1. 정규화된 원본 비율 파악 및 가상 그리드(MAX_RES) 기준으로 가상 픽셀 스케일링
+    const originalInfo = await sharp(normalizedBuffer, { limitInputPixels: false }).metadata();
     let targetWidth = originalInfo.width;
     let targetHeight = originalInfo.height;
 
@@ -271,7 +277,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
     const CANVAS_H = rows * TILE_SIZE;
     const totalCells = cols * rows;
 
-    const originalResized = await sharp(req.file.buffer, { limitInputPixels: false })
+    const originalResized = await sharp(normalizedBuffer, { limitInputPixels: false })
       .resize({ width: CANVAS_W, height: CANVAS_H, fit: 'cover' })
       .toBuffer();
 
@@ -292,7 +298,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
       rows,
       tileSize: TILE_SIZE,
       renderTileSize: safeRenderTileSize,
-      originalBuffer: req.file.buffer,
+      originalBuffer: normalizedBuffer,
       tilesDir,
       theme: currentTheme,
       globalTileDB,    // 고정 풀 모드에서는 무시됨 (워커 내부 참조 사용)
