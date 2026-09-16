@@ -98,7 +98,7 @@ flowchart TD
 | **Realtime I/O** | **Socket.io v4** | 스마트폰 ↔ 서버 ↔ 대형 디스플레이 간 초저지연 양방향 동기화 |
 | **Image Engine** | **Sharp (C++ libvips)** | 초고속 타일 렌더링, 캔버스 합성, 색공간 변환 |
 | **Search Engine** | **3D k-d Tree (CIE Lab)** | O(log n) 초고속 근접 색상 타일 탐색 |
-| **Mobile Web** | **Vanilla JS + Cropper.js** | 무설치 웹앱, 터치 친화적 자유 비율 인물 크롭 |
+| **Mobile Web** | **Vanilla JS (Zero-Touch Native Camera)** | 무설치 웹앱, QR 진입 즉시 카메라 구동 및 촬영 즉시 1-터치 다이렉트 전송 |
 | **Display UI** | **HTML5 Canvas + GSAP** | 60fps 부드러운 딥-줌, 패닝, 파티클 연출 |
 | **Remote Access**| **Cloudflare Tunnel** | 포트포워딩 없이 외부 스마트폰 안전 접속 |
 | **3D Rendering** | **Blender 5.2 LTS (EEVEE Next)**| 외장 GPU 기반 102초 마스터 시네마틱 비디오 렌더링 |

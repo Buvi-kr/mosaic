@@ -285,28 +285,21 @@ class SessionManager {
     });
 
     const config = configModule.getConfig();
-    const displayDuration = (shotNumber === 2)
-      ? (config.displayRetryDuration || 8)
-      : (config.displayShowcaseDuration || 20);
+    const displayDuration = config.displayShowcaseDuration || 20;
 
-    // ★ 1회차 성공 즉시 게이트 OPEN (다음 사람 QR 스캔 허용)
-    if (shotNumber === 1) {
-      if (this.gateTimer) {
-        clearTimeout(this.gateTimer);
-        this.gateTimer = null;
-      }
-      this.isGateOpen = true;
-      this.rotateGateToken();
-      this.broadcastGateState();
-
-      // 모바일 즉시 DECISION_1 진입: 강제 타임아웃 없이 관람객이 원하는 만큼 화면을 보고 자유롭게 선택
-      session.state = 'DECISION_1';
-    } else {
-      // 2회차 완료 -> A는 다운로드 화면 전환
-      session.state = 'DOWNLOAD_DUAL';
-      sessionLogger.recordSessionEnd(session.sessionId, 'COMPLETED_DUAL');
-      this.promoteNextReserved();
+    // ★ 1회 촬영 완료 즉시 게이트 OPEN (다음 사람 QR 스캔 허용)
+    if (this.gateTimer) {
+      clearTimeout(this.gateTimer);
+      this.gateTimer = null;
     }
+    this.isGateOpen = true;
+    this.rotateGateToken();
+    this.broadcastGateState();
+
+    // 1회 촬영 완료 -> 즉시 DOWNLOAD_1 상태 확정 및 세션 완료 기록
+    session.state = 'DOWNLOAD_1';
+    sessionLogger.recordSessionEnd(session.sessionId, 'COMPLETED_SINGLE');
+    this.promoteNextReserved();
 
     return {
       displayDuration,

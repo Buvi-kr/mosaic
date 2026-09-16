@@ -365,24 +365,14 @@
               <span class="material-symbols-outlined">desktop_windows</span> 3×2 전시 디스플레이 제어
             </h3>
 
-            <!-- 1회차 결과물 전시 시간 슬라이더 -->
+            <!-- 완성작 보장 전시 시간 슬라이더 -->
             <div>
               <label class="flex justify-between mb-2">
-                <span class="font-bold text-slate-700">1회차 완성작 보장 전시 시간 (기본 20초)</span>
+                <span class="font-bold text-slate-700">모자이크 완성작 단독 전시 시간 (기본 20초)</span>
                 <span id="showcaseDurVal" class="text-indigo-600 font-bold">20초</span>
               </label>
-              <p class="text-sm text-slate-500 mb-2">1회차 모자이크가 완성되었을 때 좌측 3열 스크린에 단독 전시되는 시간입니다.</p>
+              <p class="text-sm text-slate-500 mb-2">모자이크가 완성되었을 때 좌측 스크린에 단독 전시되는 시간입니다 (기본 20초 권장).</p>
               <input type="range" id="showcaseDurSlider" min="10" max="60" step="5" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
-            </div>
-
-            <!-- 2회차 재도전 결과물 전시 시간 슬라이더 (NEW) -->
-            <div>
-              <label class="flex justify-between mb-2">
-                <span class="font-bold text-slate-700">2회차 재도전 보장 전시 시간 (기본 8초)</span>
-                <span id="retryDurVal" class="text-indigo-600 font-bold">8초</span>
-              </label>
-              <p class="text-sm text-slate-500 mb-2">2회차 보너스 사진이 완성되었을 때 대형 스크린에 전시되는 시간입니다 (빠른 회전율을 위해 8초 권장).</p>
-              <input type="range" id="retryDurSlider" min="5" max="20" step="1" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
             </div>
 
             <!-- QR 자동 개방 및 잠수 방지 대기 시간 슬라이더 (NEW) -->
@@ -622,8 +612,6 @@
           
           document.getElementById('showcaseDurSlider').value = currentConfig.displayShowcaseDuration || 20;
           document.getElementById('showcaseDurVal').textContent = (currentConfig.displayShowcaseDuration || 20) + '초';
-          document.getElementById('retryDurSlider').value = currentConfig.displayRetryDuration || 8;
-          document.getElementById('retryDurVal').textContent = (currentConfig.displayRetryDuration || 8) + '초';
           document.getElementById('gateTimeoutSlider').value = currentConfig.visitorGateTimeout || 20;
           document.getElementById('gateTimeoutVal').textContent = (currentConfig.visitorGateTimeout || 20) + '초';
           document.getElementById('guideIntSlider').value = currentConfig.displayGuideInterval || 5;
@@ -930,9 +918,6 @@
     document.getElementById('showcaseDurSlider').addEventListener('input', (e) => {
       document.getElementById('showcaseDurVal').textContent = e.target.value + '초';
     });
-    document.getElementById('retryDurSlider').addEventListener('input', (e) => {
-      document.getElementById('retryDurVal').textContent = e.target.value + '초';
-    });
     document.getElementById('gateTimeoutSlider').addEventListener('input', (e) => {
       document.getElementById('gateTimeoutVal').textContent = e.target.value + '초';
     });
@@ -975,7 +960,6 @@
         turboMode: document.getElementById('turboModeToggle').checked,
         lowMemoryMode: document.getElementById('lowMemoryModeToggle').checked,
         displayShowcaseDuration: parseInt(document.getElementById('showcaseDurSlider').value, 10),
-        displayRetryDuration: parseInt(document.getElementById('retryDurSlider').value, 10),
         visitorGateTimeout: parseInt(document.getElementById('gateTimeoutSlider').value, 10),
         displayGuideInterval: parseInt(document.getElementById('guideIntSlider').value, 10)
       };

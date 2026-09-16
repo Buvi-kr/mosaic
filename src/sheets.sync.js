@@ -62,16 +62,9 @@ class SheetsSync {
       const shot1Cap = audit.shot1?.captureSuccess ? '성공' : (audit.shot1?.captureStarted ? '시도' : '미촬영');
       const shot1Mos = audit.shot1?.mosaicSuccess ? '성공' : (audit.shot1?.mosaicAttempted ? '실패' : '미합성');
 
-      let retryChoice = '미선택';
-      if (audit.decision?.choice === 'RETRY') retryChoice = '재도전(YES)';
-      else if (audit.decision?.choice === 'FINISH') retryChoice = '마침(NO)';
-      else if (audit.decision?.choice === 'TIMEOUT') retryChoice = '타임아웃';
-      else if (audit.decision?.hasSecondShot) retryChoice = '재도전(YES)';
-
-      let shot2Mos = '해당없음';
-      if (audit.decision?.hasSecondShot) {
-        shot2Mos = audit.shot2?.mosaicSuccess ? '성공' : (audit.shot2?.mosaicAttempted ? '실패' : '미합성');
-      }
+      // 1샷 즉시 파이프라인 (2회차 선택 제거됨)
+      const retryChoice = audit.decision?.choice ? audit.decision.choice : '1회완료(단일)';
+      const shot2Mos = audit.shot2?.mosaicSuccess ? '성공' : '-';
 
       const downloadCount = audit.downloads?.totalCount || 0;
       const downloadStr = downloadCount > 0 ? `완료 (${downloadCount}회)` : '미다운로드';

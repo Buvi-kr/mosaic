@@ -183,10 +183,10 @@ router.post('/', upload.single('photo'), async (req, res) => {
     });
   }
 
-  if (session && session.shotCount >= 2) {
+  if (session && session.shotCount >= 1) {
     return res.json({
       success: true,
-      message: '체험 횟수(2회)를 모두 완료했습니다. 새로운 체험을 원하시면 키오스크의 새 QR 코드를 스캔해 주세요.',
+      message: '체험을 이미 완료했습니다. 새로운 사진을 전송하시려면 키오스크의 새로운 QR 코드를 스캔해 주세요.',
       shotCount: session.shotCount,
       allRecords: sessionManager.getAllRecords(session)
     });
@@ -195,6 +195,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
   // ★ 정당한 관람객 사진 업로드 수신 즉시 키오스크 QR 조기 개방 (다음 대기 관람객 진입 가속)
   sessionManager.openGateEarly('photo_uploaded');
 
+  if (session) {
     // 멱등성 검사 (Idempotency)
     const currentShot = session.currentShot;
     const existingRecord = session.shotRecords.get(currentShot);
