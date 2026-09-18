@@ -75,28 +75,30 @@ class SessionLogger {
       accessTime: this.getKstString(now),
       accessMode: session.state === 'RESERVED' ? 'IMMEDIATE' : 'WAITING_LINE',
       
-      // 단일 촬영(Single-Shot) 지표 (구버전 shot1 호환 별칭 포함)
+      // 단일 촬영(Single-Shot) 이벤트 타임스탬프 & 정밀 지표
       shot: {
         captureStarted: false,
-        captureStartedAt: null,
-        captureDurationSec: null,
+        captureStartedAt: null,       // 카메라 오픈 시작 시각 (ms)
+        captureDurationSec: null,     // 촬영까지 고민한 시간 (초)
         captureSuccess: false,
         
         uploadAttempted: false,
-        uploadedAt: null,
+        uploadedAt: null,             // 촬영 및 원본 업로드 완료 시각 (ms)
         uploadSuccess: false,
         fileSize: null,
         
         mosaicAttempted: false,
         mosaicSuccess: false,
-        mosaicDurationSec: null,
+        mosaicCompletedAt: null,      // 모자이크 렌더링 완료 시각 (ms)
+        displayAt: null,              // 미디어월 전시 시작 시각 (ms)
+        mosaicDurationSec: null,      // 순수 모자이크 합성 연산 속도 (초)
         resultUrl: null,
         resolution: null,
         tilesCount: null,
         theme: null,
         
         downloaded: false,
-        downloadedAt: null,
+        downloadedAt: null,           // 모바일 사진 다운로드 클릭 시각 (ms)
         downloadFilename: null
       },
 
@@ -166,9 +168,12 @@ class SessionLogger {
     const audit = this.auditMap.get(sessionId);
     if (!audit) return;
 
+    const now = Date.now();
     const targetShot = audit.shot || audit.shot1;
     targetShot.mosaicAttempted = true;
     targetShot.mosaicSuccess = true;
+    targetShot.mosaicCompletedAt = now;
+    targetShot.displayAt = now;
     targetShot.mosaicDurationSec = stats.elapsed ? parseFloat(stats.elapsed) : null;
     targetShot.resultUrl = stats.resultUrl || null;
     targetShot.resolution = stats.resolution || null;
@@ -412,6 +417,17 @@ class SessionLogger {
     } catch (err) {
       console.error('[세션 로거] JSON 감사 파일 쓰기 실패:', err.message);
     }
+  }
+
+  // ===== 감사 기록 단건 조회 =====
+  getAuditRecord(sessionId) {
+    return this.auditMap.get(sessionId) || null;
+  }
+
+  // ===== 현재 월간 CSV 감사 파일 경로 조회 =====
+  getCsvFilePath(date = new Date()) {
+    const monthStr = this.getDateString(date);
+    return path.join(this.sessionLogsDir, `session_journey_${monthStr}.csv`);
   }
 
   // ===== 관리자 대시보드용 세션 전환율 & 집계 통계 =====

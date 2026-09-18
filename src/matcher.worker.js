@@ -5,6 +5,9 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 
+// 포천아트밸리 천문과학관 공식 로고 파일 경로
+const LOGO_PATH = path.join(__dirname, '../public/pocheon_logo.png');
+
 // ===== 런타임 갱신 가능한 변수들 =====
 let currentConfig = workerData.config || {};
 let globalTileDB = workerData.globalTileDB;
@@ -134,9 +137,10 @@ async function processJobFull(jobData, jobId) {
     }
     sendProgress(jobId, 75, 'compositing', '타일 배치 완료');
 
-    // ── Phase 4: 블렌딩 (75~95%) ──
+    // ── Phase 4: 블렌딩 및 공식 로고 워터마크 합성 (75~95%) ──
     sendProgress(jobId, 77, 'blending', '블렌딩 처리 중...');
     let finalImageBuffer;
+    let composites = [];
 
     if (config.opacity > 0) {
       const alphaVal = Math.max(0, Math.min(255, Math.round(255 * config.opacity)));
@@ -165,11 +169,11 @@ async function processJobFull(jobData, jobId) {
         .raw()
         .toBuffer();
 
-      let composites = [{ 
+      composites.push({ 
         input: transparentOriginalRaw, 
         raw: { width: canvasWidth, height: canvasHeight, channels: 4 },
         blend: config.blendMode 
-      }];
+      });
 
       // 이중 하이브리드 (Multiply + Over) 로직 추가
       if (config.blendMode === 'multiply' && config.secondOpacity > 0) {
@@ -197,22 +201,55 @@ async function processJobFull(jobData, jobId) {
           blend: 'over' 
         });
       }
-
-      sendProgress(jobId, 90, 'blending', '최종 캔버스 합성 중...');
-
-      finalImageBuffer = await sharp(rawCanvas, {
-        raw: { width: canvasWidth, height: canvasHeight, channels: 3 },
-        limitInputPixels: false
-      })
-        .composite(composites)
-        .jpeg({ quality: 95 })
-        .toBuffer();
-    } else {
-      finalImageBuffer = await sharp(rawCanvas, {
-        raw: { width: canvasWidth, height: canvasHeight, channels: 3 },
-        limitInputPixels: false
-      }).jpeg({ quality: 95 }).toBuffer();
     }
+
+    // ── 🪐 우측 상단 포천아트밸리 천문과학관 공식 로고 워터마크 고정 합성 ──
+    if (fs.existsSync(LOGO_PATH) && config.enableWatermark !== false) {
+      try {
+        sendProgress(jobId, 88, 'blending', '공식 로고 워터마크 합성 중...');
+        // 캔버스 가로 해상도의 18% 너비로 동적 스케일링
+        // 초소형부터 초대형 해상도까지 캔버스 치수를 절대 초과하지 않도록 안전 클램핑
+        const maxSafeWidth = Math.max(1, Math.floor(canvasWidth * 0.4));
+        const idealWidth = Math.round(canvasWidth * 0.18);
+        const targetLogoWidth = Math.max(20, Math.min(maxSafeWidth, idealWidth));
+
+        const marginRight = Math.max(2, Math.round(canvasWidth * 0.025));
+        const marginTop = Math.max(2, Math.round(canvasHeight * 0.025));
+
+        const logoResizedBuffer = await sharp(LOGO_PATH)
+          .resize({ width: targetLogoWidth })
+          .png()
+          .toBuffer();
+
+        const logoLeft = Math.max(0, canvasWidth - targetLogoWidth - marginRight);
+        const logoTop = Math.max(0, Math.min(canvasHeight - 1, marginTop));
+
+        // 최상위 레이어로 오버레이 (원색 100% 보존)
+        composites.push({
+          input: logoResizedBuffer,
+          top: logoTop,
+          left: logoLeft,
+          blend: 'over'
+        });
+      } catch (logoErr) {
+        console.warn('[Worker] 로고 워터마크 합성 예외 무시:', logoErr.message);
+      }
+    }
+
+    sendProgress(jobId, 90, 'blending', '최종 캔버스 합성 중...');
+
+    let sharpInstance = sharp(rawCanvas, {
+      raw: { width: canvasWidth, height: canvasHeight, channels: 3 },
+      limitInputPixels: false
+    });
+
+    if (composites.length > 0) {
+      sharpInstance = sharpInstance.composite(composites);
+    }
+
+    finalImageBuffer = await sharpInstance
+      .jpeg({ quality: 95 })
+      .toBuffer();
 
     sendProgress(jobId, 95, 'blending', '최종 이미지 인코딩 완료');
 
@@ -459,13 +496,21 @@ function runMatching(rawData, info, cols, rows, tileSize, tileDB, tree, jobId, t
       bestIdx = fallbackIdx;
     }
 
-    usedCounts[bestIdx]++;
-    placedGrid[cy][cx] = bestIdx;
-    matchedTiles.push({
-      filename: tileDB[bestIdx].filename,
-      top: cell.startY,
-      left: cell.startX
-    });
+    if (bestIdx >= 0 && tileDB[bestIdx]) {
+      usedCounts[bestIdx]++;
+      placedGrid[cy][cx] = bestIdx;
+      matchedTiles.push({
+        filename: tileDB[bestIdx].filename,
+        top: cell.startY,
+        left: cell.startX
+      });
+    } else if (tileDB.length > 0) {
+      matchedTiles.push({
+        filename: tileDB[0].filename,
+        top: cell.startY,
+        left: cell.startX
+      });
+    }
   }
 
   return { matchedTiles, remainingTiles: tileDB.length };

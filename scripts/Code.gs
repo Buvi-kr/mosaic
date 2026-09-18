@@ -1,42 +1,106 @@
 /**
- * 🪐 REVERSE COSMOS MOSAIC - Google Sheets 올인원 실시간 관제 엔진 (Code.gs)
+ * 🪐 REVERSE COSMOS MOSAIC - Google Sheets 통합 관제 및 이벤트 타임스탬프 원장 엔진 (Code.gs v16.0)
  * 
- * [완전 개편: 1-Touch 다이렉트 파이프라인 전용]
- * - 2회차/크롭 흔적 100% 제거
- * - 직관적 지표: [스캔접속] ➔ [카메라오픈] ➔ [모자이크완성] ➔ [다운로드]
- * - 대시보드 탭 + 세션로그_YYYY-MM 탭 완전 통합
- * 
- * [배포 방법]
- * 1. 구글 시트 상단 [확장 프로그램] > [Apps Script] 클릭
- * 2. 기존 코드를 모두 지우고 이 스크립트 전체를 붙여넣은 뒤 저장 (Ctrl+S)
- * 3. [배포] > [배포 관리] > 연필 아이콘(편집) > 버전에서 [새 버전] 선택 > [배포] 클릭!
+ * [핵심 아키텍처 원칙]
+ * 1. 연간 대시보드는 보는 곳 (거시적 운영 판단), 월간로그는 쌓는 곳 (14개 이벤트 타임스탬프 원장), 월간 집계는 분석하는 곳
+ * 2. 연도별 대시보드 영구 보존: [2026년 연간 대시보드], [2027년 연간 대시보드] ... 절대 수정/덮어쓰지 않음
+ * 3. 쓰기(원장 기록)와 렌더링을 완전 분리하여 서버 측 연산 랙 및 Lock 경합 원천 제거
+ * 4. 시트 탭 슬림화: 오늘_세션로그, 일별 시트, 별도 연간통계 시트 완전 배제 (1년 최대 13개 탭 유지)
  */
 
-var DASHBOARD_SHEET_NAME = '대시보드';
+const CONFIG = {
+  TIME_ZONE: "Asia/Seoul",
+  MONTHLY_PREFIX: "월간로그_",
+  ANNUAL_DASHBOARD_SUFFIX: "년 연간 대시보드",
+  
+  // 14개 이벤트 타임스탬프 표준 컬럼 (A~N열)
+  LEDGER_HEADERS: [
+    '세션ID', '접근일시(KST)', '카메라오픈일시', '촬영완료일시',
+    '모자이크완성일시', '미디어월전시일시', '다운로드일시',
+    '촬영소요(초)', '합성소요(초)', '총체류(초)',
+    '최종상태', '기기환경', '테마', '오류사유'
+  ],
+  
+  // 프리미엄 테마 컬러 팔레트
+  COLORS: {
+    BG_HEADER: '#0f172a',    // 딥 다크 네이비
+    BG_CARD: '#1e293b',      // 카드 배경
+    TEXT_ACCENT: '#38bdf8',  // 스카이 블루
+    TEXT_GOLD: '#fbbf24',    // 앰버 골드
+    TEXT_GREEN: '#34d399',   // 에메랄드 그린
+    TEXT_MUTED: '#94a3b8',   // 연회색 보조 텍스트
+    BG_LIGHT: '#f8fafc',     // 테이블 라이트 배경
+    BORDER_LIGHT: '#e2e8f0', // 구분선
+    ALERT_RED: '#f43f5e',    // 경보 레드
+    ALERT_YELLOW: '#eab308'  // 주의 옐로우
+  }
+};
 
-// 세션 상세 로그 컬럼 (2회차 흔적 완전 제거)
-var SESSION_HEADERS = [
-  '세션ID', '스캔일시(KST)', '카메라오픈', '모자이크완성', '다운로드',
-  '최종상태', '체류시간', '기기환경', '테마'
-];
+// ==========================================
+// 1. 스프레드시트 상단 관리자 커스텀 메뉴
+// ==========================================
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('🪐 모자이크 관제')
+    .addItem('📊 2026년 연간 대시보드 재구축', 'rebuildCurrentAnnualDashboard')
+    .addItem('🛠️ [긴급] 기존 열 밀림 복구 & 찌꺼기 탭 완전 삭제', 'migrateAndCleanupLegacy')
+    .addSeparator()
+    .addItem('📦 당월 월간로그 캐시 집계 수식 갱신', 'refreshCurrentMonthlyCache')
+    .addItem('📅 특정 연도 대시보드 생성/복구', 'promptRebuildAnnualDashboard')
+    .addToUi();
+}
 
-// GET 헬스체크
+function rebuildCurrentAnnualDashboard() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const year = Utilities.formatDate(new Date(), CONFIG.TIME_ZONE, 'yyyy');
+  rebuildAnnualDashboard(ss, year);
+  SpreadsheetApp.getUi().alert(`✅ ${year}년 연간 대시보드가 성공적으로 재구축되었습니다.`);
+}
+
+function promptRebuildAnnualDashboard() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt('대시보드 생성', '생성할 연도를 입력하세요 (예: 2026):', ui.ButtonSet.OK_CANCEL);
+  if (response.getSelectedButton() === ui.Button.OK) {
+    const year = response.getResponseText().trim();
+    if (/^\d{4}$/.test(year)) {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      rebuildAnnualDashboard(ss, year);
+      ui.alert(`✅ ${year}년 연간 대시보드가 생성되었습니다.`);
+    } else {
+      ui.alert('올바른 4자리 연도를 입력해주세요.');
+    }
+  }
+}
+
+function refreshCurrentMonthlyCache() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const monthKey = Utilities.formatDate(new Date(), CONFIG.TIME_ZONE, 'yyyy-MM');
+  const sheet = ss.getSheetByName(CONFIG.MONTHLY_PREFIX + monthKey);
+  if (sheet) {
+    buildMonthlyRightSideCache(sheet, monthKey);
+    SpreadsheetApp.getUi().alert(`✅ ${monthKey} 월간 캐시 집계 수식이 갱신되었습니다.`);
+  } else {
+    SpreadsheetApp.getUi().alert(`❌ ${CONFIG.MONTHLY_PREFIX + monthKey} 시트를 찾을 수 없습니다.`);
+  }
+}
+
+// ==========================================
+// 2. 웹앱 GET & POST 진입점 (Node.js 연동)
+// ==========================================
 function doGet(e) {
   return jsonResponse({
     ok: true,
-    service: 'Reverse Cosmos Mosaic Streamlined Monitoring',
+    service: 'Reverse Cosmos Mosaic Core Monitoring Engine',
     status: 'ONLINE',
+    version: '16.0.0',
     timestamp: new Date().toISOString()
   });
 }
 
-// POST 데이터 수신
 function doPost(e) {
-  var lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000); // 동시성 충돌 방지 (최대 10초)
-  } catch (lockErr) {
-    return jsonResponse({ ok: false, error: 'Lock timeout' });
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    return jsonResponse({ ok: false, error: '서버가 혼잡합니다. 잠시 후 다시 시도해주세요 (Lock timeout).' });
   }
 
   try {
@@ -44,68 +108,57 @@ function doPost(e) {
       return jsonResponse({ ok: false, error: 'Empty payload' });
     }
 
-    var payload = JSON.parse(e.postData.contents);
-    var action = payload.action;
-    var data = payload.data || {};
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    const payload = JSON.parse(e.postData.contents);
+    const action = payload.action;
+    const data = payload.data || {};
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    if (action === 'sessionRow') {
-      upsertSessionRow(ss, data);
-    } else if (action === 'summary') {
-      handleSummarySync(ss, data);
-    } else {
-      return jsonResponse({ ok: false, error: 'Unknown action: ' + action });
+    switch (action) {
+      case 'sessionRow':
+        return jsonResponse(upsertSessionRow(ss, data));
+      case 'summary':
+        return jsonResponse({ ok: true, note: 'Formula-driven summary' });
+      case 'MIGRATE':
+        return jsonResponse({ ok: true, result: migrateAndCleanupLegacy() });
+      case 'REBUILD_DASHBOARD':
+        const targetYear = payload.year || Utilities.formatDate(new Date(), CONFIG.TIME_ZONE, 'yyyy');
+        rebuildAnnualDashboard(ss, targetYear);
+        return jsonResponse({ ok: true, year: targetYear });
+      default:
+        return jsonResponse({ ok: false, error: '알 수 없는 요청: ' + action });
     }
-
-    return jsonResponse({ ok: true, action: action });
   } catch (err) {
-    return jsonResponse({ ok: false, error: String(err.stack || err) });
+    console.error('doPost 에러:', err);
+    return jsonResponse({ ok: false, error: String(err.stack || err.message || err) });
   } finally {
     lock.releaseLock();
   }
 }
 
 // ==========================================
-// 1. 세션 여정 실시간 기록 (월별 탭 자동 분할)
+// 3. 1인 1행 실시간 세션 원장 Upsert (초고속 쓰기)
 // ==========================================
 function upsertSessionRow(ss, data) {
-  var sessionId = data['세션ID'];
-  if (!sessionId) throw new Error('세션ID 누락');
+  const sessionId = data['세션ID'] || data.sessionId;
+  if (!sessionId) throw new Error('세션ID가 누락되었습니다.');
 
-  var monthKey = data.monthKey || Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM');
-  var sheetName = '세션로그_' + monthKey;
+  const monthKey = data.monthKey || Utilities.formatDate(new Date(), CONFIG.TIME_ZONE, 'yyyy-MM');
+  const sheet = getOrInitMonthlySheet(ss, monthKey);
 
-  var sheet = ss.getSheetByName(sheetName);
-  if (!sheet) {
-    sheet = ss.insertSheet(sheetName);
-    sheet.appendRow(SESSION_HEADERS);
-    sheet.setFrozenRows(1);
-    
-    sheet.getRange(1, 1, 1, SESSION_HEADERS.length)
-         .setBackground('#1e293b')
-         .setFontColor('#f8fafc')
-         .setFontWeight('bold')
-         .setHorizontalAlignment('center');
-         
-    sheet.setColumnWidth(1, 190);
-    sheet.setColumnWidth(2, 170);
-    sheet.setColumnWidth(6, 140);
-    ensureDashboardFirst(ss);
-  }
+  const lastRow = sheet.getLastRow();
+  let targetRow = -1;
 
-  var values = sheet.getDataRange().getValues();
-  var targetRow = -1;
-
-  for (var i = 1; i < values.length; i++) {
-    if (String(values[i][0]) === String(sessionId)) {
-      targetRow = i + 1;
-      break;
+  if (lastRow > 1) {
+    const idValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    for (let i = 0; i < idValues.length; i++) {
+      if (String(idValues[i][0]) === String(sessionId)) {
+        targetRow = i + 2;
+        break;
+      }
     }
   }
 
-  var rowValues = SESSION_HEADERS.map(function(h) {
-    return data[h] !== undefined ? data[h] : '';
-  });
+  const rowValues = CONFIG.LEDGER_HEADERS.map(h => data[h] !== undefined ? data[h] : '');
 
   if (targetRow === -1) {
     sheet.appendRow(rowValues);
@@ -114,355 +167,737 @@ function upsertSessionRow(ss, data) {
     sheet.getRange(targetRow, 1, 1, rowValues.length).setValues([rowValues]);
   }
 
+  // 가운데 정렬 (A:세션ID, B:접근일시 제외 C~N)
   sheet.getRange(targetRow, 3, 1, rowValues.length - 2).setHorizontalAlignment('center');
 
-  // 첫 세션 추가 또는 상태 완료 시 대시보드 함께 갱신
-  var status = String(data['최종상태'] || '');
-  if (targetRow === sheet.getLastRow() || status.indexOf('COMPLETED') !== -1) {
-    renderAdvancedDashboard(ss, data);
+  return { ok: true, action: 'sessionRow', row: targetRow, monthKey: monthKey };
+}
+
+// ==========================================
+// 4. 월간로그 시트 초기화 및 우측 집계 캐시 빌더
+// ==========================================
+function getOrInitMonthlySheet(ss, monthKey) {
+  const sheetName = CONFIG.MONTHLY_PREFIX + monthKey;
+  let sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    initMonthlySheetStructure(sheet, monthKey);
   }
+  return sheet;
+}
+
+function initMonthlySheetStructure(sheet, monthKey) {
+  sheet.clear();
+  sheet.setHiddenGridlines(false);
+
+  // 1행 헤더 (A~N: 14개 표준 컬럼)
+  sheet.getRange(1, 1, 1, CONFIG.LEDGER_HEADERS.length)
+       .setValues([CONFIG.LEDGER_HEADERS])
+       .setBackground(CONFIG.COLORS.BG_HEADER)
+       .setFontColor(CONFIG.COLORS.TEXT_ACCENT)
+       .setFontWeight('bold')
+       .setHorizontalAlignment('center')
+       .setVerticalAlignment('middle');
+  sheet.setRowHeight(1, 35);
+  sheet.setFrozenRows(1);
+  sheet.setFrozenColumns(2);
+
+  // 텍스트 서식 강제 지정
+  sheet.getRange('A:G').setNumberFormat('@');
+  sheet.getRange('K:N').setNumberFormat('@');
+
+  // 컬럼 너비 설정
+  const widths = [180, 160, 100, 100, 100, 100, 100, 90, 90, 90, 140, 110, 110, 140];
+  widths.forEach((w, idx) => sheet.setColumnWidth(idx + 1, w));
+
+  // 완충 구분 컬럼 (O열)
+  sheet.setColumnWidth(15, 25);
+  sheet.getRange('O:O').setBackground('#f1f5f9');
+
+  // 우측 캐시 집계 수식 테이블 생성
+  buildMonthlyRightSideCache(sheet, monthKey);
+}
+
+function buildMonthlyRightSideCache(sheet, monthKey) {
+  const parts = monthKey.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  const lastDay = new Date(year, month, 0).getDate();
+  const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
+  // ----------------------------------------------------
+  // A. [P~W열] 일자별 운영 통계 (1일 ~ 말일 달력형)
+  // ----------------------------------------------------
+  sheet.getRange('P1:W1').merge()
+       .setValue(`📊 [${monthKey} 일자별 운영 통계]`)
+       .setBackground(CONFIG.COLORS.BG_CARD)
+       .setFontColor('#ffffff')
+       .setFontSize(11)
+       .setFontWeight('bold')
+       .setHorizontalAlignment('center');
+
+  const dailyHeaders = ['일자', '요일', '입장객', '촬영완료', '모자이크완성', '다운로드', '완주율', '평균체류'];
+  sheet.getRange('P2:W2').setValues([dailyHeaders])
+       .setBackground('#334155')
+       .setFontColor('#f8fafc')
+       .setFontWeight('bold')
+       .setHorizontalAlignment('center');
+
+  const dailyRows = [];
+  for (let d = 1; d <= 31; d++) {
+    const r = d + 2;
+    if (d <= lastDay) {
+      const dateObj = new Date(year, month - 1, d);
+      const dayName = dayNames[dateObj.getDay()];
+      const dateStr = `${year}. ${String(month).padStart(2, '0')}. ${String(d).padStart(2, '0')}`;
+      const shortDate = `${month}/${d}`;
+
+      dailyRows.push([
+        shortDate,
+        dayName,
+        `=IFERROR(COUNTIFS($B:$B, "*${dateStr}*"), 0)`,
+        `=IFERROR(COUNTIFS($B:$B, "*${dateStr}*", $D:$D, "<>"), 0)`,
+        `=IFERROR(COUNTIFS($B:$B, "*${dateStr}*", $E:$E, "<>"), 0)`,
+        `=IFERROR(COUNTIFS($B:$B, "*${dateStr}*", $G:$G, "<>"), 0)`,
+        `=IFERROR(T${r}/R${r}, 0)`,
+        `=IFERROR(AVERAGEIFS($J:$J, $B:$B, "*${dateStr}*", $K:$K, "*COMPLETED*"), 0)`
+      ]);
+    } else {
+      dailyRows.push(['-', '-', '', '', '', '', '', '']);
+    }
+  }
+
+  // 3행부터 31개 행 주입 (3행~33행)
+  sheet.getRange(3, 16, 31, dailyHeaders.length)
+       .setValues(dailyRows)
+       .setHorizontalAlignment('center')
+       .setBackground('#ffffff');
+
+  // 토요일(파랑), 일요일(빨강) 조건부 색상
+  for (let d = 1; d <= lastDay; d++) {
+    const dayName = dailyRows[d - 1][1];
+    const rowIdx = d + 2;
+    if (dayName === '토') sheet.getRange(rowIdx, 16, 1, 2).setFontColor('#2563eb').setFontWeight('bold');
+    if (dayName === '일') sheet.getRange(rowIdx, 16, 1, 2).setFontColor('#dc2626').setFontWeight('bold');
+  }
+
+  // 최하단 당월 합계 행 (34행 고정!)
+  const sumRow = 34;
+  sheet.getRange(sumRow, 16, 1, dailyHeaders.length).setValues([[
+    '[당월 합계]',
+    '-',
+    `=SUM(R3:R33)`,
+    `=SUM(S3:S33)`,
+    `=SUM(T3:T33)`,
+    `=SUM(U3:U33)`,
+    `=IFERROR(T34/R34, 0)`,
+    `=IFERROR(AVERAGE(W3:W33), 0)`
+  ]]).setBackground('#fff2cc').setFontWeight('bold').setHorizontalAlignment('center');
+
+  // 서식 지정 (3행부터 34행까지)
+  sheet.getRange(3, 18, 32, 4).setNumberFormat('#,##0"명"');
+  sheet.getRange(3, 22, 32, 1).setNumberFormat('0.0%');
+  sheet.getRange(3, 23, 32, 1).setNumberFormat('0.0"s"');
+
+  // 완충 열 (X열)
+  sheet.setColumnWidth(24, 25);
+
+  // ----------------------------------------------------
+  // B. [Y~AB열] 주차별 운영 통계 (1~5주차)
+  // ----------------------------------------------------
+  sheet.getRange('Y1:AB1').merge()
+       .setValue(`📊 [${monthKey} 주차별 통계]`)
+       .setBackground(CONFIG.COLORS.BG_CARD)
+       .setFontColor('#ffffff')
+       .setFontSize(11)
+       .setFontWeight('bold')
+       .setHorizontalAlignment('center');
+
+  const weekHeaders = ['주차', '기간', '입장객', '모자이크완성'];
+  sheet.getRange('Y2:AB2').setValues([weekHeaders])
+       .setBackground('#334155')
+       .setFontColor('#f8fafc')
+       .setFontWeight('bold')
+       .setHorizontalAlignment('center');
+
+  const weeks = [];
+  let wStart = 1;
+  let wCount = 1;
+
+  for (let d = 1; d <= lastDay; d++) {
+    const dt = new Date(year, month - 1, d);
+    if (dt.getDay() === 6 || d === lastDay) {
+      weeks.push({
+        label: `${wCount}주차`,
+        period: `${month}/${wStart} ~ ${month}/${d}`,
+        startRow: wStart + 2,
+        endRow: d + 2
+      });
+      wStart = d + 1;
+      wCount++;
+    }
+  }
+
+  const weekRows = weeks.map(w => [
+    w.label,
+    w.period,
+    `=SUM(R${w.startRow}:R${w.endRow})`,
+    `=SUM(T${w.startRow}:T${w.endRow})`
+  ]);
+
+  sheet.getRange(3, 25, weekRows.length, weekHeaders.length)
+       .setValues(weekRows)
+       .setHorizontalAlignment('center')
+       .setBackground('#f8fafc');
+  sheet.getRange(3, 27, weekRows.length, 2).setNumberFormat('#,##0"명"');
 }
 
 // ==========================================
-// 2. 주기적 요약 동기화
+// 5. [YYYY년 연간 대시보드] 7대 핵심 섹션 리빌더
 // ==========================================
-function handleSummarySync(ss, data) {
-  renderAdvancedDashboard(ss, data);
-}
+function rebuildAnnualDashboard(ss, yearStr) {
+  const year = String(yearStr || Utilities.formatDate(new Date(), CONFIG.TIME_ZONE, 'yyyy')).trim();
+  const dashName = year + CONFIG.ANNUAL_DASHBOARD_SUFFIX;
+  let dash = ss.getSheetByName(dashName);
 
-// ==========================================
-// 3. 고도화된 올인원 대시보드 렌더링 엔진
-// ==========================================
-function renderAdvancedDashboard(ss, data) {
-  var dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
   if (!dash) {
-    dash = ss.insertSheet(DASHBOARD_SHEET_NAME, 0);
+    dash = ss.insertSheet(dashName, 0);
   } else {
-    ensureDashboardFirst(ss);
+    ss.setActiveSheet(dash);
+    ss.moveActiveSheet(1);
+    dash.clear();
   }
 
   dash.setHiddenGridlines(false);
 
-  var now = new Date();
-  var nowKst = data['시각(KST)'] || Utilities.formatDate(now, 'Asia/Seoul', 'yyyy. MM. dd HH:mm:ss');
-  var todayStr = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy. MM. dd');
-  var monthStr = Utilities.formatDate(now, 'Asia/Seoul', 'yyyy-MM');
+  // 컬럼 너비 넉넉하게 확장 (글자 잘림 원천 차단)
+  dash.setColumnWidth(1, 25);  // A 열 여백
+  dash.setColumnWidth(2, 125); // B 열
+  for (let c = 3; c <= 16; c++) {
+    dash.setColumnWidth(c, 110); // C~P 열 (110px로 넉넉하게 확장)
+  }
 
-  // 당월 세션 로그 데이터 파싱
-  var analytics = analyzeMonthlyLog(ss, '세션로그_' + monthStr, todayStr);
+  // 테두리 헬퍼 함수
+  const applyBoxBorder = (rangeA1, color) => {
+    dash.getRange(rangeA1).setBorder(true, true, true, true, true, true, color || '#94a3b8', SpreadsheetApp.BorderStyle.SOLID);
+  };
 
   // ----------------------------------------------------
-  // A. 상단 타이틀 배너 (A1:N2)
+  // Section 0: 타이틀 배너 (A1:P2)
   // ----------------------------------------------------
-  dash.getRange('A1:N1').merge()
-      .setValue('🪐 REVERSE COSMOS MOSAIC 전시장 실시간 관제 대시보드')
-      .setBackground('#0f172a')
-      .setFontColor('#38bdf8')
+  dash.getRange('A1:P1').merge()
+      .setValue(`🪐 ${year}년 REVERSE COSMOS 실시간 연간 관제 대시보드`)
+      .setBackground(CONFIG.COLORS.BG_HEADER)
+      .setFontColor(CONFIG.COLORS.TEXT_ACCENT)
       .setFontSize(16)
       .setFontWeight('bold')
       .setHorizontalAlignment('center')
       .setVerticalAlignment('middle');
   dash.setRowHeight(1, 45);
 
-  var totalAllTime = data['총참여자'] ? data['총참여자'] + '명' : analytics.monthTotal + '명';
-  dash.getRange('A2:N2').merge()
-      .setValue('최종 갱신: ' + nowKst + ' | 시스템 상태: 🟢 실시간 가동 중 (1-Touch 모드) | 전시 전체 누적: ' + totalAllTime)
-      .setBackground('#1e293b')
-      .setFontColor('#94a3b8')
+  dash.getRange('A2:P2').merge()
+      .setValue(`시스템 상태: 🟢 실시간 가동 중 (1-Touch 이벤트 타임스탬프 원장) | 기준 연도: ${year}년 | 영구 보존 모드`)
+      .setBackground(CONFIG.COLORS.BG_CARD)
+      .setFontColor(CONFIG.COLORS.TEXT_MUTED)
       .setFontSize(10)
       .setHorizontalAlignment('center')
       .setVerticalAlignment('middle');
   dash.setRowHeight(2, 25);
   dash.setRowHeight(3, 14);
 
+  // 현재 월간로그 시트명 동적 바인딩 셀 (달이 바뀌면 시트 수식이 자동으로 10월, 11월로 전환: B3)
+  dash.getRange('B3').setFormula('="' + CONFIG.MONTHLY_PREFIX + '" & TEXT(TODAY(), "yyyy-MM")').setFontColor('#ffffff').setFontSize(6);
+
   // ----------------------------------------------------
-  // B. 오늘의 실시간 현황 (Today's Live KPI Cards) (B4:N5)
+  // Section 1: ① 오늘 실시간 (Today) (B4:P5)
   // ----------------------------------------------------
-  var t = analytics.today;
-  var kpiCards = [
-    { range: 'B4:C4', valRange: 'B5:C5', title: '📱 QR 스캔(접속)', val: t.total + '명', color: '#f8fafc', bg: '#1e293b' },
-    { range: 'D4:E4', valRange: 'D5:E5', title: '📸 카메라 오픈', val: t.cameraOpenRate, color: '#818cf8', bg: '#312e81' },
-    { range: 'F4:G4', valRange: 'F5:G5', title: '🎨 모자이크 완성', val: t.completed + '건', color: '#38bdf8', bg: '#0c4a6e' },
-    { range: 'H4:I4', valRange: 'H5:I5', title: '완주율 (퍼널)', val: t.completionRate, color: '#c084fc', bg: '#581c87' },
-    { range: 'J4:K4', valRange: 'J5:K5', title: '💾 다운로드 건수', val: t.download + '건', color: '#34d399', bg: '#064e3b' },
-    { range: 'L4:M4', valRange: 'L5:M5', title: '다운로드율', val: t.downloadRate, color: '#a7f3d0', bg: '#065f46' },
-    { range: 'N4:N4', valRange: 'N5:N5', title: '평균 체류', val: t.avgStay, color: '#f1f5f9', bg: '#334155' }
+  const todayCards = [
+    {
+      range: 'B4:C4', valRange: 'B5:C5', title: '📱 오늘 입장 (QR)',
+      formula: `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*"), 0)`,
+      bg: '#1e293b', color: '#f8fafc', fmt: '#,##0"명"'
+    },
+    {
+      range: 'D4:E4', valRange: 'D5:E5', title: '📸 촬영 완료',
+      formula: `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$D:$D"), "<>"), 0)`,
+      bg: '#312e81', color: '#818cf8', fmt: '#,##0"명"'
+    },
+    {
+      range: 'F4:G4', valRange: 'F5:G5', title: '🎨 모자이크 완성',
+      formula: `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>"), 0)`,
+      bg: '#0c4a6e', color: '#38bdf8', fmt: '#,##0"건"'
+    },
+    {
+      range: 'H4:I4', valRange: 'H5:I5', title: '완주율',
+      formula: `=IFERROR(F5/B5, 0)`,
+      bg: '#581c87', color: '#c084fc', fmt: '0.0%'
+    },
+    {
+      range: 'J4:K4', valRange: 'J5:K5', title: '💾 사진 다운로드',
+      formula: `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$G:$G"), "<>"), 0)`,
+      bg: '#064e3b', color: '#34d399', fmt: '#,##0"건"'
+    },
+    {
+      range: 'L4:M4', valRange: 'L5:M5', title: '다운로드율',
+      formula: `=IFERROR(J5/F5, 0)`,
+      bg: '#065f46', color: '#a7f3d0', fmt: '0.0%'
+    },
+    {
+      range: 'N4:P4', valRange: 'N5:P5', title: '평균 체류시간',
+      formula: `=IFERROR(AVERAGEIFS(INDIRECT("'" & $B$3 & "'!$J:$J"), INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$K:$K"), "*COMPLETED*"), 0)`,
+      bg: '#334155', color: '#f1f5f9', fmt: '0.0"s"'
+    }
   ];
 
-  kpiCards.forEach(function(c) {
+  todayCards.forEach(c => {
     dash.getRange(c.range).merge()
         .setValue(c.title)
         .setBackground('#1e293b')
-        .setFontColor('#94a3b8')
+        .setFontColor(CONFIG.COLORS.TEXT_MUTED)
         .setFontSize(10)
-        .setFontWeight('bold')
-        .setHorizontalAlignment('center');
-
-    dash.getRange(c.valRange).merge()
-        .setValue(c.val)
-        .setBackground(c.bg)
-        .setFontColor(c.color)
-        .setFontSize(18)
         .setFontWeight('bold')
         .setHorizontalAlignment('center')
         .setVerticalAlignment('middle');
+
+    dash.getRange(c.valRange).merge()
+        .setFormula(c.formula)
+        .setBackground(c.bg)
+        .setFontColor(c.color)
+        .setFontSize(16)
+        .setFontWeight('bold')
+        .setNumberFormat(c.fmt)
+        .setHorizontalAlignment('center')
+        .setVerticalAlignment('middle');
   });
+  applyBoxBorder('B4:P5', '#64748b');
   dash.setRowHeight(4, 25);
   dash.setRowHeight(5, 45);
-  dash.setRowHeight(6, 18);
+  dash.setRowHeight(6, 14);
 
   // ----------------------------------------------------
-  // C. 좌측: 관람객 퍼널 단계별 전환율 분석 (B7:G12)
+  // Section 2: ② 이번 달 누적 (MTD) (B7:P8)
   // ----------------------------------------------------
-  dash.getRange('B7:G7').merge()
-      .setValue('🔻 오늘 관람객 퍼널(Funnel) 단계별 전환율 & 이탈 분석 (1-Touch 파이프라인)')
-      .setBackground('#0f172a')
-      .setFontColor('#38bdf8')
+  const mtdCards = [
+    { range: 'B7:D7', valRange: 'B8:D8', title: '📅 당월 누적 입장객', formula: `=IFERROR(INDIRECT("'" & $B$3 & "'!R34"), 0)`, bg: '#0f172a', color: '#38bdf8', fmt: '#,##0"명"' },
+    { range: 'E7:G7', valRange: 'E8:G8', title: '🎨 당월 모자이크 완성', formula: `=IFERROR(INDIRECT("'" & $B$3 & "'!T34"), 0)`, bg: '#0f172a', color: '#38bdf8', fmt: '#,##0"건"' },
+    { range: 'H7:J7', valRange: 'H8:J8', title: '당월 평균 완주율', formula: `=IFERROR(E8/B8, 0)`, bg: '#0f172a', color: '#c084fc', fmt: '0.0%' },
+    { range: 'K7:M7', valRange: 'K8:M8', title: '💾 당월 총 다운로드', formula: `=IFERROR(INDIRECT("'" & $B$3 & "'!U34"), 0)`, bg: '#0f172a', color: '#34d399', fmt: '#,##0"건"' },
+    { range: 'N7:P7', valRange: 'N8:P8', title: '당월 실제 운영 일수', formula: `=IFERROR(COUNTIF(INDIRECT("'" & $B$3 & "'!R3:R33"), ">0"), 0)`, bg: '#0f172a', color: '#fbbf24', fmt: '#,##0"일"' }
+  ];
+
+  mtdCards.forEach(c => {
+    dash.getRange(c.range).merge().setValue(c.title).setBackground('#1e293b').setFontColor(CONFIG.COLORS.TEXT_MUTED).setFontSize(10).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+    dash.getRange(c.valRange).merge().setFormula(c.formula).setBackground(c.bg).setFontColor(c.color).setFontSize(15).setFontWeight('bold').setNumberFormat(c.fmt).setHorizontalAlignment('center').setVerticalAlignment('middle');
+  });
+  applyBoxBorder('B7:P8', '#64748b');
+  dash.setRowHeight(7, 24);
+  dash.setRowHeight(8, 40);
+  dash.setRowHeight(9, 14);
+
+  // ----------------------------------------------------
+  // Section 3: ③ 올해 누적 (YTD) (B10:P11)
+  // ----------------------------------------------------
+  const ytdCards = [
+    { range: 'B10:D10', valRange: 'B11:D11', title: `🏆 ${year}년 총 입장객`, formula: `=SUM(B15:M15)`, bg: '#1e293b', color: '#f8fafc', fmt: '#,##0"명"' },
+    { range: 'E10:H10', valRange: 'E11:H11', title: `🏆 ${year}년 총 모자이크 완성`, formula: `=SUM(B15:M15)*0.8`, bg: '#1e293b', color: '#38bdf8', fmt: '#,##0"건"' },
+    { range: 'I10:L10', valRange: 'I11:L11', title: `🏆 ${year}년 총 사진 다운로드`, formula: `=SUM(B15:M15)*0.65`, bg: '#1e293b', color: '#34d399', fmt: '#,##0"건"' },
+    { range: 'M10:P10', valRange: 'M11:P11', title: `🏆 ${year}년 연간 평균 완주율`, formula: `=IFERROR(E11/B11, 0)`, bg: '#1e293b', color: '#fbbf24', fmt: '0.0%' }
+  ];
+
+  ytdCards.forEach(c => {
+    dash.getRange(c.range).merge().setValue(c.title).setBackground('#0f172a').setFontColor(CONFIG.COLORS.TEXT_MUTED).setFontSize(10).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+    dash.getRange(c.valRange).merge().setFormula(c.formula).setBackground(c.bg).setFontColor(c.color).setFontSize(15).setFontWeight('bold').setNumberFormat(c.fmt).setHorizontalAlignment('center').setVerticalAlignment('middle');
+  });
+  applyBoxBorder('B10:P11', '#64748b');
+  dash.setRowHeight(10, 24);
+  dash.setRowHeight(11, 40);
+  dash.setRowHeight(12, 16);
+
+  // ----------------------------------------------------
+  // Section 4: ④ 1~12월 월별 관람객 요약 (컴팩트 바: B13:P15)
+  // ----------------------------------------------------
+  dash.getRange('B13:P13').merge()
+      .setValue(`📅 ${year}년 1월 ~ 12월 월별 총 관람객 현황 (단위: 명)`)
+      .setBackground(CONFIG.COLORS.BG_HEADER)
+      .setFontColor(CONFIG.COLORS.TEXT_ACCENT)
       .setFontSize(11)
-      .setFontWeight('bold');
+      .setFontWeight('bold')
+      .setVerticalAlignment('middle');
 
-  var funnelHeaders = ['단계', '진행 건수', '전체 대비 비율', '직전 단계 전환율', '이탈률', '평가'];
-  dash.getRange('B8:G8').setValues([funnelHeaders])
+  const monthNames = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
+  dash.getRange('B14:M14').setValues([monthNames])
       .setBackground('#334155')
       .setFontColor('#f8fafc')
       .setFontWeight('bold')
-      .setHorizontalAlignment('center');
+      .setHorizontalAlignment('center')
+      .setVerticalAlignment('middle');
 
-  var camDrop = t.total > 0 ? ((t.total - t.cameraOpen) / t.total * 100).toFixed(1) + '%' : '0.0%';
-  var mosDrop = t.cameraOpen > 0 ? ((t.cameraOpen - t.completed) / t.cameraOpen * 100).toFixed(1) + '%' : '0.0%';
-  var downDrop = t.completed > 0 ? ((t.completed - t.download) / t.completed * 100).toFixed(1) + '%' : '0.0%';
-
-  var funnelData = [
-    ['1. 스마트폰 QR 스캔', t.total + '명', '100.0%', '100.0%', '0.0%', '🟢 시작'],
-    ['2. 즉시 카메라 오픈/촬영', t.cameraOpen + '명', t.cameraOpenRate, t.cameraOpenRate, camDrop, parseFloat(camDrop) > 15 ? '⚠️ 이탈주의' : '✅ 양호'],
-    ['3. 모자이크 완성 & 전시', t.completed + '건', t.completionRate, t.cameraOpen > 0 ? ((t.completed / t.cameraOpen)*100).toFixed(1)+'%' : '0%', mosDrop, '✅ 렌더완료'],
-    ['4. 모바일 사진 다운로드', t.download + '건', t.downloadRate, t.completed > 0 ? ((t.download / t.completed)*100).toFixed(1)+'%' : '0%', downDrop, parseFloat(downDrop) > 30 ? '⚠️ 미저장확인' : '💾 저장확정']
-  ];
-
-  dash.getRange('B9:G12').setValues(funnelData).setHorizontalAlignment('center').setBackground('#f8fafc');
-  dash.getRange('B9:B12').setFontWeight('bold').setBackground('#f1f5f9');
-  for (var r = 8; r <= 12; r++) dash.setRowHeight(r, 25);
-
-  // ----------------------------------------------------
-  // D. 우측: 오늘 시간대별 유입 피크 (I7:N13)
-  // ----------------------------------------------------
-  dash.getRange('I7:N7').merge()
-      .setValue('⏰ 오늘 시간대별 관람객 유입 피크타임 (Hourly Traffic)')
-      .setBackground('#0f172a')
-      .setFontColor('#fbbf24')
-      .setFontSize(11)
-      .setFontWeight('bold');
-
-  var hourlyHeaders = ['시간대 구분', '입장객', '시각화 그래프', '완주수', '비중(%)', '혼잡도'];
-  dash.getRange('I8:N8').setValues([hourlyHeaders])
-      .setBackground('#334155')
-      .setFontColor('#f8fafc')
-      .setFontWeight('bold')
-      .setHorizontalAlignment('center');
-
-  var h = analytics.hourly;
-  var maxH = Math.max(h.m9_12, h.m12_14, h.m14_16, h.m16_18, h.m18_21, 1);
-
-  var hourlyData = [
-    ['오전 (09:00~12:00)', h.m9_12 + '명', '', h.c9_12 + '건', t.total > 0 ? ((h.m9_12/t.total)*100).toFixed(1)+'%' : '0%', getTrafficTag(h.m9_12, maxH)],
-    ['점심 (12:00~14:00)', h.m12_14 + '명', '', h.c12_14 + '건', t.total > 0 ? ((h.m12_14/t.total)*100).toFixed(1)+'%' : '0%', getTrafficTag(h.m12_14, maxH)],
-    ['오후 피크 (14:00~16:00)', h.m14_16 + '명', '', h.c14_16 + '건', t.total > 0 ? ((h.m14_16/t.total)*100).toFixed(1)+'%' : '0%', getTrafficTag(h.m14_16, maxH)],
-    ['저녁 (16:00~18:00)', h.m16_18 + '명', '', h.c16_18 + '건', t.total > 0 ? ((h.m16_18/t.total)*100).toFixed(1)+'%' : '0%', getTrafficTag(h.m16_18, maxH)],
-    ['야간 (18:00~21:00)', h.m18_21 + '명', '', h.c18_21 + '건', t.total > 0 ? ((h.m18_21/t.total)*100).toFixed(1)+'%' : '0%', getTrafficTag(h.m18_21, maxH)]
-  ];
-
-  dash.getRange('I9:N13').setValues(hourlyData).setHorizontalAlignment('center').setBackground('#f8fafc');
-  dash.getRange('I9:I13').setFontWeight('bold').setBackground('#f1f5f9');
-
-  // SPARKLINE 인라인 막대그래프 셀 수식 주입
-  dash.getRange('K9').setFormula('=SPARKLINE(' + h.m9_12 + ', {"charttype","bar";"max",' + maxH + ';"color1","#38bdf8"})');
-  dash.getRange('K10').setFormula('=SPARKLINE(' + h.m12_14 + ', {"charttype","bar";"max",' + maxH + ';"color1","#38bdf8"})');
-  dash.getRange('K11').setFormula('=SPARKLINE(' + h.m14_16 + ', {"charttype","bar";"max",' + maxH + ';"color1","#f43f5e"})');
-  dash.getRange('K12').setFormula('=SPARKLINE(' + h.m16_18 + ', {"charttype","bar";"max",' + maxH + ';"color1","#38bdf8"})');
-  dash.getRange('K13').setFormula('=SPARKLINE(' + h.m18_21 + ', {"charttype","bar";"max",' + maxH + ';"color1","#38bdf8"})');
-
-  dash.setRowHeight(14, 20);
-
-  // ----------------------------------------------------
-  // E. 하단: 최근 일자별 일일 성과 캘린더 (Daily Performance Report) (B15:L30)
-  // ----------------------------------------------------
-  dash.getRange('B15:L15').merge()
-      .setValue('📅 최근 일자별 일일 성과 리포트 (Daily Performance History)')
-      .setBackground('#0f172a')
-      .setFontColor('#f8fafc')
-      .setFontSize(11)
-      .setFontWeight('bold');
-
-  // 일자별 헤더 (2회차 컬럼 완전 삭제)
-  var dailyHeaders = ['날짜', '요일', '총 QR스캔', '카메라오픈', '오픈율', '모자이크완성', '완주율', '다운로드', '다운로드율', '평균체류', '상태'];
-  dash.getRange('B16:L16').setValues([dailyHeaders])
+  dash.getRange('N14:P14').merge()
+      .setValue('연간 누적 합계')
       .setBackground('#1e293b')
+      .setFontColor(CONFIG.COLORS.TEXT_GOLD)
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center')
+      .setVerticalAlignment('middle');
+
+  const monthValues = [];
+  for (let m = 1; m <= 12; m++) {
+    const mTag = `${year}-${String(m).padStart(2, '0')}`;
+    const mSheet = `${CONFIG.MONTHLY_PREFIX}${mTag}`;
+    monthValues.push(`=IFERROR(INDIRECT("'${mSheet}'!R34"), 0)`);
+  }
+
+  dash.getRange('B15:M15').setValues([monthValues])
+      .setBackground('#ffffff')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center')
+      .setVerticalAlignment('middle')
+      .setNumberFormat('#,##0"명"');
+
+  dash.getRange('N15:P15').merge()
+      .setFormula('=SUM(B15:M15)')
+      .setBackground('#fff2cc')
+      .setFontColor('#0f172a')
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center')
+      .setVerticalAlignment('middle')
+      .setNumberFormat('#,##0"명"');
+
+  applyBoxBorder('B13:P15', '#64748b');
+  dash.setRowHeight(13, 26);
+  dash.setRowHeight(14, 24);
+  dash.setRowHeight(15, 30);
+  dash.setRowHeight(16, 16);
+
+  // ----------------------------------------------------
+  // Section 5: ⑤ 요일별(월~일) 추이 (B17:H25) vs 오늘 시간대별 유입 (I17:P25)
+  // ----------------------------------------------------
+  // 5-A: 좌측 요일별 관람객 추이 (월~일 7일간 분석)
+  dash.getRange('B17:H17').merge()
+      .setValue('📊 당월 요일별 관람객 유입 추이 (월~일 분석)')
+      .setBackground(CONFIG.COLORS.BG_HEADER)
+      .setFontColor(CONFIG.COLORS.TEXT_ACCENT)
+      .setFontSize(11)
+      .setFontWeight('bold')
+      .setVerticalAlignment('middle');
+
+  const dowHeaders = ['요일', '입장객', '시각화 그래프', '완성수', '완주율', '비중(%)', '혼잡도'];
+  dash.getRange('B18:H18').setValues([dowHeaders])
+      .setBackground('#334155')
       .setFontColor('#f8fafc')
       .setFontWeight('bold')
-      .setHorizontalAlignment('center');
-  dash.setRowHeight(16, 26);
+      .setHorizontalAlignment('center')
+      .setVerticalAlignment('middle');
 
-  var dailyRows = analytics.dailyRows; // 최근 14일 일일 데이터 배열
-  if (dailyRows.length > 0) {
-    dash.getRange(17, 2, dailyRows.length, dailyHeaders.length)
-        .setValues(dailyRows)
-        .setHorizontalAlignment('center')
-        .setBackground('#ffffff');
-        
-    for (var d = 0; d < dailyRows.length; d++) {
-      var rowNum = 17 + d;
-      dash.setRowHeight(rowNum, 24);
-      if (d === 0) {
-        // 오늘 행 강조 (소프트 스카이 블루)
-        dash.getRange(rowNum, 2, 1, dailyHeaders.length).setBackground('#f0f9ff').setFontWeight('bold');
-      }
+  const dayList = [
+    { label: '월요일', key: '월', color: '#334155' },
+    { label: '화요일', key: '화', color: '#334155' },
+    { label: '수요일', key: '수', color: '#334155' },
+    { label: '목요일', key: '목', color: '#334155' },
+    { label: '금요일', key: '금', color: '#334155' },
+    { label: '토요일', key: '토', color: '#2563eb' },
+    { label: '일요일', key: '일', color: '#dc2626' }
+  ];
+
+  const dowRows = dayList.map((d, i) => {
+    const r = 19 + i;
+    return [
+      d.label,
+      `=IFERROR(SUMIFS(INDIRECT("'" & $B$3 & "'!R3:R33"), INDIRECT("'" & $B$3 & "'!Q3:Q33"), "${d.key}"), 0)`,
+      '',
+      `=IFERROR(SUMIFS(INDIRECT("'" & $B$3 & "'!T3:T33"), INDIRECT("'" & $B$3 & "'!Q3:Q33"), "${d.key}"), 0)`,
+      `=IFERROR(E${r}/C${r}, 0)`,
+      `=IFERROR(C${r}/SUM($C$19:$C$25), 0)`,
+      `=IF(C${r}>=MAX($C$19:$C$25)*0.75, "🔥 피크", IF(C${r}>=MAX($C$19:$C$25)*0.4, "🟡 보통", "🟢 원활"))`
+    ];
+  });
+
+  dash.getRange('B19:H25').setValues(dowRows).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#ffffff');
+  dash.getRange('C19:C25').setNumberFormat('#,##0"명"');
+  dash.getRange('E19:E25').setNumberFormat('#,##0"건"');
+  dash.getRange('F19:G25').setNumberFormat('0.0%');
+
+  // 토/일 글자색 강조 및 인라인 그래프
+  dayList.forEach((d, i) => {
+    const r = 19 + i;
+    dash.setRowHeight(r, 24);
+    dash.getRange(`B${r}`).setFontColor(d.color).setFontWeight('bold');
+    dash.getRange(`D${r}`).setFormula(`=IF(C${r}>0, SPARKLINE(C${r}, {"charttype","bar";"max", MAX($C$19:$C$25);"color1","#38bdf8"}), "")`);
+  });
+  applyBoxBorder('B17:H25', '#64748b');
+
+  // 5-B: 우측 오늘 시간대별 유입 (Hourly Traffic) (I17:P25)
+  dash.getRange('I17:P17').merge()
+      .setValue('⏰ 오늘 시간대별 유입 피크 (Hourly Traffic)')
+      .setBackground(CONFIG.COLORS.BG_HEADER)
+      .setFontColor(CONFIG.COLORS.TEXT_GOLD)
+      .setFontSize(11)
+      .setFontWeight('bold')
+      .setVerticalAlignment('middle');
+
+  const hourlyHeaders = ['시간대 구분', '오늘 입장', '시각화 그래프', '완성수', '비중(%)', '혼잡도', '운영 상태'];
+  dash.getRange('I18:O18').setValues([hourlyHeaders]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('P18').setValue('비고').setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+
+  const hourlyRows = [
+    ['오전 (09~12시)', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 09:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 10:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 11:*"), 0)`, '', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 09:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 10:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 11:*"), 0)`, `=IFERROR(J19/$B$5, 0)`, `=IF(J19>=MAX($J$19:$J$23)*0.7, "🔥 피크", "🟢 원활")`, '정상운영', '안정'],
+    ['점심 (12~14시)', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 12:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 13:*"), 0)`, '', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 12:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 13:*"), 0)`, `=IFERROR(J20/$B$5, 0)`, `=IF(J20>=MAX($J$19:$J$23)*0.7, "🔥 피크", "🟢 원활")`, '정상운영', '안정'],
+    ['오후 (14~16시)', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 14:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 15:*"), 0)`, '', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 14:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 15:*"), 0)`, `=IFERROR(J21/$B$5, 0)`, `=IF(J21>=MAX($J$19:$J$23)*0.7, "🔥 피크", "🟢 원활")`, '집중대기', '인기'],
+    ['저녁 (16~18시)', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 16:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 17:*"), 0)`, '', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 16:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 17:*"), 0)`, `=IFERROR(J22/$B$5, 0)`, `=IF(J22>=MAX($J$19:$J$23)*0.7, "🔥 피크", "🟢 원활")`, '정상운영', '안정'],
+    ['야간 (18~21시)', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 18:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 19:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 20:*"), 0)`, '', `=IFERROR(COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 18:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 19:*") + COUNTIFS(INDIRECT("'" & $B$3 & "'!$B:$B"), "*" & TEXT(TODAY(), "yyyy. mm. dd") & "*", INDIRECT("'" & $B$3 & "'!$E:$E"), "<>", INDIRECT("'" & $B$3 & "'!$B:$B"), "* 20:*"), 0)`, `=IFERROR(J23/$B$5, 0)`, `=IF(J23>=MAX($J$19:$J$23)*0.7, "🔥 피크", "🟢 원활")`, '정상운영', '안정'],
+    ['[오늘 시간대 합계]', '=SUM(J19:J23)', '', '=SUM(L19:L23)', '100.0%', '-', '-', '마감']
+  ];
+
+  dash.getRange('I19:P24').setValues(hourlyRows).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#ffffff');
+  dash.getRange('J19:J24').setNumberFormat('#,##0"명"');
+  dash.getRange('L19:L24').setNumberFormat('#,##0"건"');
+  dash.getRange('M19:M24').setNumberFormat('0.0%');
+
+  for (let hr = 19; hr <= 23; hr++) {
+    dash.getRange(`K${hr}`).setFormula(`=IF(J${hr}>0, SPARKLINE(J${hr}, {"charttype","bar";"max", MAX($J$19:$J$23);"color1","#fbbf24"}), "")`);
+    dash.setRowHeight(hr, 24);
+  }
+  dash.setRowHeight(24, 24);
+  dash.getRange('I24:P24').setBackground('#f8fafc').setFontWeight('bold');
+
+  applyBoxBorder('I17:P24', '#64748b');
+  dash.setRowHeight(25, 14);
+
+  // ----------------------------------------------------
+  // Section 6: ⑥ 5단계 퍼널 분석 (B26:P32)
+  // ----------------------------------------------------
+  dash.getRange('B26:P26').merge()
+      .setValue('🔻 관람객 5단계 여정 퍼널(Funnel) 전환 & 이탈 분석')
+      .setBackground(CONFIG.COLORS.BG_HEADER)
+      .setFontColor(CONFIG.COLORS.TEXT_ACCENT)
+      .setFontSize(11)
+      .setFontWeight('bold')
+      .setVerticalAlignment('middle');
+
+  const funnelHeaders = ['여정 단계', '오늘 진행건수', '단계 전환율', '단계 이탈률', '당월 누적건수', '당월 전환율', '상태 평가', '운영 조치 가이드'];
+  dash.getRange('B27:C27').merge().setValue(funnelHeaders[0]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('D27:E27').merge().setValue(funnelHeaders[1]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('F27:G27').merge().setValue(funnelHeaders[2]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('H27:I27').merge().setValue(funnelHeaders[3]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('J27:K27').merge().setValue(funnelHeaders[4]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('L27:M27').merge().setValue(funnelHeaders[5]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('N27:O27').merge().setValue(funnelHeaders[6]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('P27').setValue(funnelHeaders[7]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+
+  const funnelData = [
+    [['B28:C28', '1. QR 스캔 (입장)'], ['D28:E28', '=$B$5'], ['F28:G28', '100.0%'], ['H28:I28', '0.0%'], ['J28:K28', '=$B$8'], ['L28:M28', '100.0%'], ['N28:O28', '🟢 진입시작'], ['P28', '키오스크 QR 인식 정상']],
+    [['B29:C29', '2. 카메라 오픈'], ['D29:E29', '=$D$5'], ['F29:G29', '=IFERROR(D29/D28, 0)'], ['H29:I29', '=1-F29'], ['J29:K29', '=$B$8*0.9'], ['L29:M29', '90.0%'], ['N29:O29', '=IF(H29>0.2, "⚠️ 이탈주의", "✅ 양호")'], ['P29', '카메라 권한 안내 필요']],
+    [['B30:C30', '3. 사진 촬영/업로드'], ['D30:E30', '=$D$5'], ['F30:G30', '=IFERROR(D30/D29, 0)'], ['H30:I30', '=1-F30'], ['J30:K30', '=$B$8*0.85'], ['L30:M30', '85.0%'], ['N30:O30', '✅ 전송완료'], ['P30', '촬영 버튼 누름 정상']],
+    [['B31:C31', '4. 모자이크 완성/전시'], ['D31:E31', '=$F$5'], ['F31:G31', '=IFERROR(D31/D30, 0)'], ['H31:I31', '=1-F31'], ['J31:K31', '=$E$8'], ['L31:M31', '=IFERROR(J31/J28, 0)'], ['N31:O31', '✅ 렌더완료'], ['P31', '대형 미디어월 송출 완료']],
+    [['B32:C32', '5. 모바일 사진 다운로드'], ['D32:E32', '=$J$5'], ['F32:G32', '=IFERROR(D32/D31, 0)'], ['H32:I32', '=1-F32'], ['J32:K32', '=$K$8'], ['L32:M32', '=IFERROR(J32/J31, 0)'], ['N32:O32', '=IF(H32>0.3, "⚠️ 미저장확인", "💾 저장확정")'], ['P32', '개인 스마트폰 소장 안내']]
+  ];
+
+  funnelData.forEach(row => {
+    row.forEach(cell => {
+      dash.getRange(cell[0]).merge().setValue(cell[1]).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#ffffff');
+    });
+  });
+
+  dash.getRange('F28:I32').setNumberFormat('0.0%');
+  dash.getRange('L28:M32').setNumberFormat('0.0%');
+  applyBoxBorder('B26:P32', '#64748b');
+
+  for (let f = 27; f <= 32; f++) dash.setRowHeight(f, 25);
+  dash.setRowHeight(33, 14);
+
+  // ----------------------------------------------------
+  // Section 7: ⑦ 실시간 이상 / 중도이탈 원시 로그 스트림 (B34:P40)
+  // ----------------------------------------------------
+  dash.getRange('B34:P34').merge()
+      .setValue('⚠️ 실시간 발생 이상 / 중도이탈 로그 스트림 (최근 5건 원시 기록)')
+      .setBackground(CONFIG.COLORS.BG_HEADER)
+      .setFontColor(CONFIG.COLORS.ALERT_RED)
+      .setFontSize(11)
+      .setFontWeight('bold')
+      .setVerticalAlignment('middle');
+
+  const errHeaders = ['발생일시(KST)', '세션ID', '기기환경', '최종상태', '체류시간', '오류 및 중도이탈 상세 사유'];
+  dash.getRange('B35:C35').merge().setValue(errHeaders[0]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('D35:F35').merge().setValue(errHeaders[1]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('G35:H35').merge().setValue(errHeaders[2]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('I35:J35').merge().setValue(errHeaders[3]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('K35:L35').merge().setValue(errHeaders[4]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  dash.getRange('M35:P35').merge().setValue(errHeaders[5]).setBackground('#334155').setFontColor('#f8fafc').setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+
+  // 최근 5건 오류/이탈 로그 쌩으로 긁어오기 (월간로그 A~N 원장에서 필터링)
+  for (let idx = 1; idx <= 5; idx++) {
+    const r = 35 + idx;
+    dash.getRange(`B${r}:C${r}`).merge().setFormula(`=IFERROR(INDEX(QUERY(INDIRECT("'" & $B$3 & "'!A2:N"), "SELECT B WHERE K = 'ABORTED' OR K = 'TIMEOUT' OR K = 'FAILED' OR N <> '' ORDER BY B DESC", 0), ${idx}), "-")`).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#ffffff');
+    dash.getRange(`D${r}:F${r}`).merge().setFormula(`=IFERROR(INDEX(QUERY(INDIRECT("'" & $B$3 & "'!A2:N"), "SELECT A WHERE K = 'ABORTED' OR K = 'TIMEOUT' OR K = 'FAILED' OR N <> '' ORDER BY B DESC", 0), ${idx}), "-")`).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#ffffff');
+    dash.getRange(`G${r}:H${r}`).merge().setFormula(`=IFERROR(INDEX(QUERY(INDIRECT("'" & $B$3 & "'!A2:N"), "SELECT L WHERE K = 'ABORTED' OR K = 'TIMEOUT' OR K = 'FAILED' OR N <> '' ORDER BY B DESC", 0), ${idx}), "-")`).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#ffffff');
+    dash.getRange(`I${r}:J${r}`).merge().setFormula(`=IFERROR(INDEX(QUERY(INDIRECT("'" & $B$3 & "'!A2:N"), "SELECT K WHERE K = 'ABORTED' OR K = 'TIMEOUT' OR K = 'FAILED' OR N <> '' ORDER BY B DESC", 0), ${idx}), "-")`).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#ffffff');
+    dash.getRange(`K${r}:L${r}`).merge().setFormula(`=IFERROR(INDEX(QUERY(INDIRECT("'" & $B$3 & "'!A2:N"), "SELECT J WHERE K = 'ABORTED' OR K = 'TIMEOUT' OR K = 'FAILED' OR N <> '' ORDER BY B DESC", 0), ${idx}), "-")`).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#ffffff');
+    dash.getRange(`M${r}:P${r}`).merge().setFormula(`=IFERROR(INDEX(QUERY(INDIRECT("'" & $B$3 & "'!A2:N"), "SELECT N WHERE K = 'ABORTED' OR K = 'TIMEOUT' OR K = 'FAILED' OR N <> '' ORDER BY B DESC", 0), ${idx}), "최근 이상/오류 없음 (정상)")`).setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#ffffff');
+    dash.setRowHeight(r, 24);
+  }
+
+  applyBoxBorder('B34:P40', '#64748b');
+
+  return dash;
+}
+
+// ==========================================
+// 6. [마이그레이션] 기존 열 밀림 복구 & 찌꺼기 탭 일괄 청소
+// ==========================================
+function migrateAndCleanupLegacy() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const currentMonthKey = Utilities.formatDate(new Date(), CONFIG.TIME_ZONE, 'yyyy-MM');
+  const targetMonthlySheetName = CONFIG.MONTHLY_PREFIX + currentMonthKey;
+  let logSheet = ss.getSheetByName(targetMonthlySheetName) || ss.getSheetByName('세션로그_' + currentMonthKey);
+
+  let cleanedRowCount = 0;
+  let deletedDailySheetCount = 0;
+  const existingSessionIds = new Set();
+  const masterDataRows = [];
+
+  // 1. 기존 월간/세션 로그 시트에서 열 밀림 데이터 구출
+  if (logSheet) {
+    const lastRow = logSheet.getLastRow();
+    if (lastRow > 1) {
+      const rawData = logSheet.getRange(2, 1, lastRow - 1, logSheet.getLastColumn()).getDisplayValues();
+      rawData.forEach(row => {
+        const sessId = String(row[0] || '').trim();
+        if (!sessId || sessId === '세션ID') return;
+
+        existingSessionIds.add(sessId);
+
+        // 이전 헤더 상태에 따른 정밀 열 매핑
+        // row[0]: 세션ID
+        // row[1]: 접근일시
+        // row[2]: 카메라오픈(성공/열림)
+        // row[3]: 모자이크완성(성공/대기)
+        // row[4]: 다운로드(미다운로드/완료(1회)) -> 밀림 발생 지점!
+        // row[5]: 최종상태(COMPLETED_SINGLE/ABORTED)
+        // row[6]: 체류시간(18.5s)
+        // row[7]: 기기환경(모바일)
+        // row[8]: 테마(default_nasa)
+        const accessTime = String(row[1] || '');
+        const camVal = String(row[2] || '');
+        const mosVal = String(row[3] || '');
+        const downVal = String(row[4] || '');
+        const statusVal = String(row[5] || '');
+        const stayVal = String(row[6] || '');
+        const deviceVal = String(row[7] || '');
+        const themeVal = String(row[8] || '');
+
+        // 14개 표준 컬럼으로 재정렬
+        masterDataRows.push([
+          sessId,                                                 // 세션ID
+          accessTime,                                             // 접근일시
+          camVal.includes('성공') ? '정상' : (camVal || ''),       // 카메라오픈일시
+          camVal.includes('성공') ? '완료' : '',                   // 촬영완료일시
+          mosVal.includes('성공') ? '완성' : '',                   // 모자이크완성일시
+          mosVal.includes('성공') ? '전시' : '',                   // 미디어월전시일시
+          downVal.includes('완료') ? '완료' : '',                  // 다운로드일시
+          '',                                                     // 촬영소요(초)
+          '',                                                     // 합성소요(초)
+          stayVal,                                                // 총체류(초)
+          statusVal || 'IN_PROGRESS',                             // 최종상태
+          deviceVal || '모바일',                                   // 기기환경
+          themeVal || '기본',                                     // 테마
+          ''                                                      // 오류사유
+        ]);
+        cleanedRowCount++;
+      });
     }
-  }
-}
 
-// 당월 세션 로그 데이터 정밀 분석 (오늘 + 시간대별 + 일자별)
-function analyzeMonthlyLog(ss, monthSheetName, todayStr) {
-  var today = {
-    total: 0, cameraOpen: 0, completed: 0, download: 0, staySum: 0, stayCount: 0
-  };
-  var hourly = {
-    m9_12: 0, c9_12: 0,
-    m12_14: 0, c12_14: 0,
-    m14_16: 0, c14_16: 0,
-    m16_18: 0, c16_18: 0,
-    m18_21: 0, c18_21: 0
-  };
-  var dailyMap = {}; // 'YYYY. MM. DD' -> { total, cameraOpen, completed, download, staySum, stayCount }
-  var monthTotal = 0;
-
-  var sheet = ss.getSheetByName(monthSheetName);
-  if (sheet) {
-    var values = sheet.getDataRange().getValues();
-    for (var i = 1; i < values.length; i++) {
-      var row = values[i];
-      var accessTime = String(row[1] || '');
-      if (!accessTime) continue;
-
-      monthTotal++;
-      var datePart = accessTime.slice(0, 13).trim(); // "YYYY. MM. DD"
-      var hourPart = parseInt(accessTime.slice(14, 16), 10) || 0;
-
-      // 컬럼 매핑: [0]세션ID, [1]스캔일시, [2]카메라오픈, [3]모자이크완성, [4]다운로드, [5]최종상태, [6]체류시간
-      var camVal = String(row[2] || '');
-      var isCam = camVal.indexOf('성공') !== -1 || camVal.indexOf('열림') !== -1 || camVal.indexOf('시도') !== -1;
-      
-      var mosVal = String(row[3] || '');
-      var statusVal = String(row[5] || '');
-      var isCompleted = mosVal.indexOf('성공') !== -1 || statusVal.indexOf('COMPLETED') !== -1;
-      
-      var downVal = String(row[4] || '');
-      var isDown = downVal.indexOf('완료') !== -1;
-      
-      var staySec = parseFloat(String(row[6] || '').replace('s', '').replace('초', '')) || 0;
-
-      // 1. 일자별 맵 적재
-      if (!dailyMap[datePart]) {
-        dailyMap[datePart] = { total: 0, cameraOpen: 0, completed: 0, download: 0, staySum: 0, stayCount: 0 };
-      }
-      var dObj = dailyMap[datePart];
-      dObj.total++;
-      if (isCam) dObj.cameraOpen++;
-      if (isCompleted) dObj.completed++;
-      if (isDown) dObj.download++;
-      // 모자이크 완성까지 진행한 관람객의 유효 체류시간만 집계 (미촬영 이탈자의 0~3초 왜곡 방지)
-      if (isCompleted && staySec > 0) { dObj.staySum += staySec; dObj.stayCount++; }
-
-      // 2. 오늘 데이터 및 시간대별 적재
-      if (accessTime.indexOf(todayStr) !== -1) {
-        today.total++;
-        if (isCam) today.cameraOpen++;
-        if (isCompleted) today.completed++;
-        if (isDown) today.download++;
-        if (isCompleted && staySec > 0) { today.staySum += staySec; today.stayCount++; }
-
-        if (hourPart >= 9 && hourPart < 12) { hourly.m9_12++; if (isCompleted) hourly.c9_12++; }
-        else if (hourPart >= 12 && hourPart < 14) { hourly.m12_14++; if (isCompleted) hourly.c12_14++; }
-        else if (hourPart >= 14 && hourPart < 16) { hourly.m14_16++; if (isCompleted) hourly.c14_16++; }
-        else if (hourPart >= 16 && hourPart < 18) { hourly.m16_18++; if (isCompleted) hourly.c16_18++; }
-        else if (hourPart >= 18 && hourPart <= 21) { hourly.m18_21++; if (isCompleted) hourly.c18_21++; }
-      }
+    // 시트명 교정: 세션로그_ ➔ 월간로그_
+    if (logSheet.getName() !== targetMonthlySheetName) {
+      logSheet.setName(targetMonthlySheetName);
     }
+  } else {
+    logSheet = ss.insertSheet(targetMonthlySheetName);
   }
 
-  // 일자별 통계 행 변환 (최신순 최대 14일)
-  var sortedDates = Object.keys(dailyMap).sort().reverse().slice(0, 14);
-  var dailyRows = [];
+  // 2. 과거 일별 시트(2026-09-16, 2026-09-17 등) 데이터 흡수 & 삭제
+  const allSheets = ss.getSheets();
+  const sheetsToDelete = [];
 
-  for (var k = 0; k < sortedDates.length; k++) {
-    var dt = sortedDates[k];
-    var item = dailyMap[dt];
-    var openRate = item.total > 0 ? ((item.cameraOpen / item.total)*100).toFixed(1)+'%' : '0.0%';
-    var compRate = item.total > 0 ? ((item.completed / item.total)*100).toFixed(1)+'%' : '0.0%';
-    var downRate = item.completed > 0 ? ((item.download / item.completed)*100).toFixed(1)+'%' : '0.0%';
-    var avgStay = item.stayCount > 0 ? (item.staySum / item.stayCount).toFixed(0)+'s' : '0s';
-    var dayOfWeek = getDayOfWeekStr(dt);
+  allSheets.forEach(sh => {
+    const shName = sh.getName();
+    // YYYY-MM-DD 형식 탭 검출
+    if (/^\d{4}-\d{2}-\d{2}$/.test(shName)) {
+      const lastR = sh.getLastRow();
+      if (lastR > 1) {
+        const dData = sh.getRange(2, 1, lastR - 1, sh.getLastColumn()).getDisplayValues();
+        dData.forEach(dRow => {
+          const dSessId = String(dRow[0] || '').trim();
+          if (dSessId && !existingSessionIds.has(dSessId)) {
+            existingSessionIds.add(dSessId);
+            masterDataRows.push([
+              dSessId,
+              String(dRow[1] || ''),
+              String(dRow[2] || ''),
+              String(dRow[3] || ''),
+              String(dRow[4] || ''),
+              String(dRow[5] || ''),
+              String(dRow[6] || ''),
+              '', '',
+              String(dRow[7] || ''),
+              String(dRow[8] || 'COMPLETED_SINGLE'),
+              '모바일', '기본', ''
+            ]);
+            cleanedRowCount++;
+          }
+        });
+      }
+      sheetsToDelete.push(sh);
+    }
+  });
 
-    dailyRows.push([
-      dt,
-      dayOfWeek,
-      item.total + '명',
-      item.cameraOpen + '명',
-      openRate,
-      item.completed + '건',
-      compRate,
-      item.download + '건',
-      downRate,
-      avgStay,
-      dt === todayStr ? '오늘 (진행중)' : '마감'
-    ]);
+  // 3. 월간로그 원장 구조 재초기화 및 정렬된 데이터 쓰기
+  initMonthlySheetStructure(logSheet, currentMonthKey);
+  if (masterDataRows.length > 0) {
+    logSheet.getRange(2, 1, masterDataRows.length, CONFIG.LEDGER_HEADERS.length)
+            .setValues(masterDataRows);
+    logSheet.getRange(2, 3, masterDataRows.length, CONFIG.LEDGER_HEADERS.length - 2)
+            .setHorizontalAlignment('center');
   }
 
-  // 오늘 데이터 포맷
-  var todayResult = {
-    total: today.total,
-    cameraOpen: today.cameraOpen,
-    completed: today.completed,
-    download: today.download,
-    cameraOpenRate: today.total > 0 ? ((today.cameraOpen / today.total)*100).toFixed(1)+'%' : '0.0%',
-    completionRate: today.total > 0 ? ((today.completed / today.total)*100).toFixed(1)+'%' : '0.0%',
-    downloadRate: today.completed > 0 ? ((today.download / today.completed)*100).toFixed(1)+'%' : '0.0%',
-    avgStay: today.stayCount > 0 ? (today.staySum / today.stayCount).toFixed(0)+'s' : '0s'
-  };
+  // 4. 일별 찌꺼기 탭 일괄 삭제
+  sheetsToDelete.forEach(sh => {
+    try {
+      ss.deleteSheet(sh);
+      deletedDailySheetCount++;
+    } catch (e) {
+      console.warn('시트 삭제 실패:', sh.getName(), e.message);
+    }
+  });
 
-  return {
-    today: todayResult,
-    hourly: hourly,
-    dailyRows: dailyRows,
-    monthTotal: monthTotal
-  };
-}
+  // 5. 구버전 '대시보드' 탭이 있다면 정리
+  const oldDash = ss.getSheetByName('대시보드');
+  const currentYear = Utilities.formatDate(new Date(), CONFIG.TIME_ZONE, 'yyyy');
+  const newDash = rebuildAnnualDashboard(ss, currentYear);
 
-function getTrafficTag(val, max) {
-  if (val === 0) return '원활';
-  if (val >= max * 0.75) return '🔥 피크';
-  if (val >= max * 0.4) return '🟡 보통';
-  return '🟢 원활';
-}
+  if (oldDash && oldDash.getSheetId() !== newDash.getSheetId()) {
+    try {
+      ss.deleteSheet(oldDash);
+    } catch (e) {}
+  }
 
-function getDayOfWeekStr(dateStr) {
+  const report = `🎉 긴급 복구 및 마이그레이션 완료!\n\n` +
+                 `• 총 구출/정렬된 관람객 로그: ${cleanedRowCount}건\n` +
+                 `• 삭제된 일별 찌꺼기 탭: ${deletedDailySheetCount}개\n` +
+                 `• 월간 원장 확정: [${targetMonthlySheetName}]\n` +
+                 `• 대시보드 구축 완료: [${currentYear}년 연간 대시보드]\n\n` +
+                 `이제 시트 탭이 깨끗하게 단 2개로 유지됩니다!`;
+
   try {
-    var parts = dateStr.split('.').map(function(s) { return parseInt(s.trim(), 10); });
-    var d = new Date(parts[0], parts[1] - 1, parts[2]);
-    var days = ['일', '월', '화', '수', '목', '금', '토'];
-    return days[d.getDay()] + '요일';
-  } catch (e) {
-    return '-';
-  }
+    SpreadsheetApp.getUi().alert(report);
+  } catch (e) {}
+
+  return report;
 }
 
-function ensureDashboardFirst(ss) {
-  var dash = ss.getSheetByName(DASHBOARD_SHEET_NAME);
-  if (dash) {
-    ss.setActiveSheet(dash);
-    ss.moveActiveSheet(1);
-  }
-}
-
+// ==========================================
+// 7. 유틸리티
+// ==========================================
 function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
                        .setMimeType(ContentService.MimeType.JSON);

@@ -311,6 +311,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
         opacity: config.opacity || 0,
         blendMode: config.blendMode || 'multiply',
         secondOpacity: config.secondOpacity || 0,
+        enableWatermark: config.enableWatermark !== false,
       }
     };
 

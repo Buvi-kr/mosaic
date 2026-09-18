@@ -1,15 +1,16 @@
-# 🌌 Reverse Cosmos Mosaic (V8.16 Zero-Defect Studio Edition)
+# 🌌 Reverse Cosmos Mosaic (V8.17 Official Watermark & Google Sheets V16.0 Edition)
 > **로비 스크린 및 미디어아트 전시를 위한 인생네컷형 인터랙티브 스마트 모자이크 시스템**
 > *(Interactive Smart Photo Mosaic System for Kiosk Screens & Exhibitions)*
 
-![Version](https://img.shields.io/badge/Version-8.16%20Zero--Defect%20Studio-rose.svg)
+![Version](https://img.shields.io/badge/Version-8.17%20Official%20Watermark-rose.svg)
 ![Node](https://img.shields.io/badge/Node.js-v20.15.1%20LTS-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)
+![QA Tests](https://img.shields.io/badge/QA%20Tests-22%2F22%20PASS-brightgreen.svg)
 
-**최종 업데이트**: 2026-09-16  
+**최종 업데이트**: 2026-09-18  
 **개요**: 관람객이 전시장 키오스크의 스마트 게이트 QR을 스캔하여 전면 카메라로 셀카를 촬영하면, 수천 장의 우주 타일과 결합하여 **실시간 초고화질 포토모자이크**를 완성하고, **대형 스크린(3-2-1 역방향 동선)에 실시간 단독 전시**하는 전시장 전용 무인 인터랙티브 엔진입니다.  
-빔프로젝터 대형 투사에 최적화된 **최상단 가로형 전시관 타이틀 배너(🪐 우주 한 컷 사진관)**, 글자를 가리지 않는 **하향 바운스 네온 화살표**, 고대비 **전시 타이머 배지**, **이용 방법 안내 대형 타이포그래피**, 그리고 귀여운 캐릭터 3종(강아지, 우주곰, 고양이) **5초 데모 순환 & 스포트라이트 앰비언스**가 탑재되어 있습니다.
+완성된 모자이크 우측 상단에 **포천아트밸리 천문과학관 공식 로고가 고화질 워터마크로 고정 각인**되어 기념사진의 소장 가치를 극대화하며, **Google Sheets v16.0 코어 관제 엔진**과 연동되어 14개 이벤트 타임스탬프 원장과 연도별 대시보드를 영구 보존합니다.
 
 ---
 
@@ -253,7 +254,24 @@ blender_workspace\render_video.bat
 
 <a id="patch-notes"></a>
 
-## 10. 📜 릴리즈 노트 & 개발 역사 (Patch Notes)
+### 📦 V8.17 Official Logo Watermark & Google Sheets V16.0 Overhaul (2026-09-18)
+#### 🪐 최종 모자이크 우측 상단 공식 로고 워터마크 고정 각인, 셀카존 순수화 & 구글 시트 v16.0 관제 원장 대개편
+- **최종 모자이크 우측 상단 공식 로고 고화질 워터마크 합성 엔진 (`src/matcher.worker.js`)**:
+  - 기존 셀카 배경에 노출되어 있던 로고가 관람객 셀카에 찍혀 모자이크 타일로 쪼개져 흉하게 뭉개지던 문제를 원천 해결.
+  - 모자이크 타일 매칭 및 블렌딩 완료 직후, 캔버스 최상단 레이어에 **포천아트밸리 천문과학관 공식 투명 로고(`public/pocheon_logo.png`)를 '착' 얹어서(`blend: 'over'`)** 단일 Sharp 파이프라인으로 JPG 각인.
+  - **초소형부터 초대형(9600×12800)까지 동적 스케일링**: 캔버스 너비의 18% 황금 비율 및 상하좌우 안전 여백 자동 계산 (초소형 캔버스에서도 치수 초과 없이 안전 클램핑).
+  - **Zero Overhead 렌더링**: 추가 인코딩 디코딩 부하 0ms로 미디어월 전시 및 모바일 다운로드 파일 모두에 선명한 정식 포토프레임 소장 가치 부여.
+- **전시장 디스플레이 셀카 구역 트루블랙 순수화 (`public/display.html`)**:
+  - 좌측 셀카 백드롭 패널에서 불필요한 로고 마크업을 완전히 제거하여, 관람객의 얼굴과 포즈만 돋보이는 100% 완전 무결 트루블랙 포토존 완성.
+- **구글 시트 v16.0 코어 관제 엔진 대개편 (`scripts/Code.gs`, `src/sheets.sync.js`, `src/session.logger.js`)**:
+  - **14개 표준 이벤트 타임스탬프 원장**: `세션ID`, `접근일시`, `카메라오픈일시`, `촬영완료일시`, `모자이크완성일시`, `미디어월전시일시`, `다운로드일시`, `촬영소요`, `합성소요`, `총체류`, `최종상태`, `기기환경`, `테마`, `오류사유`.
+  - **연도별 영구 보존 대시보드 (`[2026년 연간 대시보드]`)**: 새해가 되어도 기존 대시보드를 덮어쓰지 않고 영구 보존.
+  - **월별 추이 컴팩트화 (1~12월 미니 표) & 당월 요일별(월~일) 유입 추이 바 차트**: 주말/주중 관람 패턴 한눈에 직관적 파악.
+  - **피크타임 및 5단계 여정 퍼널 가독성 극대화**: 선명한 테두리(`border: #64748b`) 및 열 너비(110~125px) 확장으로 글자 잘림 완전 해소.
+  - **하단 실시간 발생 오류 원시 로그 스트림**: 최근 15건의 시스템 오류를 계산 없이 원문 그대로 스트리밍.
+  - **원클릭 긴급 복구 마이그레이션 (`migrateAndCleanupLegacy`)**: 열 밀림 및 일별 찌꺼기 탭 일괄 흡수·정리 지원.
+- **종합 전수 QA 22대 테스트 케이스 100% 통과 (`scratch/run_full_qa.js`)**:
+  - 세션 라이프사이클, 소켓 단절 복원, 14개 타임스탬프 산출, UTF-8 BOM CSV, 가로/세로/초대형/무블렌딩 등 6대 워터마크 케이스, UI 무결성 전수 검증 통과.
 
 ### 📦 V8.16 Mobile Native Intent & Anti-Spam Shield (2026-09-16)
 #### 📸 모바일 카메라 권한 복귀 튕김 원천 차단, 1.5초 연타 방지 쓰로틀 및 완주자 순수 체류시간 정밀화

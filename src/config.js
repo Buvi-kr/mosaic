@@ -25,6 +25,7 @@ const defaultConfig = {
   displayPhotozoneTheme: 'nebula', // 포토존 테마 ('nebula', 'galaxy', 'aurora', 'minimal')
   displayShowTimer: true,      // 결과물 잔여 전시 시간 타이머 표시 여부
   visitorGateTimeout: 20,      // QR 자동 개방 및 잠수 방지 대기 시간 (10초~120초, 기본값 20초)
+  enableWatermark: true,       // 최종 모자이크 우측 상단 공식 로고 워터마크 고정 합성 여부
   googleSheets: {
     enabled: false,
     webAppUrl: ''

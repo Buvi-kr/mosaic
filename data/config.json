@@ -23,5 +23,6 @@
     "enabled": true,
     "webAppUrl": ""
   },
+  "enableWatermark": true,
   "turboMode": false
 }

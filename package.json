@@ -1,10 +1,11 @@
 {
   "name": "mosaic_ver2",
-  "version": "7.0.0",
-  "description": "Reverse Cosmos Mosaic (V7.0 Display Overhaul & Privacy Architecture) - 로컬 기반 실시간 포토모자이크 전시 렌더링 시스템",
+  "version": "8.17.0",
+  "description": "Reverse Cosmos Mosaic (V8.17 Official Watermark & Google Sheets V16.0) - 로컬 기반 실시간 포토모자이크 전시 렌더링 시스템",
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
+    "test:qa": "node scripts/run_full_qa.js",
     "fetch:nasa": "node scripts/fetch_massive_nasa_archive.js",
     "build:db": "node scripts/build.db.js",
     "build:release": "node scripts/build_release.js",

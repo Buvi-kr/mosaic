@@ -52,43 +52,72 @@ class SheetsSync {
   }
 
   /**
-   * 관람객 1명의 실시간 세션 여정을 구글 시트에 Upsert
+   * 관람객 1명의 실시간 세션 여정을 구글 시트 원장에 Upsert (14개 이벤트 타임스탬프 표준 규격)
    * @param {object} audit - session.logger.js의 audit 객체
    */
   async syncSessionRow(audit) {
     if (!this.isEnabled() || !audit || !audit.sessionId) return;
 
     try {
-      const camStatus = audit.shot1?.captureSuccess ? '성공' : (audit.shot1?.captureStarted ? '열림(시도)' : '미실행');
-      const mosStatus = audit.shot1?.mosaicSuccess ? '성공' : (audit.shot1?.mosaicAttempted ? '실패' : '대기');
+      const formatTime = (ts) => {
+        if (!ts) return '';
+        const d = new Date(ts);
+        return d.toLocaleTimeString('ko-KR', {
+          timeZone: 'Asia/Seoul',
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+      };
 
-      const downloadCount = audit.downloads?.totalCount || 0;
-      const downloadStr = downloadCount > 0 ? `완료 (${downloadCount}회)` : '미다운로드';
+      const targetShot = audit.shot || audit.shot1 || {};
 
       let staySecStr = '';
-      if (audit.totalStaySec) {
+      if (audit.totalStaySec !== null && audit.totalStaySec !== undefined) {
         staySecStr = `${audit.totalStaySec}s`;
       } else if (audit.createdAt) {
         staySecStr = `${((Date.now() - audit.createdAt) / 1000).toFixed(0)}s`;
       }
 
-      // 월별 분할 키 (예: "2026-09")
+      // 월별 및 연도 키 (예: "2026-09", "2026")
       const createdAtDate = audit.createdAt ? new Date(audit.createdAt) : new Date();
       const yyyy = createdAtDate.getFullYear();
       const mm = String(createdAtDate.getMonth() + 1).padStart(2, '0');
       const monthKey = `${yyyy}-${mm}`;
+      const yearKey = `${yyyy}`;
 
+      // 기기 환경 정밀 판별
+      let deviceEnv = 'PC/기타';
+      const ua = String(audit.userAgent || '');
+      if (ua.includes('Mobile') || ua.includes('iPhone') || ua.includes('Android')) {
+        if (ua.includes('iPhone') || ua.includes('iPad')) {
+          deviceEnv = '모바일 (iOS)';
+        } else if (ua.includes('Android')) {
+          deviceEnv = '모바일 (Android)';
+        } else {
+          deviceEnv = '모바일';
+        }
+      }
+
+      // 14개 표준 컬럼 페이로드
       const data = {
         세션ID: audit.sessionId,
-        '스캔일시(KST)': audit.accessTime || new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
-        카메라오픈: camStatus,
-        모자이크완성: mosStatus,
-        다운로드: downloadStr,
+        '접근일시(KST)': audit.accessTime || new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+        카메라오픈일시: formatTime(targetShot.captureStartedAt),
+        촬영완료일시: formatTime(targetShot.uploadedAt),
+        모자이크완성일시: formatTime(targetShot.mosaicCompletedAt),
+        미디어월전시일시: formatTime(targetShot.displayAt || targetShot.mosaicCompletedAt),
+        다운로드일시: formatTime(targetShot.downloadedAt),
+        '촬영소요(초)': (targetShot.captureDurationSec !== null && targetShot.captureDurationSec !== undefined) ? `${targetShot.captureDurationSec}s` : '',
+        '합성소요(초)': (targetShot.mosaicDurationSec !== null && targetShot.mosaicDurationSec !== undefined) ? `${targetShot.mosaicDurationSec}s` : '',
+        '총체류(초)': staySecStr,
         최종상태: audit.finalStatus || 'IN_PROGRESS',
-        체류시간: staySecStr,
-        기기환경: (audit.userAgent && audit.userAgent.includes('Mobile')) ? '모바일' : 'PC/기타',
-        테마: audit.shot1?.theme || '기본',
-        monthKey: monthKey
+        기기환경: deviceEnv,
+        테마: targetShot.theme || '기본',
+        오류사유: audit.abortReason || '',
+        monthKey: monthKey,
+        yearKey: yearKey
       };
 
       return this.postToWebApp({ action: 'sessionRow', data });
