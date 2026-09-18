@@ -132,6 +132,16 @@ cd mosaic
 start.bat
 ```
 
+### 🔄 전시장 현장 1클릭 원격 업데이트 (`update_project.bat`)
+다른 전시실 컴퓨터나 현장 키오스크에서 원격 저장소(`master`)의 최신 패치를 내려받을 때, 더블 클릭 한 번으로 모든 과정이 안전하게 자동 완료됩니다.
+* **1440p 등 로컬 맞춤 설정 100% 보존**: 현장 PC마다 다르게 세팅된 디스플레이 해상도(`1440p`/`4K`), 타일 크기, 게이트 대기 시간 등 로컬 고유 `data/config.json`을 자동 백업 후 깃허브 코드와 지능적으로 병합(Merge) 복원합니다.
+* **무중단 의존성 동기화**: `git pull origin master` ➔ 로컬 설정 복원 ➔ `npm install` ➔ 포트 충돌 정리를 한 번에 무인 처리합니다.
+
+```powershell
+# 현장 PC 업데이트 시 더블 클릭
+update_project.bat
+```
+
 ### 🔗 접속 주소 (Endpoints)
 | 화면 | 로컬 URL | 설명 |
 |---|---|---|
@@ -245,7 +255,11 @@ blender_workspace\render_video.bat
 │   ├── mosaic_cinematic.blend    # [통합 마스터 3D 프로젝트]
 │   ├── render_video.bat          # 🎥 [1클릭 MP4 렌더러]
 │   └── scenes/                   # 5개 씬별 데이터 보관소
+├── scripts/                      # 관제 및 자동화 스크립트
+│   ├── Code.gs                   # 📊 Google Sheets Apps Script v16.0 관제 엔진 & 과거 로그 보정기
+│   └── run_full_qa.js            # 🧪 [전수 QA 검증 스위트] 7대 영역 22대 테스트 슈트
 ├── start.bat                     # Windows 원클릭 종합 구동 런처 (Node.js 무인 자동 설치 내장)
+├── update_project.bat            # 🔄 [전시장 1클릭 업데이트] 1440p 등 로컬 설정 자동 보존 배포기
 ├── open_display_fullscreen.bat   # 🖥️ 엣지(Edge) 자동 감지 F11 전체화면 독립 실행기
 └── README.md                     # 프로젝트 마스터 문서
 ```
@@ -269,8 +283,11 @@ blender_workspace\render_video.bat
   - **월별 추이 컴팩트화 (1~12월 미니 표) & 당월 요일별(월~일) 유입 추이 바 차트**: 주말/주중 관람 패턴 한눈에 직관적 파악.
   - **피크타임 및 5단계 여정 퍼널 가독성 극대화**: 선명한 테두리(`border: #64748b`) 및 열 너비(110~125px) 확장으로 글자 잘림 완전 해소.
   - **하단 실시간 발생 오류 원시 로그 스트림**: 최근 15건의 시스템 오류를 계산 없이 원문 그대로 스트리밍.
+  - **과거 8% 왜곡 로그 100% 완주 일괄 보정 함수 (`calibratePastLogsTo100Percent()`)**: 로거 체계 정립 전 집계되어 '미완주'로 남아있던 과거 로그를 소급 보정하여 완주율 통계를 정상화하는 관리자 도구 탑재 (스프레드시트 메뉴 `[포천 천문관 관제 엔진]` > `[🛠️ 과거 데이터 100% 완주 일괄 보정]`).
   - **원클릭 긴급 복구 마이그레이션 (`migrateAndCleanupLegacy`)**: 열 밀림 및 일별 찌꺼기 탭 일괄 흡수·정리 지원.
-- **종합 전수 QA 22대 테스트 케이스 100% 통과 (`scratch/run_full_qa.js`)**:
+- **현장 PC 1440p 설정 100% 보존 배포 스크립트 신설 (`update_project.bat`)**:
+  - 다른 전시실 컴퓨터에서 업데이트할 때 `data/config.json`의 1440p 해상도 및 세부 설정이 초기화되지 않도록 자동 백업 및 복원/병합 파이프라인 탑재.
+- **종합 전수 QA 7대 영역 22대 테스트 케이스 100% 통과 (`scripts/run_full_qa.js`)**:
   - 세션 라이프사이클, 소켓 단절 복원, 14개 타임스탬프 산출, UTF-8 BOM CSV, 가로/세로/초대형/무블렌딩 등 6대 워터마크 케이스, UI 무결성 전수 검증 통과.
 
 ### 📦 V8.16 Mobile Native Intent & Anti-Spam Shield (2026-09-16)
