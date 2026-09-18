@@ -3,6 +3,7 @@ node_modules/
 *.env.*
 data/config.local.json
 data/config.backup.json
+data/config.preserve.json
 *.key
 *.pem
 
