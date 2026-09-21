@@ -59,10 +59,10 @@
     .outer-wrapper {
       position: absolute;
       inset: 0;
-      padding: 10px 80px;
+      padding: 8px 80px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
       background: radial-gradient(circle at 50% 50%, #080a14 0%, #000000 100%);
     }
 
@@ -76,8 +76,8 @@
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1.5px solid rgba(129, 140, 248, 0.35);
-      border-radius: 18px;
-      padding: 10px 24px;
+      border-radius: 16px;
+      padding: 7px 20px;
       box-shadow: 0 8px 30px rgba(0,0,0,0.8);
     }
 
@@ -167,11 +167,15 @@
     .right-column {
       display: flex;
       flex-direction: column;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
     }
 
     /* 통합 이용안내 패널 (전체 높이 차지) */
     .panel-combined {
       flex: 1;
+      height: 100%;
       min-height: 0;
       display: flex;
       flex-direction: column;
@@ -180,19 +184,20 @@
       border-radius: 22px;
       box-shadow: 0 10px 40px rgba(0,0,0,0.95), 0 0 25px rgba(245,158,11,0.12);
       padding: 10px 14px;
-      gap: 7px;
+      gap: 8px;
       overflow: hidden;
     }
 
-    /* 3단계 행 — 각 행이 flex: 1로 균등 분배 */
+    /* 3단계 행 — 각 행이 flex: 1 1 0 으로 균등 1/3 분배 및 overflow hidden */
     .step-row {
-      flex: 1;
+      flex: 1 1 0;
       min-height: 0;
+      height: 0; /* 강제로 flex 비율 기반으로 높이 수렴하게 만듦 */
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       border-radius: 14px;
-      padding: 8px 12px;
+      padding: 8px 14px;
       overflow: hidden;
     }
     .step-row-1 { background: rgba(99,102,241,0.12); border: 1.5px solid rgba(99,102,241,0.35); }
@@ -201,7 +206,7 @@
 
     /* 텍스트 영역 */
     .step-text {
-      flex: 0 0 52%;
+      flex: 0 0 50%;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -209,22 +214,22 @@
       min-width: 0;
     }
     .step-num {
-      font-size: clamp(13px, 1.2vw, 18px);
+      font-size: clamp(12px, 1.0vw, 15px);
       font-weight: 900;
       letter-spacing: 0.06em;
       font-family: 'Outfit', monospace;
     }
     .step-title {
-      font-size: clamp(20px, 2.1vw, 32px);
+      font-size: clamp(18px, 1.8vw, 28px);
       font-weight: 900;
       line-height: 1.2;
       letter-spacing: -0.01em;
     }
     .step-desc {
-      font-size: clamp(12px, 1.2vw, 18px);
+      font-size: clamp(11px, 0.9vw, 14px);
       font-weight: 600;
-      color: rgba(255,255,255,0.55);
-      line-height: 1.4;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.35;
       margin-top: 2px;
     }
 
@@ -234,17 +239,21 @@
       min-width: 0;
       min-height: 0;
       height: 100%;
+      max-height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 12px;
       overflow: hidden;
-      background: rgba(0,0,0,0.3);
+      background: rgba(0,0,0,0.35);
+      position: relative;
     }
     .step-visual img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
       border-radius: 10px;
     }
     /* QR 전용 시각 영역 — 흰 배경 */
@@ -252,8 +261,9 @@
       background: #ffffff;
       border-radius: 12px;
       flex: 0 0 auto;
-      width: auto;
-      height: 100%;
+      max-height: 100%;
+      max-width: 100%;
+      aspect-ratio: 1;
       padding: 6px;
       display: flex;
       align-items: center;
@@ -473,7 +483,7 @@
         <div class="panel-combined" id="guideCard">
 
           <!-- 패널 타이틀 -->
-          <div class="flex items-center justify-between flex-shrink-0 pb-1" style="border-bottom: 1px solid rgba(255,255,255,0.08);">
+          <div class="flex items-center justify-between flex-shrink-0" style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; margin-bottom: 1px;">
             <div class="flex items-center gap-2">
               <span class="text-xl">📖</span>
               <h2 class="font-black text-white tracking-tight" style="font-size: clamp(16px, 1.6vw, 24px);">
@@ -491,11 +501,11 @@
               <p class="step-desc">폰 카메라를 켜고<br>화면의 QR코드를 비추면 됩니다</p>
             </div>
             <!-- QR / BUSY 시각 영역 -->
-            <div style="flex:1; min-width:0; height:100%; display:flex; align-items:center; justify-content:center; position:relative;">
+            <div style="flex:1; min-width:0; min-height:0; height:100%; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
               <!-- OPEN: QR 코드 -->
-              <div id="qrcode-box" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
-                <div class="step-visual-qr" style="aspect-ratio:1; height:min(100%, 180px);">
-                  <div id="qrcode">
+              <div id="qrcode-box" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                <div class="step-visual-qr" style="height:100%; max-height:100%; aspect-ratio:1;">
+                  <div id="qrcode" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
                     <span style="font-size:11px; color:#64748b;">QR 로딩 중...</span>
                   </div>
                 </div>
