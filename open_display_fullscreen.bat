@@ -23,12 +23,13 @@ if not "%EDGE_EXE%"=="" (
     echo.
     set "FULLSCREEN_DIR=%TEMP%\mosaic_fullscreen_profile"
     if not exist "%FULLSCREEN_DIR%" mkdir "%FULLSCREEN_DIR%"
-    start "" "%EDGE_EXE%" --user-data-dir="%FULLSCREEN_DIR%" --start-fullscreen "http://localhost:3000/display.html" --no-first-run --no-default-browser-check
+    start "" "%EDGE_EXE%" --user-data-dir="%FULLSCREEN_DIR%" --start-fullscreen "http://localhost:3000/simple_display2.html" "http://localhost:3000/admin.html" --no-first-run --no-default-browser-check
     echo [SUCCESS] Edge Fullscreen Launched! (Press F11 anytime to toggle)
 ) else (
     echo [WARN] Dedicated browser not found, launching default browser...
     echo        (Press [F] or [F11] on screen to toggle fullscreen)
-    start http://localhost:3000/display.html
+    start http://localhost:3000/simple_display2.html
+    start http://localhost:3000/admin.html
 )
 
 echo.
