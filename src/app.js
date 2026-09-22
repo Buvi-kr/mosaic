@@ -217,7 +217,7 @@ server.listen(PORT, '0.0.0.0', () => {
       return;
     }
 
-    const displayUrl = `http://localhost:${port}/display.html`;
+    const displayUrl = `http://localhost:${port}/simple_display2.html`;
     const adminUrl = `http://localhost:${port}/admin.html`;
 
     // 1순위: Microsoft Edge (윈도우 10/11 전시장 권장 표준)
@@ -267,10 +267,12 @@ server.listen(PORT, '0.0.0.0', () => {
 
         // 1. 기존 실행 중인 일반 창과 세션을 완전히 분리하기 위해 독립 profile 지정
         // 2. --start-fullscreen: 윈도우 OS 레벨에서 전체화면으로 실행하되, 언제든 F11로 켜고 끌 수 있음
+        // 3. Tab 1: simple_display2.html (fullscreen exhibition), Tab 2: admin.html (background control)
         const browserArgs = [
           `--user-data-dir="${fsDir}"`,
           '--start-fullscreen',
           `"${displayUrl}"`,
+          `"${adminUrl}"`,
           '--no-first-run',
           '--no-default-browser-check'
         ];
@@ -282,6 +284,7 @@ server.listen(PORT, '0.0.0.0', () => {
               `--user-data-dir=${fsDir}`,
               '--start-fullscreen',
               displayUrl,
+              adminUrl,
               '--no-first-run',
               '--no-default-browser-check'
             ], {
@@ -327,11 +330,11 @@ server.listen(PORT, '0.0.0.0', () => {
         console.log(`\n======================================================`);
         console.log(`🌍 Cloudflare Public URLs Ready!`);
         console.log(`======================================================`);
-        console.log(`- 3분할 디스플레이: ${tunnelUrl}/display.html`);
-        console.log(`- ✨ 심플 대형 디스플레이: ${tunnelUrl}/simple_display.html`);
-        console.log(`- 셀카 모바일 업로드: ${tunnelUrl}/upload.html`);
-        console.log(`- 🚀 심플 모바일 업로드: ${tunnelUrl}/simple_upload.html`);
-        console.log(`- 관리자 패널: ${tunnelUrl}/admin.html\n`);
+        console.log(`- ✨ Simple Display v2 (Exhibition): ${tunnelUrl}/simple_display2.html`);
+        console.log(`- 3-Split Display: ${tunnelUrl}/display.html`);
+        console.log(`- Mobile Upload: ${tunnelUrl}/upload.html`);
+        console.log(`- Simple Mobile Upload: ${tunnelUrl}/simple_upload.html`);
+        console.log(`- Admin Panel: ${tunnelUrl}/admin.html\n`);
         
         socketManager.setTunnelUrl(tunnelUrl);
       }
